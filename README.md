@@ -3,71 +3,697 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Battlex - Admin Panel</title>
+    <title>EarnMoney - Premium Assignment Tasks</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
-        body { background-color: #f3f4f6; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        .admin-box { background: white; width: 100%; max-width: 400px; padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #e5e7eb; }
-        h2 { font-size: 20px; margin-bottom: 20px; color: #111; text-align: center; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #4b5563; }
-        input[type="text"], input[type="number"], input[type="file"] { width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; }
-        input[type="file"] { background: #f9fafb; cursor: pointer; }
-        .upload-btn { background: #3b82f6; color: white; border: none; width: 100%; padding: 14px; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 10px; box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2); }
-        .status-msg { margin-top: 15px; text-align: center; font-size: 13px; font-weight: 500; color: #10b981; }
+        :root { --primary: #f39c12; --bg: #f4f7f6; --card-bg: #ffffff; --dark: #2c3e50; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg); margin: 0; padding: 0; text-align: center; color: #333; }
+        .hidden { display: none !important; }
+        
+        /* UI Components */
+        .card { background: var(--card-bg); padding: 30px; border-radius: 28px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); max-width: 450px; margin: 20px auto; border: 1px solid #eee; }
+        input, select, textarea { width: 90%; padding: 15px; margin: 12px 0; border: 1.5px solid #eee; border-radius: 15px; font-size: 16px; outline: none; }
+        .btn-orange { background: var(--primary); color: white; border: none; width: 100%; padding: 18px; border-radius: 20px; font-weight: bold; cursor: pointer; font-size: 17px; box-shadow: 0 5px 15px rgba(243,156,18,0.3); }
+        .btn-green { background: #27ae60; color: white; border: none; width: 100%; padding: 18px; border-radius: 20px; font-weight: bold; cursor: pointer; font-size: 17px; }
+        .btn-main { background: var(--primary); color: white; border: none; width: 100%; padding: 16px; border-radius: 18px; font-weight: 700; cursor: pointer; font-size: 16px; }
+        .btn-red { background: #e74c3c; color: white; border: none; padding: 8px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-left: 5px; }
+        .btn-admin-approve { background: #27ae60; color: white; border: none; padding: 8px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .btn-admin-balance { background: #3498db; color: white; border: none; padding: 8px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-left: 5px; }
+
+        .notification-bar { background: #fdf2f2; border: 1px solid #f8b4b4; color: #9b1c1c; padding: 15px; margin: 15px; border-radius: 18px; text-align: left; font-size: 14px; display: flex; align-items: center; gap: 10px; }
+        .block-box { background: #fff5f5; border: 2px dashed #e53e3e; padding: 20px; border-radius: 20px; color: #c53030; text-align: center; margin-top: 15px; }
+
+        /* Plan Cards */
+        .plan-box { background: white; border: 2px solid #eee; padding: 20px; margin: 15px 0; border-radius: 20px; cursor: pointer; text-align: left; transition: 0.3s; }
+        .plan-box:hover { border-color: var(--primary); background: #fffcf6; }
+        
+        /* Dashboard */
+        .balance-card { background: linear-gradient(135deg, var(--dark), #34495e); color: white; padding: 40px 20px; border-radius: 30px; margin: 20px; position: relative; }
+        .menu-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; padding: 20px; }
+        .menu-item { background: white; padding: 20px 10px; border-radius: 25px; display: flex; flex-direction: column; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+        .icon-bg { font-size: 32px; }
+
+        /* Pages */
+        .full-page { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 2000; overflow-y: auto; padding-bottom: 60px; }
+        .header { display: flex; align-items: center; padding: 20px; background: white; border-bottom: 1px solid #eee; position: sticky; top: 0; z-index: 10; }
+        .history-item { background: white; margin: 12px 20px; padding: 20px; border-radius: 20px; text-align: left; border-left: 8px solid var(--primary); }
+        
+        /* New Assignment Sheet & Upload UI */
+        .assignment-display-card { background: #ffffff; border: 2px solid #edf2f7; border-radius: 20px; padding: 15px; margin: 15px 0; text-align: left; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); }
+        .assignment-meta { background: #f1f5f9; color: #475569; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; display: inline-block; margin-bottom: 10px; }
+        .assignment-body-text { font-size: 15px; color: #1e293b; line-height: 1.6; font-weight: 600; background: #fffbeb; border-left: 4px solid #f59e0b; padding: 10px; border-radius: 6px; }
+        
+        .upload-zone { border: 2px dashed #cbd5e1; background: #f8fafc; border-radius: 18px; padding: 20px 15px; margin: 20px 0; position: relative; cursor: pointer; }
+        .upload-zone input[type="file"] { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+        
+        .expiry-timer-banner { background: #fff7ed; border: 1px solid #ffedd5; color: #c2410c; font-size: 13px; font-weight: 700; padding: 10px; border-radius: 12px; margin-bottom: 15px; }
+        .countdown-circle { width: 90px; height: 90px; border: 6px solid #27ae60; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 22px; font-weight: bold; margin: 15px auto; color: #27ae60; background: #f0fdf4; }
+
+        /* Custom Alert Popup Styling */
+        .custom-alert-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .custom-alert-box { background: white; width: 100%; max-width: 380px; border-radius: 24px; padding: 25px; text-align: center; }
+        .custom-alert-btn { background: var(--primary); color: white; border: none; width: 100%; padding: 14px; border-radius: 16px; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <div class="admin-box">
-        <h2>Add New Product</h2>
-        
-        <form id="product-form" onsubmit="uploadProduct(event)">
-            <div class="form-group">
-                <label>Product Name *</label>
-                <input type="text" id="p-name" placeholder="E.g., Wireless Earbuds Pro" required>
-            </div>
-
-            <div class="form-group">
-                <label>Price (PKR) *</label>
-                <input type="number" id="p-price" placeholder="E.g., 2500" required>
-            </div>
-
-            <div class="form-group">
-                <label>Product Image (Select from Gallery) *</label>
-                <input type="file" id="p-image" accept="image/*" required>
-            </div>
-
-            <button type="submit" class="upload-btn">🚀 Make Product Live</button>
-        </form>
-
-        <div class="status-msg" id="status"></div>
+    <div id="custom-alert" class="custom-alert-overlay hidden">
+        <div class="custom-alert-box">
+            <h4 style="font-size:18px; margin:0 0 10px 0; color:#1e293b;" id="alert-title">earnmoney56.github.io</h4>
+            <p style="font-size:15px; color:#64748b; margin:0 0 20px 0;" id="alert-message">Notification Message</p>
+            <button class="custom-alert-btn" onclick="closeAlert()">OK</button>
+        </div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+    <div id="auth-section" class="card" style="margin-top: 50px;">
+        <h1 style="color: var(--primary); margin-bottom: 5px;">EarnMoney</h1>
+        <p style="color: #888; margin-bottom: 30px;">Login to your account</p>
+        <div id="login-form">
+            <input type="email" id="email" placeholder="Email Address">
+            <input type="password" id="password" placeholder="Password">
+            <button class="btn-green" onclick="login()">Login Now</button>
+            <p onclick="showSignup()" style="cursor:pointer; color:var(--primary); font-weight:bold; margin-top:20px;">Don't have an account? Signup</p>
+        </div>
+        <div id="signup-form" class="hidden">
+            <input type="email" id="reg-email" placeholder="Email Address">
+            <input type="password" id="reg-password" placeholder="Password (Min 6 chars)">
+            <input type="text" id="reg-ref" placeholder="Referral Code (Optional)">
+            <button class="btn-orange" onclick="signup()">Create Account</button>
+            <p onclick="showLogin()" style="cursor:pointer; color:var(--primary); font-weight:bold; margin-top:20px;">Back to Login</p>
+        </div>
+    </div>
+
+    <div id="paywall-section" class="full-page hidden" style="background: #f8fafc;">
+        <div class="header" style="justify-content: center; position: relative;">
+            <button id="paywall-back-btn" onclick="closePage('paywall-section')" class="hidden" style="position: absolute; left: 15px; background: none; border: none; font-size: 24px; cursor: pointer;">←</button>
+            <h2 style="margin: 0; font-size: 22px; color: #1e293b; font-weight: 800;">💎 VIP Membership Levels</h2>
+        </div>
+        
+        <div class="card" id="plan-selection-view" style="max-width: 480px;">
+            <p style="color: #64748b; font-size: 15px; margin-bottom: 25px;">Select an investment plan below to unlock your elite dashboard and start earning daily.</p>
+            
+            <div class="plan-box" onclick="selectPlan(1, 1000, 1500, 30)">
+                <div style="float: right; background: #fef3c7; color: #d97706; padding: 4px 12px; font-size: 11px; font-weight: 700; border-radius: 8px;">BRONZE</div>
+                <h3 style="margin: 0 0 8px 0; color: #0f172a;">Plan Level 1</h3>
+                <p style="margin:5px 0; font-size:13px; color:#64748b;">Deposit: <b>1,000 PKR</b> | Daily: <span style="color:#22c55e; font-weight:700;">1,500 PKR</span></p>
+            </div>
+
+            <div class="plan-box" onclick="selectPlan(2, 1500, 2000, 40)" style="border-color: #f39c12;">
+                <div style="float: right; background: #f39c12; color: white; padding: 4px 12px; font-size: 11px; font-weight: 700; border-radius: 8px;">SILVER</div>
+                <h3 style="margin: 0 0 8px 0; color: #0f172a;">Plan Level 2</h3>
+                <p style="margin:5px 0; font-size:13px; color:#64748b;">Deposit: <b>1,500 PKR</b> | Daily: <span style="color:#22c55e; font-weight:700;">2,000 PKR</span></p>
+            </div>
+
+            <div class="plan-box" onclick="selectPlan(3, 2000, 2500, 50)">
+                <div style="float: right; background: #dbeafe; color: #1e40af; padding: 4px 12px; font-size: 11px; font-weight: 700; border-radius: 8px;">GOLD</div>
+                <h3 style="margin: 0 0 8px 0; color: #0f172a;">Plan Level 3</h3>
+                <p style="margin:5px 0; font-size:13px; color:#64748b;">Deposit: <b>2,000 PKR</b> | Daily: <span style="color:#22c55e; font-weight:700;">2,500 PKR</span></p>
+            </div>
+
+            <div class="plan-box" onclick="selectPlan(4, 2500, 3000, 60)">
+                <div style="float: right; background: #e0f2fe; color: #0369a1; padding: 4px 12px; font-size: 11px; font-weight: 700; border-radius: 8px;">DIAMOND</div>
+                <h3 style="margin: 0 0 8px 0; color: #0f172a;">Plan Level 4</h3>
+                <p style="margin:5px 0; font-size:13px; color:#64748b;">Deposit: <b>2,500 PKR</b> | Daily: <span style="color:#22c55e; font-weight:700;">3,000 PKR</span></p>
+            </div>
+        </div>
+
+        <div class="card hidden" id="payment-upload-view" style="max-width: 450px;">
+            <h3 id="selected-plan-title" style="margin: 0 0 15px 0; color: #0f172a;">Secure Instant Deposit</h3>
+            <div style="background: #fff; border: 1.5px solid #edf2f7; border-radius: 18px; padding: 15px; text-align: left; margin-bottom: 20px;">
+                <span style="background: #e67e22; color: white; padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 800;">JAZZCASH </span>
+                <p style="margin: 10px 0 5px 0; color: #64748b; font-size: 12px;">ACCOUNT NUMBER</p>
+                <b style="font-size: 18px; color: #1e293b;">03184437995</b>
+                <p style="margin: 10px 0 5px 0; color: #64748b; font-size: 12px;">ACCOUNT TITLE</p>
+                <b style="font-size: 16px; color: #1e293b;">Muhammad Israr khan</b>
+            </div>
+            <div class="upload-zone">
+                <span style="font-size: 35px; display: block;">📸</span>
+                <span style="font-size: 14px; font-weight: 600; display: block;" id="proof-label">Upload Payment Screenshot</span>
+                <input type="file" id="proof-file" accept="image/*" onchange="document.getElementById('proof-label').innerText = this.files[0].name">
+            </div>
+            <button class="btn-green" onclick="submitPaymentProof()">Verify & Submit Request</button>
+            <p id="cancel-payment-btn" onclick="backToPlans()" style="color: #ef4444; cursor: pointer; font-weight: 700; margin-top: 18px;">← Choose Another Option</p>
+        </div>
+
+        <div class="card hidden" id="pending-view" style="max-width: 450px; padding: 35px 25px;">
+            <span style="font-size: 40px; display:block; margin-bottom:15px;">⏳</span>
+            <h2>Payment Under Review</h2>
+            <p style="color: #64748b; font-size: 14px; line-height: 1.6;">Your digital transaction receipt has been submitted to secure manual verification channels. System activation parameters will trigger immediately upon confirmation (Takes 1-2 hours).</p>
+            <button class="btn-orange" onclick="logout()" style="background: #ef4444; width: 100%; margin-top:20px;">Exit Application</button>
+        </div>
+    </div>
+
+    <div id="main-dashboard" class="hidden">
+        <div id="decline-notification" class="notification-bar hidden">
+            <span style="font-size: 20px;">⚠️</span>
+            <div>
+                <strong>Withdrawal Declined:</strong> <span id="decline-reason-text">Reason goes here...</span>
+                <br><small style="opacity:0.8; cursor:pointer; text-decoration:underline;" onclick="dismissDeclineNotice()">Dismiss Notification</small>
+            </div>
+        </div>
+
+        <div class="balance-card">
+            <p id="user-active-plan" style="background:rgba(255,255,255,0.2); display:inline-block; padding:5px 15px; border-radius:50px; font-size:12px;">PLAN: LOADING...</p>
+            <p style="opacity: 0.7; font-size: 14px; margin: 10px 0 0 0;">TOTAL AVAILABLE BALANCE</p>
+            <h1 id="userBalance" style="font-size: 45px; margin: 10px 0;">0 PKR</h1>
+            <button class="btn-orange" style="background: rgba(255,255,255,0.15); border: 1px solid white; width:auto; padding: 10px 25px;" onclick="showPage('withdraw-page')">Withdraw Funds</button>
+        </div>
+
+        <div id="dashboard-custom-load-box" class="card hidden" style="border: 2px solid #3498db; background: #f0f9ff; margin-bottom: 25px; text-align: left;">
+            <div style="float: right; background: #3498db; color: white; padding: 4px 12px; font-size: 11px; font-weight: 700; border-radius: 8px;">REQUIRED ACTION</div>
+            <h3 style="margin: 0 0 8px 0; color: #1e3a8a; font-size: 18px;">⚠️ Solve Rejection Problem</h3>
+            <p style="margin: 5px 0; font-size: 14px; color: #2c3e50;">Admin Message: <b id="custom-load-msg" style="color: #e74c3c;">-</b></p>
+            <p style="margin: 5px 0; font-size: 14px; color: #2c3e50;">Required Fine/Amount: <b style="color: #27ae60; font-size: 16px;"><span id="custom-load-amount">0</span> PKR</b></p>
+            <button class="btn-main" onclick="openCustomPaymentFromDashboard()" style="background: #3498db; margin-top: 12px; padding: 12px;">Pay & Solve Issue Now</button>
+        </div>
+
+        <div class="menu-grid">
+            <div class="menu-item" onclick="openTasks()"><span class="icon-bg">📝</span><span>Daily Tasks</span></div>
+            <div class="menu-item" onclick="openLevelsFromDashboard()"><span class="icon-bg">⚡</span><span>Level / Deposit</span></div>
+            <div class="menu-item" onclick="showPage('wallet-page')"><span class="icon-bg">💳</span><span>Wallet</span></div>
+            <div class="menu-item" onclick="showPage('rewards-page')"><span class="icon-bg">🎁</span><span>Rewards</span></div>
+            <div class="menu-item" onclick="showPage('salary-page')"><span class="icon-bg">📜</span><span>History</span></div>
+            <div class="menu-item" onclick="showPage('team-page')"><span class="icon-bg">👥</span><span>Team</span></div>
+            <div class="menu-item hidden" id="admin-btn" onclick="showPage('admin-page')"><span class="icon-bg">🛡️</span><span>Admin</span></div>
+            <div class="menu-item" onclick="logout()"><span class="icon-bg">🚪</span><span>Logout</span></div>
+        </div>
+    </div>
+
+    <div id="wallet-page" class="full-page hidden">
+        <div class="header"><button onclick="closePage('wallet-page')" style="background:none; border:none; font-size:28px;">←</button><h2 style="margin-left:15px;">My Wallet</h2></div>
+        <div class="card" style="text-align:left;">
+            <p>💰 Current Balance: <b id="wal-bal">0 PKR</b></p>
+            <p>📤 Total Withdrawn: <b id="wal-out">0 PKR</b></p>
+        </div>
+        <button class="btn-orange" style="width:90%;" onclick="showPage('withdraw-page')">Request Withdrawal</button>
+    </div>
+
+    <div id="withdraw-page" class="full-page hidden">
+        <div class="header"><button onclick="closePage('withdraw-page')" style="background:none; border:none; font-size:28px;">←</button><h2 style="margin-left:15px;">Withdraw Money</h2></div>
+        <div class="card" id="withdrawal-form-container">
+            <h3>Enter Details</h3>
+            <select id="w-method"><option value="EasyPaisa">EasyPaisa</option><option value="JazzCash">JazzCash</option></select>
+            <input type="text" id="w-account" placeholder="Account Number (e.g. 0300xxxxxxx)">
+            <input type="number" id="w-amount" placeholder="Amount (Minimum 2000 PKR)">
+            <button class="btn-main" onclick="submitWithdrawal()" style="margin-top:15px;">Submit Request</button>
+        </div>
+        <div class="card hidden" id="withdrawal-blocked-container">
+            <div class="block-box">
+                <span style="font-size: 40px; display: block; margin-bottom: 10px;">🔒</span>
+                <h3>Withdrawal Options Locked</h3>
+                <p style="font-size: 14px; color: #742a2a; margin-bottom: 15px;">Aapka pichla withdrawal reject kiya gaya tha. Pehle apna masla hal karwayein.</p>
+                <div style="background: white; border: 1px solid #feb2b2; padding: 12px; border-radius: 12px; text-align: left; font-size: 13px;">
+                    <strong style="color: #c53030;">Masla / Reason:</strong>
+                    <div id="block-reason-display-text" style="margin-top: 5px; color: #4a5568;">No reason provided.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="task-page" class="full-page hidden">
+        <div class="header"><button onclick="closeTasks()" style="background:none; border:none; font-size:28px;">✕</button><h2 style="margin-left:15px;">Daily Assignment Sheet</h2></div>
+        <div class="card" style="text-align: center;">
+            
+            <div class="expiry-timer-banner">
+                ⏱️ TIME REMAINING TO SUBMIT DAILY TASKS: <span id="expiry-countdown">12:00:00</span>
+            </div>
+
+            <h3 id="task-info">Tasks Done: 0/0</h3>
+            
+            <div class="assignment-display-card">
+                <div class="assignment-meta" id="assignment-level-tag">PLAN TASK SPECIFICATION</div>
+                <p style="font-size:13px; font-weight:bold; color:#e67e22; margin:5px 0;">👇 Is paragraph ko khali page par haath se likhein:</p>
+                <div class="assignment-body-text" id="assignment-display-text">Loading daily active sheet...</div>
+            </div>
+
+            <div class="upload-zone" id="upload-clickable-zone">
+                <span style="font-size: 40px; display: block;">📝</span>
+                <span style="font-size: 15px; font-weight: bold; display: block; color: var(--primary);" id="work-file-label">Tap to Upload Written Worksheet Pic</span>
+                <input type="file" id="work-file" accept="image/*" onchange="handleWorksheetSelection(this)">
+            </div>
+            
+            <div id="verification-timer-box" class="hidden">
+                <p style="font-size:13px; font-weight:bold; color:#27ae60; margin:5px 0;">⚡ Work uploaded! Processing smart verification parameters...</p>
+                <div class="countdown-circle">
+                    <span id="verification-timer-txt" style="font-size:24px;">02:00</span>
+                </div>
+            </div>
+
+            <button class="btn-green" id="submit-work-btn" onclick="triggerTwoMinuteVerification()" style="margin-top:10px;">Submit Sheet & Process Payment</button>
+        </div>
+    </div>
+
+    <div id="salary-page" class="full-page hidden">
+        <div class="header"><button onclick="closePage('salary-page')" style="background:none; border:none; font-size:28px;">←</button><h2 style="margin-left:15px;">Earning History</h2></div>
+        <div id="history-list" style="max-width: 500px; margin: 0 auto;"></div>
+    </div>
+
+    <div id="rewards-page" class="full-page hidden">
+        <div class="header"><button onclick="closePage('rewards-page')" style="background:none; border:none; font-size:28px;">←</button><h2 style="margin-left:15px;">Daily Rewards</h2></div>
+        <div class="card" style="margin-top: 40px; padding: 30px 20px;">
+            <div style="font-size: 50px;">🎁</div>
+            <h3>Daily Attendance Reward</h3>
+            <p style="color: #64748b; font-size: 14px;">Claim your free daily premium bonus of 400 PKR inside your wallet dashboard instantly.</p>
+            <button class="btn-green" onclick="claimDailyReward()">Claim 400 PKR Now</button>
+        </div>
+    </div>
+
+    <div id="team-page" class="full-page hidden">
+        <div class="header"><button onclick="closePage('team-page')" style="background:none; border:none; font-size:28px;">←</button><h2 style="margin-left:15px;">My Network Team</h2></div>
+        <div class="card" style="text-align: left;">
+            <h3>My Referral Tracking</h3>
+            <div style="background: #f8fafc; border: 1.5px dashed #cbd5e1; padding: 12px; border-radius: 12px; text-align: center; font-size: 20px; font-weight: bold;" id="team-ref-display">LOADING...</div>
+            <input type="text" id="team-link-display" readonly style="margin: 10px 0; padding: 12px; font-size: 13px; width:93%;">
+            <button onclick="copyReferralLink()" class="btn-orange" style="padding:10px;">Copy Share Link</button>
+        </div>
+        <div class="card">
+            <h3>Downline Network Members</h3>
+            <div id="team-list"></div>
+        </div>
+    </div>
+
+    <div id="admin-page" class="full-page hidden">
+        <div class="header"><button onclick="closePage('admin-page')" style="background:none; border:none; font-size:28px;">←</button><h2 style="margin-left:15px;">Admin Panel</h2></div>
+        <div class="card"><h3>Plan / Custom Wallet Load Requests</h3><div id="admin-plan-requests"></div></div>
+        <div class="card"><h3>Withdrawal Requests</h3><div id="admin-list"></div></div>
+        <div class="card">
+            <h3>Clear User Rejection Status Manually</h3>
+            <input type="email" id="unblock-user-email" placeholder="User Email Address">
+            <button class="btn-green" onclick="adminUnblockUserWithdrawal()">Unblock Withdrawal Now</button>
+        </div>
+    </div>
 
     <script>
-        // Firebase Config (Hum agle step mein real keys dalenge)
         const firebaseConfig = {
-            apiKey: "PLACEHOLDER",
-            authDomain: "PLACEHOLDER",
-            databaseURL: "PLACEHOLDER",
-            projectId: "PLACEHOLDER",
-            storageBucket: "PLACEHOLDER",
-            messagingSenderId: "PLACEHOLDER",
-            appId: "PLACEHOLDER"
+            apiKey: "AIzaSyB8r-JkscDuet3gf33WhTgGxTdLMObCmc8",
+            authDomain: "jkseller.firebaseapp.com",
+            databaseURL: "https://jkseller-default-rtdb.firebaseio.com/",
+            projectId: "jkseller",
+            storageBucket: "jkseller.appspot.com",
+            messagingSenderId: "410778583623",
+            appId: "1:410778583623:web:8431529fc0b659414d2762"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+        
+        const ADMIN = "samiseyam49@gmail.com"; 
+
+        // 🔥 Dynamic Custom Plan-Based Unique Assignments Pool 🔥
+        const planAssignments = {
+            1: [
+                "Plan 1 Task: The quick brown fox jumps over the lazy dog near the riverside bank area.",
+                "Plan 1 Task: Hard work always beats talent when talent fails to operate or work smart consistently.",
+                "Plan 1 Task: Basic assignment data verification modules help beginners acquire technical web knowledge fields."
+            ],
+            2: [
+                "Plan 2 Task: Global financial structures are updating their digital nodes to integrate super-fast decentralized fintech systems tracking transactions.",
+                "Plan 2 Task: Data protection acts require online operators to strictly mask user details inside server logs using secure encryption rules."
+            ],
+            3: [
+                "Plan 3 Premium Task: E-commerce networks are completely capturing local retail channels by implementing automated artificial intelligence algorithms to match real user intent globally.",
+                "Plan 3 Premium Task: Systematic approach towards premium asset allocations secures instant short-term cash flow metrics without experiencing extreme capital risk metrics."
+            ],
+            4: [
+                "Plan 4 Ultra VIP Task: Advanced cloud infrastructure frameworks scale millions of requests per millisecond by distributing high-fidelity load structures across dynamic multi-threaded localized nodes safely.",
+                "Plan 4 Ultra VIP Task: Professional digital marketing models utilize advanced automated demographic triggers to track micro-conversion funnels across global content delivery applications."
+            ]
         };
 
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
-        const storage = firebase.storage();
+        let activeExpiryInterval, verificationClock;
+        let currentTasksDone = 0, currentMaxTasks = 0, currentTaskPayout = 0, selectedUserPlanId = 1;
 
-        function uploadProduct(e) {
-            e.preventDefault();
-            document.getElementById('status').innerText = "Connecting to Firebase...";
-            alert("Perfect! Form ready hai. Firebase setup hote hi ye live kaam shuru kar dega.");
+        function appAlert(msg, title = "earnmoney56.github.io") {
+            document.getElementById('alert-title').innerText = title;
+            document.getElementById('alert-message').innerText = msg;
+            document.getElementById('custom-alert').classList.remove('hidden');
+        }
+        function closeAlert() { document.getElementById('custom-alert').classList.add('hidden'); }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const refCodeFromUrl = urlParams.get('ref');
+            if(refCodeFromUrl) {
+                showSignup();
+                document.getElementById('reg-ref').value = refCodeFromUrl.trim().toUpperCase();
+            }
+            start12HourGlobalCountdown();
+        });
+
+        // ⏱️ 12-Hours Dynamic Realtime Counting Parameter Loop
+        function start12HourGlobalCountdown() {
+            if(activeExpiryInterval) clearInterval(activeExpiryInterval);
+            activeExpiryInterval = setInterval(() => {
+                const now = new Date();
+                const night = new Date();
+                night.setHours(24, 0, 0, 0); // Next midnight mark trigger
+                
+                let diff = night - now;
+                if(diff < 0) diff = 0;
+
+                let hours = Math.floor(diff / (1000 * 60 * 60));
+                let mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                let secs = Math.floor((diff % (1000 * 60)) / 1000);
+
+                const displayStr = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                const elem = document.getElementById('expiry-countdown');
+                if(elem) elem.innerText = displayStr;
+            }, 1000);
+        }
+
+        function showPage(id) { 
+            if(id == 'admin-page' && auth.currentUser.email !== ADMIN) return appAlert("Access Denied!");
+            document.getElementById(id).classList.remove('hidden'); 
+            if(id=='admin-page') loadAdminData(); 
+            if(id=='team-page') fetchTeamData();
+            if(id=='withdraw-page') checkWithdrawBlockStatus();
+            if(id=='salary-page') showSalary();
+        }
+        function closePage(id) { document.getElementById(id).classList.add('hidden'); }
+        function showSignup() { document.getElementById('login-form').classList.add('hidden'); document.getElementById('signup-form').classList.remove('hidden'); }
+        function showLogin() { document.getElementById('signup-form').classList.add('hidden'); document.getElementById('login-form').classList.remove('hidden'); }
+
+        function openLevelsFromDashboard() {
+            document.getElementById('paywall-back-btn').classList.remove('hidden'); 
+            showPage('paywall-section');
+            document.getElementById('plan-selection-view').classList.remove('hidden');
+            document.getElementById('payment-upload-view').classList.add('hidden');
+            document.getElementById('pending-view').classList.add('hidden');
+        }
+
+        function openCustomPaymentFromDashboard() {
+            db.ref('users/' + auth.currentUser.uid).once('value', s => {
+                const d = s.val() || {};
+                const amountNeeded = d.declineAmount || 0;
+                tempSelectedPlan = { id: 99, cost: amountNeeded, earning: 0, totalTasks: 0 };
+                showPage('paywall-section');
+                document.getElementById('plan-selection-view').classList.add('hidden');
+                document.getElementById('payment-upload-view').classList.remove('hidden');
+                document.getElementById('selected-plan-title').innerText = `Solve Issue Rejection Payment`;
+                document.getElementById('paywall-back-btn').classList.add('hidden');
+            });
+        }
+
+        function checkWithdrawBlockStatus() {
+            db.ref('users/' + auth.currentUser.uid).once('value', s => {
+                const d = s.val() || {};
+                if(d.declineReason) {
+                    document.getElementById('withdrawal-form-container').classList.add('hidden');
+                    document.getElementById('withdrawal-blocked-container').classList.remove('hidden');
+                    document.getElementById('block-reason-display-text').innerText = d.declineReason;
+                } else {
+                    document.getElementById('withdrawal-blocked-container').classList.add('hidden');
+                    document.getElementById('withdrawal-form-container').classList.remove('hidden');
+                }
+            });
+        }
+
+        function showSalary() {
+            const list = document.getElementById('history-list'); list.innerHTML = `<p>Loading history log...</p>`;
+            db.ref('history/' + auth.currentUser.uid).once('value', s => {
+                list.innerHTML = "";
+                if(!s.exists()) { list.innerHTML = `<p style="padding:20px;">No transactions found.</p>`; return; }
+                let items = []; s.forEach(i => { items.unshift({ key: i.key, val: i.val() }); });
+                items.forEach(item => {
+                    const h = item.val; const isMinus = h.amount.toString().includes('-');
+                    list.innerHTML += `<div class="history-item" style="border-left-color: ${isMinus ? '#e74c3c':'#27ae60'};"><b>${h.type}</b><br><span style="color:${isMinus ? '#e74c3c':'#27ae60'}; font-weight:bold;">${isMinus?'':'+'}${h.amount} PKR</span><br><small>${h.date}</small></div>`;
+                });
+            });
+        }
+
+        function fetchTeamData() {
+            const u = auth.currentUser;
+            db.ref('users/' + u.uid).once('value', snapshot => {
+                const userData = snapshot.val() || {};
+                const userRefCode = userData.myRef || u.uid.substring(0, 6).toUpperCase();
+                document.getElementById('team-ref-display').innerText = userRefCode;
+                document.getElementById('team-link-display').value = `${window.location.origin}${window.location.pathname}?ref=${userRefCode}`;
+                db.ref('users').orderByChild('refBy').equalTo(userRefCode).once('value', s => {
+                    const tList = document.getElementById('team-list'); tList.innerHTML = "";
+                    if(!s.exists()) { tList.innerHTML = `<p>No network members found.</p>`; return; }
+                    s.forEach(child => {
+                        const m = child.val();
+                        tList.innerHTML += `<div style="padding:10px; border-bottom:1px solid #eee; display:flex; justify-content:space-between;"><span>${m.email}</span><b>${m.status === 'Active' ? 'Active ✅':'No Plan ❌'}</b></div>`;
+                    });
+                });
+            });
+        }
+
+        function copyReferralLink() {
+            const copyText = document.getElementById('team-link-display'); copyText.select();
+            navigator.clipboard.writeText(copyText.value).then(() => appAlert("Referral Link copied!"));
+        }
+
+        function claimDailyReward() {
+            const today = new Date().toLocaleDateString();
+            db.ref('users/' + auth.currentUser.uid).once('value', s => {
+                const d = s.val() || {};
+                if(d.lastRewardDate === today) return appAlert("Already claimed today!");
+                db.ref('users/' + auth.currentUser.uid).update({ balance: parseFloat(((d.balance || 0) + 400).toFixed(2)), lastRewardDate: today });
+                db.ref('history/' + auth.currentUser.uid).push({ type: "Daily Reward", amount: 400, date: new Date().toLocaleString() });
+                appAlert("400 PKR Claimed!"); closePage('rewards-page');
+            });
+        }
+
+        function selectPlan(planId, price, dailyEarn, maxTasks) {
+            tempSelectedPlan = { id: planId, cost: price, earning: dailyEarn, totalTasks: maxTasks };
+            document.getElementById('plan-selection-view').classList.add('hidden');
+            document.getElementById('payment-upload-view').classList.remove('hidden');
+            document.getElementById('selected-plan-title').innerText = `Deposit Confirmation (Plan ${planId})`;
+        }
+        function backToPlans() { document.getElementById('payment-upload-view').classList.add('hidden'); document.getElementById('plan-selection-view').classList.remove('hidden'); }
+
+        function submitPaymentProof() {
+            const fileInput = document.getElementById('proof-file');
+            if(fileInput.files.length === 0) return appAlert("Please upload payment screenshot!");
+            const u = auth.currentUser; const reader = new FileReader();
+            reader.onload = function(e) {
+                db.ref('plan_requests/' + u.uid).set({ uid: u.uid, email: u.email, planId: tempSelectedPlan.id, cost: tempSelectedPlan.cost, earning: tempSelectedPlan.earning, totalTasks: tempSelectedPlan.totalTasks, screenshot: e.target.result, status: "Pending", date: new Date().toLocaleString() });
+                db.ref('users/' + u.uid).update({ status: "Pending" });
+                document.getElementById('payment-upload-view').classList.add('hidden'); document.getElementById('pending-view').classList.remove('hidden');
+            };
+            reader.readAsDataURL(fileInput.files[0]);
+        }
+
+        function submitWithdrawal() {
+            const u = auth.currentUser; const method = document.getElementById('w-method').value;
+            const account = document.getElementById('w-account').value.trim(); const amount = parseInt(document.getElementById('w-amount').value);
+            if(!account || !amount) return appAlert("Please fill all details!");
+            if(amount < 2000) return appAlert("Minimum withdrawal is 2000 PKR!");
+            db.ref('users/' + u.uid).once('value', s => {
+                const d = s.val() || {}; if(d.declineReason) return appAlert("Your withdrawal is locked!");
+                if(amount > (d.balance || 0)) return appAlert("Insufficient balance!");
+                db.ref('users/' + u.uid).update({ balance: d.balance - amount, totalWithdrawn: (d.totalWithdrawn || 0) + amount });
+                db.ref('withdrawals').push({ uid: u.uid, email: u.email, method: method, account: account, amount: amount, status: "Pending", date: new Date().toLocaleString() });
+                db.ref('history/' + u.uid).push({ type: `Withdrawal (${method})`, amount: `-${amount}`, date: new Date().toLocaleString() });
+                appAlert("Withdrawal request submitted!"); closePage('withdraw-page');
+            });
+        }
+
+        // 🔥 Open Tasks Section with 12h & Dynamic Plan Layout Mechanics
+        function openTasks() {
+            db.ref('users/' + auth.currentUser.uid).once('value', s => {
+                const d = s.val() || {};
+                if (d.status !== "Active") return appAlert("Please activate a premium plan first!");
+                
+                const today = new Date().toLocaleDateString();
+                let done = (d.lastDate === today) ? (d.tasksDone || 0) : 0;
+                let maxAllowed = d.allowedTasks || 0;
+                
+                if (done >= maxAllowed) return appAlert("Daily assignment limit completed! Check back tomorrow.");
+                
+                currentTasksDone = done;
+                currentMaxTasks = maxAllowed;
+                currentTaskPayout = d.rewardPerVideo || 0;
+                selectedUserPlanId = d.planId || 1;
+
+                // Open page layout
+                showPage('task-page');
+                document.getElementById('task-info').innerText = `Tasks Done: ${done}/${maxAllowed}`;
+                document.getElementById('assignment-level-tag').innerText = `VIP LEVEL ${selectedUserPlanId} SPECIFICATION SHEET`;
+                
+                // Fetch dynamic text paragraph based on active plan index pool
+                const pool = planAssignments[selectedUserPlanId] || planAssignments[1];
+                document.getElementById('assignment-display-text').innerText = pool[Math.floor(Math.random() * pool.length)];
+                
+                // Reset Verification Element Views
+                document.getElementById('work-file').value = "";
+                document.getElementById('work-file-label').innerText = "Tap to Upload Written Worksheet Pic";
+                document.getElementById('verification-timer-box').classList.add('hidden');
+                
+                const sBtn = document.getElementById('submit-work-btn');
+                sBtn.disabled = false; sBtn.style.opacity = "1"; sBtn.innerText = "Submit Sheet & Process Payment";
+            });
+        }
+
+        function handleWorksheetSelection(input) {
+            if(input.files.length > 0) {
+                document.getElementById('work-file-label').innerText = `📄 Ready: ${input.files[0].name}`;
+            }
+        }
+
+        // 🔥 2-Minute Smart Countdown Processing Framework Engine
+        function triggerTwoMinuteVerification() {
+            const fileInput = document.getElementById('work-file');
+            if(fileInput.files.length === 0) return appAlert("Please upload the handwritten worksheet picture first!");
+
+            const sBtn = document.getElementById('submit-work-btn');
+            sBtn.disabled = true; sBtn.style.opacity = "0.5"; sBtn.innerText = "Processing System Verification...";
+            
+            // Hide selection clickable zone, launch countdown loader wrapper panel
+            document.getElementById('verification-timer-box').classList.remove('hidden');
+            
+            let timeLimit = 120; // 2 minutes matching 120 seconds duration metric loop
+            if(verificationClock) clearInterval(verificationClock);
+            
+            verificationClock = setInterval(() => {
+                timeLimit--;
+                let m = Math.floor(timeLimit / 60).toString().padStart(2, '0');
+                let sc = (timeLimit % 60).toString().padStart(2, '0');
+                document.getElementById('verification-timer-txt').innerText = `${m}:${sc}`;
+                
+                if(timeLimit <= 0) {
+                    clearInterval(verificationClock);
+                    applyTaskEarningPayoutPayout();
+                }
+            }, 1000);
+        }
+
+        function applyTaskEarningPayoutPayout() {
+            const u = auth.currentUser;
+            const payoutAmount = parseFloat(currentTaskPayout.toFixed(2));
+            
+            db.ref('users/' + u.uid).transaction(d => {
+                if(d) {
+                    d.balance = parseFloat(((d.balance || 0) + payoutAmount).toFixed(2));
+                    d.tasksDone = currentTasksDone + 1;
+                    d.lastDate = new Date().toLocaleDateString();
+                }
+                return d;
+            }, (error, committed) => {
+                if(committed) {
+                    db.ref('history/' + u.uid).push({ 
+                        type: `Plan ${selectedUserPlanId} Worksheet Credit`, 
+                        amount: payoutAmount, 
+                        date: new Date().toLocaleString() 
+                    });
+                    appAlert(`Smart Validation Complete! ${payoutAmount} PKR added into available balance structure.`);
+                    closeTasks();
+                } else {
+                    appAlert("Sync error occurred. Try again.");
+                    closeTasks();
+                }
+            });
+        }
+
+        function closeTasks() { if(verificationClock) clearInterval(verificationClock); closePage('task-page'); }
+
+        function login() { auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value).catch(e => appAlert(e.message)); }
+        function signup() {
+            const e = document.getElementById('reg-email').value; const p = document.getElementById('reg-password').value;
+            const r = document.getElementById('reg-ref').value ? document.getElementById('reg-ref').value.trim().toUpperCase() : "none";
+            auth.createUserWithEmailAndPassword(e, p).then(c => {
+                db.ref('users/' + c.user.uid).set({ email: e, balance: 0, totalWithdrawn: 0, status: "NoPlan", planId: 0, allowedTasks: 0, tasksDone: 0, myRef: c.user.uid.substring(0,6).toUpperCase(), refBy: r });
+            }).catch(e => appAlert(e.message));
+        }
+
+        function dismissDeclineNotice() { document.getElementById('decline-notification').classList.add('hidden'); }
+
+        auth.onAuthStateChanged(user => {
+            if(user) {
+                document.getElementById('auth-section').classList.add('hidden');
+                if(user.email === ADMIN) {
+                    document.getElementById('admin-btn').classList.remove('hidden'); document.getElementById('main-dashboard').classList.remove('hidden');
+                } else {
+                    db.ref('users/' + user.uid).on('value', s => {
+                        const d = s.val() || {}; const userStatus = d.status || "NoPlan";
+                        if(d.declineReason) {
+                            document.getElementById('decline-reason-text').innerText = d.declineReason; document.getElementById('decline-notification').classList.remove('hidden');
+                            document.getElementById('dashboard-custom-load-box').classList.remove('hidden');
+                            document.getElementById('custom-load-msg').innerText = d.declineReason; document.getElementById('custom-load-amount').innerText = d.declineAmount || 0;
+                        } else {
+                            document.getElementById('decline-notification').classList.add('hidden'); document.getElementById('dashboard-custom-load-box').classList.add('hidden');
+                        }
+                        if(userStatus === "NoPlan") {
+                            showPage('paywall-section'); document.getElementById('plan-selection-view').classList.remove('hidden'); document.getElementById('payment-upload-view').classList.add('hidden'); document.getElementById('pending-view').classList.add('hidden');
+                        } else if(userStatus === "Pending") {
+                            showPage('paywall-section'); document.getElementById('plan-selection-view').classList.add('hidden'); document.getElementById('payment-upload-view').classList.add('hidden'); document.getElementById('pending-view').classList.remove('hidden');
+                        } else if(userStatus === "Active") {
+                            document.getElementById('paywall-section').classList.add('hidden'); document.getElementById('main-dashboard').classList.remove('hidden');
+                            document.getElementById('user-active-plan').innerText = `PLAN ${d.planId} Active`; document.getElementById('userBalance').innerText = (d.balance || 0) + " PKR";
+                            document.getElementById('wal-bal').innerText = (d.balance || 0) + " PKR"; document.getElementById('wal-out').innerText = (d.totalWithdrawn || 0) + " PKR";
+                        }
+                    });
+                }
+            } else {
+                document.getElementById('auth-section').classList.remove('hidden'); document.getElementById('main-dashboard').classList.add('hidden'); document.getElementById('paywall-section').classList.add('hidden');
+            }
+        });
+
+        function logout() { auth.signOut().then(() => location.reload()); }
+
+        function loadAdminData() {
+            db.ref('plan_requests').on('value', s => {
+                const pList = document.getElementById('admin-plan-requests'); pList.innerHTML = "";
+                s.forEach(c => {
+                    const d = c.val();
+                    if(d.status === "Pending") {
+                        if(d.planId === 99) {
+                            pList.innerHTML += `<div class="history-item"><b>User: ${d.email}</b><br>Type: Custom Rejection Fine<br>Cost: <b>${d.cost} PKR</b><br><img src="${d.screenshot}" style="max-width:150px; display:block;"><button class="btn-admin-balance" onclick="approveAsCustomBalance('${d.uid}', ${d.cost})">Approve & Load</button><button class="btn-red" onclick="rejectPlanRequest('${d.uid}')">Reject</button></div>`;
+                        } else {
+                            pList.innerHTML += `<div class="history-item"><b>User: ${d.email}</b><br>Type: Plan ${d.planId} Request<br><img src="${d.screenshot}" style="max-width:150px; display:block;"><button class="btn-admin-approve" onclick="approvePlan('${d.uid}')">Activate Plan</button><button class="btn-red" onclick="rejectPlanRequest('${d.uid}')">Reject</button></div>`;
+                        }
+                    }
+                });
+            });
+            db.ref('withdrawals').on('value', s => {
+                const wList = document.getElementById('admin-list'); wList.innerHTML = "";
+                s.forEach(c => {
+                    const d = c.val(); if(d.status === "Pending") {
+                        wList.innerHTML += `<div class="history-item"><b>User: ${d.email}</b><br>Amount: <b>${d.amount} PKR</b><br><button class="btn-admin-approve" onclick="approveWithdrawal('${c.key}')">Approve</button><button class="btn-red" onclick="rejectWithdrawal('${c.key}', '${d.uid}', ${d.amount})">Reject</button></div>`;
+                    }
+                });
+            });
+        }
+
+        function approvePlan(userUid) {
+            db.ref('plan_requests/' + userUid).once('value', s => {
+                const d = s.val();
+                db.ref('users/' + userUid).update({ status: "Active", planId: d.planId, allowedTasks: d.totalTasks, rewardPerVideo: (d.earning / d.totalTasks) });
+                db.ref('plan_requests/' + userUid).update({ status: "Approved" });
+                appAlert("Plan Activated successfully!");
+            });
+        }
+        function approveAsCustomBalance(userUid, fallbackAmount) {
+            db.ref('users/' + userUid).once('value', s => {
+                const c = s.val() || {};
+                db.ref('users/' + userUid).update({ balance: parseFloat(((c.balance || 0) + fallbackAmount).toFixed(2)), status: "Active", declineReason: null, declineAmount: null });
+                db.ref('plan_requests/' + userUid).update({ status: "Approved" });
+                appAlert("Custom fine balance resolved successfully!");
+            });
+        }
+        function rejectPlanRequest(userUid) { db.ref('plan_requests/' + userUid).update({ status: "Rejected" }); db.ref('users/' + userUid).update({ status: "NoPlan" }); }
+        function approveWithdrawal(reqId) { db.ref('withdrawals/' + reqId).update({ status: "Approved" }); appAlert("Approved!"); }
+        function rejectWithdrawal(reqId, userUid, amount) {
+            const reason = prompt("Enter decline reason:"); if (!reason) return;
+            const fineInput = prompt("Enter fine amount required to solve:"); if (!fineInput) return;
+            db.ref('withdrawals/' + reqId).update({ status: "Rejected" });
+            db.ref('users/' + userUid).once('value', s => {
+                const d = s.val() || {};
+                db.ref('users/' + userUid).update({ balance: (d.balance || 0) + amount, totalWithdrawn: (d.totalWithdrawn || 0) - amount, declineReason: reason, declineAmount: parseFloat(fineInput) });
+                appAlert("Rejected and synced successfully!");
+            });
+        }
+        function adminUnblockUserWithdrawal() {
+            const email = document.getElementById('unblock-user-email').value.trim();
+            db.ref('users').orderByChild('email').equalTo(email).once('value', s => {
+                s.forEach(c => { db.ref('users/' + c.key).update({ declineReason: null, declineAmount: null }); });
+                appAlert("User unblocked!");
+            });
         }
     </script>
 </body>
