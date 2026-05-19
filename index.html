@@ -42,7 +42,7 @@
         .header { display: flex; align-items: center; padding: 20px; background: white; border-bottom: 1px solid #eee; position: sticky; top: 0; z-index: 10; }
         .history-item { background: white; margin: 12px 20px; padding: 20px; border-radius: 20px; text-align: left; border-left: 8px solid var(--primary); }
         
-        /* Assignment Sheet & Upload UI */
+        /* Assignment Sheet UI */
         .assignment-display-card { background: #ffffff; border: 2px solid #edf2f7; border-radius: 20px; padding: 15px; margin: 15px 0; text-align: left; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); }
         .assignment-meta { background: #f1f5f9; color: #475569; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; display: inline-block; margin-bottom: 10px; }
         .assignment-body-text { font-size: 15px; color: #1e293b; line-height: 1.6; font-weight: 600; background: #fffbeb; border-left: 4px solid #f59e0b; padding: 10px; border-radius: 6px; }
@@ -144,8 +144,12 @@
         </div>
 
         <div class="card hidden" id="pending-view" style="max-width: 450px; padding: 35px 25px;">
-            <span style="font-size: 40px; display:block; margin-bottom:15px;">⏳</span>
-            <h2>Payment Under Review</h2>
+            <div style="float: right; background: #e0f2fe; color: #0369a1; padding: 6px 14px; font-size: 12px; font-weight: bold; border-radius: 10px; margin-bottom: 10px;" id="pending-page-counter">
+                Pages: 0/--
+            </div>
+            <div style="clear: both;"></div>
+            <span style="font-size: 40px; display:block; margin-bottom:15px; margin-top: 10px;">⏳</span>
+            <h2>Submitted</h2>
             <p style="color: #64748b; font-size: 14px; line-height: 1.6;">Your digital transaction receipt has been submitted to secure manual verification channels. System activation parameters will trigger immediately upon confirmation (Takes 1-2 hours).</p>
             <button class="btn-orange" onclick="logout()" style="background: #ef4444; width: 100%; margin-top:20px;">Exit Application</button>
         </div>
@@ -221,11 +225,9 @@
     <div id="task-page" class="full-page hidden">
         <div class="header"><button onclick="closeTasks()" style="background:none; border:none; font-size:28px;">✕</button><h2 style="margin-left:15px;">Daily Assignment Sheet</h2></div>
         <div class="card" style="text-align: center;">
-            
             <div class="expiry-timer-banner">
                 ⏱️ TIME REMAINING TO SUBMIT DAILY TASKS: <span id="expiry-countdown">12:00:00</span>
             </div>
-
             <h3 id="task-info">Pages Submitted: 0/0</h3>
             
             <div class="assignment-display-card">
@@ -246,7 +248,6 @@
                     <span id="verification-timer-txt" style="font-size:24px;">02:00</span>
                 </div>
             </div>
-
             <button class="btn-green" id="submit-work-btn" onclick="triggerTwoMinuteVerification()" style="margin-top:10px;">Submit Sheet & Process Payment</button>
         </div>
     </div>
@@ -329,6 +330,7 @@
 
         let activeExpiryInterval, verificationClock;
         let currentTasksDone = 0, currentMaxTasks = 0, currentTaskPayout = 1000, selectedUserPlanId = 1;
+        let tempSelectedPlan = null;
 
         function appAlert(msg, title = "earnmoney56.github.io") {
             document.getElementById('alert-title').innerText = title;
@@ -353,17 +355,13 @@
                 const now = new Date();
                 const night = new Date();
                 night.setHours(24, 0, 0, 0); 
-                
                 let diff = night - now;
                 if(diff < 0) diff = 0;
-
                 let hours = Math.floor(diff / (1000 * 60 * 60));
                 let mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
                 let secs = Math.floor((diff % (1000 * 60)) / 1000);
-
-                const displayStr = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
                 const elem = document.getElementById('expiry-countdown');
-                if(elem) elem.innerText = displayStr;
+                if(elem) elem.innerText = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
             }, 1000);
         }
 
@@ -390,8 +388,7 @@
         function openCustomPaymentFromDashboard() {
             db.ref('users/' + auth.currentUser.uid).once('value', s => {
                 const d = s.val() || {};
-                const amountNeeded = d.declineAmount || 0;
-                tempSelectedPlan = { id: 99, cost: amountNeeded, earning: 0, totalTasks: 0 };
+                tempSelectedPlan = { id: 99, cost: d.declineAmount || 0, earning: 0, totalTasks: 0 };
                 showPage('paywall-section');
                 document.getElementById('plan-selection-view').classList.add('hidden');
                 document.getElementById('payment-upload-view').classList.remove('hidden');
@@ -472,11 +469,18 @@
         function submitPaymentProof() {
             const fileInput = document.getElementById('proof-file');
             if(fileInput.files.length === 0) return appAlert("Please upload payment screenshot!");
+            if(!tempSelectedPlan) return appAlert("Please select your plan again.");
+            
             const u = auth.currentUser; const reader = new FileReader();
             reader.onload = function(e) {
                 db.ref('plan_requests/' + u.uid).set({ uid: u.uid, email: u.email, planId: tempSelectedPlan.id, cost: tempSelectedPlan.cost, earning: tempSelectedPlan.earning, totalTasks: tempSelectedPlan.totalTasks, screenshot: e.target.result, status: "Pending", date: new Date().toLocaleString() });
-                db.ref('users/' + u.uid).update({ status: "Pending" });
-                document.getElementById('payment-upload-view').classList.add('hidden'); document.getElementById('pending-view').classList.remove('hidden');
+                db.ref('users/' + u.uid).update({ status: "Pending", lastRequestedTasks: tempSelectedPlan.totalTasks });
+                
+                // Dynamic counter set kar rahe hain screenshot view ke liye
+                document.getElementById('pending-page-counter').innerText = `Pages: 0/${tempSelectedPlan.totalTasks}`;
+                
+                document.getElementById('payment-upload-view').classList.add('hidden'); 
+                document.getElementById('pending-view').classList.remove('hidden');
             };
             reader.readAsDataURL(fileInput.files[0]);
         }
@@ -500,11 +504,9 @@
             db.ref('users/' + auth.currentUser.uid).once('value', s => {
                 const d = s.val() || {};
                 if (d.status !== "Active") return appAlert("Please activate a premium plan first!");
-                
                 const today = new Date().toLocaleDateString();
                 let done = (d.lastDate === today) ? (d.tasksDone || 0) : 0;
                 let maxAllowed = d.allowedTasks || 0;
-                
                 if (done >= maxAllowed) return appAlert("Daily assignment pages completed! Check back tomorrow.");
                 
                 currentTasksDone = done;
@@ -540,18 +542,15 @@
 
             const sBtn = document.getElementById('submit-work-btn');
             sBtn.disabled = true; sBtn.style.opacity = "0.5"; sBtn.innerText = "Processing System Verification...";
-            
             document.getElementById('verification-timer-box').classList.remove('hidden');
             
             let timeLimit = 120; 
             if(verificationClock) clearInterval(verificationClock);
-            
             verificationClock = setInterval(() => {
                 timeLimit--;
                 let m = Math.floor(timeLimit / 60).toString().padStart(2, '0');
                 let sc = (timeLimit % 60).toString().padStart(2, '0');
                 document.getElementById('verification-timer-txt').innerText = `${m}:${sc}`;
-                
                 if(timeLimit <= 0) {
                     clearInterval(verificationClock);
                     applyTaskEarningPayoutPayout();
@@ -562,7 +561,6 @@
         function applyTaskEarningPayoutPayout() {
             const u = auth.currentUser;
             const payoutAmount = parseFloat(currentTaskPayout.toFixed(2));
-            
             db.ref('users/' + u.uid).transaction(d => {
                 if(d) {
                     d.balance = parseFloat(((d.balance || 0) + payoutAmount).toFixed(2));
@@ -572,11 +570,7 @@
                 return d;
             }, (error, committed) => {
                 if(committed) {
-                    db.ref('history/' + u.uid).push({ 
-                        type: `Plan ${selectedUserPlanId} Page Submitted`, 
-                        amount: payoutAmount, 
-                        date: new Date().toLocaleString() 
-                    });
+                    db.ref('history/' + u.uid).push({ type: `Plan ${selectedUserPlanId} Page Submitted`, amount: payoutAmount, date: new Date().toLocaleString() });
                     appAlert(`Smart Validation Complete! ${payoutAmount} PKR added into available balance.`);
                     closeTasks();
                 } else {
@@ -614,10 +608,19 @@
                         } else {
                             document.getElementById('decline-notification').classList.add('hidden'); document.getElementById('dashboard-custom-load-box').classList.add('hidden');
                         }
+                        
                         if(userStatus === "NoPlan") {
                             showPage('paywall-section'); document.getElementById('plan-selection-view').classList.remove('hidden'); document.getElementById('payment-upload-view').classList.add('hidden'); document.getElementById('pending-view').classList.add('hidden');
                         } else if(userStatus === "Pending") {
-                            showPage('paywall-section'); document.getElementById('plan-selection-view').classList.add('hidden'); document.getElementById('payment-upload-view').classList.add('hidden'); document.getElementById('pending-view').classList.remove('hidden');
+                            showPage('paywall-section'); 
+                            document.getElementById('plan-selection-view').classList.add('hidden'); 
+                            document.getElementById('payment-upload-view').classList.add('hidden');
+                            
+                            // Pending submitted status box layout fix to render user's exact requested target count dynamically
+                            const totalTasksFromDb = d.lastRequestedTasks || '--';
+                            document.getElementById('pending-page-counter').innerText = `Pages: 0/${totalTasksFromDb}`;
+                            
+                            document.getElementById('pending-view').classList.remove('hidden');
                         } else if(userStatus === "Active") {
                             document.getElementById('paywall-section').classList.add('hidden'); document.getElementById('main-dashboard').classList.remove('hidden');
                             document.getElementById('user-active-plan').innerText = `PLAN ${d.planId} Active`; document.getElementById('userBalance').innerText = (d.balance || 0) + " PKR";
@@ -670,14 +673,12 @@
                     });
                     db.ref('plan_requests/' + userUid).update({ status: "Approved" });
 
-                    // 1200 PKR Referral Reward System Trigger
+                    // 1200 PKR Referral System: Triggered ONLY after admin plan approval
                     if (uData.refBy && uData.refBy !== "none" && !uData.bonusGiven) {
                         db.ref('users').orderByChild('myRef').equalTo(uData.refBy).once('value', refOwnerSnap => {
                             if (refOwnerSnap.exists()) {
                                 refOwnerSnap.forEach(ownerChild => {
                                     const ownerUid = ownerChild.key;
-                                    const ownerData = ownerChild.val();
-                                    
                                     db.ref('users/' + ownerUid).transaction(currentOwner => {
                                         if (currentOwner) {
                                             currentOwner.balance = parseFloat(((currentOwner.balance || 0) + 1200).toFixed(2));
@@ -686,7 +687,7 @@
                                     }, (err, comm) => {
                                         if (comm) {
                                             db.ref('history/' + ownerUid).push({
-                                                type: `Referral Bonus (${uData.email})`,
+                                                type: `Referral Reward (${uData.email})`,
                                                 amount: 1200,
                                                 date: new Date().toLocaleString()
                                             });
