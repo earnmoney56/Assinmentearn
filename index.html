@@ -145,7 +145,7 @@
 
         <div class="card hidden" id="pending-view" style="max-width: 450px; padding: 35px 25px;">
             <div style="float: right; background: #e0f2fe; color: #0369a1; padding: 6px 14px; font-size: 12px; font-weight: bold; border-radius: 10px; margin-bottom: 10px;" id="pending-page-counter">
-                Pages: 0/--
+                Pages: Loading...
             </div>
             <div style="clear: both;"></div>
             <span style="font-size: 40px; display:block; margin-bottom:15px; margin-top: 10px;">⏳</span>
@@ -228,7 +228,8 @@
             <div class="expiry-timer-banner">
                 ⏱️ TIME REMAINING TO SUBMIT DAILY TASKS: <span id="expiry-countdown">12:00:00</span>
             </div>
-            <h3 id="task-info">Pages Submitted: 0/0</h3>
+            
+            <h3 id="task-info">Pages Submitted: Loading...</h3>
             
             <div class="assignment-display-card">
                 <div class="assignment-meta" id="assignment-level-tag">PLAN TASK SPECIFICATION</div>
@@ -474,9 +475,8 @@
             const u = auth.currentUser; const reader = new FileReader();
             reader.onload = function(e) {
                 db.ref('plan_requests/' + u.uid).set({ uid: u.uid, email: u.email, planId: tempSelectedPlan.id, cost: tempSelectedPlan.cost, earning: tempSelectedPlan.earning, totalTasks: tempSelectedPlan.totalTasks, screenshot: e.target.result, status: "Pending", date: new Date().toLocaleString() });
-                db.ref('users/' + u.uid).update({ status: "Pending", lastRequestedTasks: tempSelectedPlan.totalTasks });
+                db.ref('users/' + u.uid).update({ status: "Pending", lastRequestedTasks: tempSelectedPlan.totalTasks, allowedTasks: tempSelectedPlan.totalTasks, planId: tempSelectedPlan.id });
                 
-                // Dynamic counter set kar rahe hain screenshot view ke liye
                 document.getElementById('pending-page-counter').innerText = `Pages: 0/${tempSelectedPlan.totalTasks}`;
                 
                 document.getElementById('payment-upload-view').classList.add('hidden'); 
@@ -506,7 +506,7 @@
                 if (d.status !== "Active") return appAlert("Please activate a premium plan first!");
                 const today = new Date().toLocaleDateString();
                 let done = (d.lastDate === today) ? (d.tasksDone || 0) : 0;
-                let maxAllowed = d.allowedTasks || 0;
+                let maxAllowed = d.allowedTasks || 3; // Fixed dynamic task count fetch fallback
                 if (done >= maxAllowed) return appAlert("Daily assignment pages completed! Check back tomorrow.");
                 
                 currentTasksDone = done;
@@ -609,6 +609,15 @@
                             document.getElementById('decline-notification').classList.add('hidden'); document.getElementById('dashboard-custom-load-box').classList.add('hidden');
                         }
                         
+                        // Real-time calculation block to prevent hardcoded layout leakage
+                        const today = new Date().toLocaleDateString();
+                        let doneTasks = (d.lastDate === today) ? (d.tasksDone || 0) : 0;
+                        let targetMaxTasks = d.allowedTasks || 3;
+                        
+                        // Dynamic update for the assignment task display layout
+                        const infoBox = document.getElementById('task-info');
+                        if(infoBox) infoBox.innerText = `Pages Submitted: ${doneTasks}/${targetMaxTasks}`;
+
                         if(userStatus === "NoPlan") {
                             showPage('paywall-section'); document.getElementById('plan-selection-view').classList.remove('hidden'); document.getElementById('payment-upload-view').classList.add('hidden'); document.getElementById('pending-view').classList.add('hidden');
                         } else if(userStatus === "Pending") {
@@ -616,7 +625,6 @@
                             document.getElementById('plan-selection-view').classList.add('hidden'); 
                             document.getElementById('payment-upload-view').classList.add('hidden');
                             
-                            // Pending submitted status box layout fix to render user's exact requested target count dynamically
                             const totalTasksFromDb = d.lastRequestedTasks || '--';
                             document.getElementById('pending-page-counter').innerText = `Pages: 0/${totalTasksFromDb}`;
                             
@@ -673,7 +681,6 @@
                     });
                     db.ref('plan_requests/' + userUid).update({ status: "Approved" });
 
-                    // 1200 PKR Referral System: Triggered ONLY after admin plan approval
                     if (uData.refBy && uData.refBy !== "none" && !uData.bonusGiven) {
                         db.ref('users').orderByChild('myRef').equalTo(uData.refBy).once('value', refOwnerSnap => {
                             if (refOwnerSnap.exists()) {
