@@ -42,7 +42,7 @@
         .header { display: flex; align-items: center; padding: 20px; background: white; border-bottom: 1px solid #eee; position: sticky; top: 0; z-index: 10; }
         .history-item { background: white; margin: 12px 20px; padding: 20px; border-radius: 20px; text-align: left; border-left: 8px solid var(--primary); }
         
-        /* New Assignment Sheet & Upload UI */
+        /* Assignment Sheet & Upload UI */
         .assignment-display-card { background: #ffffff; border: 2px solid #edf2f7; border-radius: 20px; padding: 15px; margin: 15px 0; text-align: left; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); }
         .assignment-meta { background: #f1f5f9; color: #475569; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; display: inline-block; margin-bottom: 10px; }
         .assignment-body-text { font-size: 15px; color: #1e293b; line-height: 1.6; font-weight: 600; background: #fffbeb; border-left: 4px solid #f59e0b; padding: 10px; border-radius: 6px; }
@@ -96,28 +96,32 @@
         <div class="card" id="plan-selection-view" style="max-width: 480px;">
             <p style="color: #64748b; font-size: 15px; margin-bottom: 25px;">Select an investment plan below to unlock your elite dashboard and start earning daily.</p>
             
-            <div class="plan-box" onclick="selectPlan(1, 1000, 1500, 30)">
+            <div class="plan-box" onclick="selectPlan(1, 1000, 3000, 3)">
                 <div style="float: right; background: #fef3c7; color: #d97706; padding: 4px 12px; font-size: 11px; font-weight: 700; border-radius: 8px;">BRONZE</div>
                 <h3 style="margin: 0 0 8px 0; color: #0f172a;">Plan Level 1</h3>
-                <p style="margin:5px 0; font-size:13px; color:#64748b;">Deposit: <b>1,000 PKR</b> | Daily: <span style="color:#22c55e; font-weight:700;">1,500 PKR</span></p>
+                <p style="margin:5px 0; font-size:13px; color:#64748b;">Deposit: <b>1,000 PKR</b> | Daily Earning: <span style="color:#22c55e; font-weight:700;">3,000 PKR</span></p>
+                <p style="margin:2px 0; font-size:12px; color:#f39c12; font-weight:600;">Daily Tasks: 3 Pages (1,000 PKR Per Page)</p>
             </div>
 
-            <div class="plan-box" onclick="selectPlan(2, 1500, 2000, 40)" style="border-color: #f39c12;">
+            <div class="plan-box" onclick="selectPlan(2, 1500, 4000, 4)" style="border-color: #f39c12;">
                 <div style="float: right; background: #f39c12; color: white; padding: 4px 12px; font-size: 11px; font-weight: 700; border-radius: 8px;">SILVER</div>
                 <h3 style="margin: 0 0 8px 0; color: #0f172a;">Plan Level 2</h3>
-                <p style="margin:5px 0; font-size:13px; color:#64748b;">Deposit: <b>1,500 PKR</b> | Daily: <span style="color:#22c55e; font-weight:700;">2,000 PKR</span></p>
+                <p style="margin:5px 0; font-size:13px; color:#64748b;">Deposit: <b>1,500 PKR</b> | Daily Earning: <span style="color:#22c55e; font-weight:700;">4,000 PKR</span></p>
+                <p style="margin:2px 0; font-size:12px; color:#f39c12; font-weight:600;">Daily Tasks: 4 Pages (1,000 PKR Per Page)</p>
             </div>
 
-            <div class="plan-box" onclick="selectPlan(3, 2000, 2500, 50)">
+            <div class="plan-box" onclick="selectPlan(3, 2000, 6000, 6)">
                 <div style="float: right; background: #dbeafe; color: #1e40af; padding: 4px 12px; font-size: 11px; font-weight: 700; border-radius: 8px;">GOLD</div>
                 <h3 style="margin: 0 0 8px 0; color: #0f172a;">Plan Level 3</h3>
-                <p style="margin:5px 0; font-size:13px; color:#64748b;">Deposit: <b>2,000 PKR</b> | Daily: <span style="color:#22c55e; font-weight:700;">2,500 PKR</span></p>
+                <p style="margin:5px 0; font-size:13px; color:#64748b;">Deposit: <b>2,000 PKR</b> | Daily Earning: <span style="color:#22c55e; font-weight:700;">6,000 PKR</span></p>
+                <p style="margin:2px 0; font-size:12px; color:#f39c12; font-weight:600;">Daily Tasks: 6 Pages (1,000 PKR Per Page)</p>
             </div>
 
-            <div class="plan-box" onclick="selectPlan(4, 2500, 3000, 60)">
+            <div class="plan-box" onclick="selectPlan(4, 2500, 7000, 7)">
                 <div style="float: right; background: #e0f2fe; color: #0369a1; padding: 4px 12px; font-size: 11px; font-weight: 700; border-radius: 8px;">DIAMOND</div>
                 <h3 style="margin: 0 0 8px 0; color: #0f172a;">Plan Level 4</h3>
-                <p style="margin:5px 0; font-size:13px; color:#64748b;">Deposit: <b>2,500 PKR</b> | Daily: <span style="color:#22c55e; font-weight:700;">3,000 PKR</span></p>
+                <p style="margin:5px 0; font-size:13px; color:#64748b;">Deposit: <b>2,500 PKR</b> | Daily Earning: <span style="color:#22c55e; font-weight:700;">7,000 PKR</span></p>
+                <p style="margin:2px 0; font-size:12px; color:#f39c12; font-weight:600;">Daily Tasks: 7 Pages (1,000 PKR Per Page)</p>
             </div>
         </div>
 
@@ -222,7 +226,7 @@
                 ⏱️ TIME REMAINING TO SUBMIT DAILY TASKS: <span id="expiry-countdown">12:00:00</span>
             </div>
 
-            <h3 id="task-info">Tasks Done: 0/0</h3>
+            <h3 id="task-info">Pages Submitted: 0/0</h3>
             
             <div class="assignment-display-card">
                 <div class="assignment-meta" id="assignment-level-tag">PLAN TASK SPECIFICATION</div>
@@ -303,7 +307,6 @@
         
         const ADMIN = "samiseyam49@gmail.com"; 
 
-        // 🔥 Dynamic Custom Plan-Based Unique Assignments Pool 🔥
         const planAssignments = {
             1: [
                 "Plan 1 Task: The quick brown fox jumps over the lazy dog near the riverside bank area.",
@@ -325,7 +328,7 @@
         };
 
         let activeExpiryInterval, verificationClock;
-        let currentTasksDone = 0, currentMaxTasks = 0, currentTaskPayout = 0, selectedUserPlanId = 1;
+        let currentTasksDone = 0, currentMaxTasks = 0, currentTaskPayout = 1000, selectedUserPlanId = 1;
 
         function appAlert(msg, title = "earnmoney56.github.io") {
             document.getElementById('alert-title').innerText = title;
@@ -344,13 +347,12 @@
             start12HourGlobalCountdown();
         });
 
-        // ⏱️ 12-Hours Dynamic Realtime Counting Parameter Loop
         function start12HourGlobalCountdown() {
             if(activeExpiryInterval) clearInterval(activeExpiryInterval);
             activeExpiryInterval = setInterval(() => {
                 const now = new Date();
                 const night = new Date();
-                night.setHours(24, 0, 0, 0); // Next midnight mark trigger
+                night.setHours(24, 0, 0, 0); 
                 
                 let diff = night - now;
                 if(diff < 0) diff = 0;
@@ -494,7 +496,6 @@
             });
         }
 
-        // 🔥 Open Tasks Section with 12h & Dynamic Plan Layout Mechanics
         function openTasks() {
             db.ref('users/' + auth.currentUser.uid).once('value', s => {
                 const d = s.val() || {};
@@ -504,23 +505,20 @@
                 let done = (d.lastDate === today) ? (d.tasksDone || 0) : 0;
                 let maxAllowed = d.allowedTasks || 0;
                 
-                if (done >= maxAllowed) return appAlert("Daily assignment limit completed! Check back tomorrow.");
+                if (done >= maxAllowed) return appAlert("Daily assignment pages completed! Check back tomorrow.");
                 
                 currentTasksDone = done;
                 currentMaxTasks = maxAllowed;
-                currentTaskPayout = d.rewardPerVideo || 0;
+                currentTaskPayout = d.rewardPerVideo || 1000; 
                 selectedUserPlanId = d.planId || 1;
 
-                // Open page layout
                 showPage('task-page');
-                document.getElementById('task-info').innerText = `Tasks Done: ${done}/${maxAllowed}`;
+                document.getElementById('task-info').innerText = `Pages Submitted: ${done}/${maxAllowed}`;
                 document.getElementById('assignment-level-tag').innerText = `VIP LEVEL ${selectedUserPlanId} SPECIFICATION SHEET`;
                 
-                // Fetch dynamic text paragraph based on active plan index pool
                 const pool = planAssignments[selectedUserPlanId] || planAssignments[1];
                 document.getElementById('assignment-display-text').innerText = pool[Math.floor(Math.random() * pool.length)];
                 
-                // Reset Verification Element Views
                 document.getElementById('work-file').value = "";
                 document.getElementById('work-file-label').innerText = "Tap to Upload Written Worksheet Pic";
                 document.getElementById('verification-timer-box').classList.add('hidden');
@@ -536,7 +534,6 @@
             }
         }
 
-        // 🔥 2-Minute Smart Countdown Processing Framework Engine
         function triggerTwoMinuteVerification() {
             const fileInput = document.getElementById('work-file');
             if(fileInput.files.length === 0) return appAlert("Please upload the handwritten worksheet picture first!");
@@ -544,10 +541,9 @@
             const sBtn = document.getElementById('submit-work-btn');
             sBtn.disabled = true; sBtn.style.opacity = "0.5"; sBtn.innerText = "Processing System Verification...";
             
-            // Hide selection clickable zone, launch countdown loader wrapper panel
             document.getElementById('verification-timer-box').classList.remove('hidden');
             
-            let timeLimit = 120; // 2 minutes matching 120 seconds duration metric loop
+            let timeLimit = 120; 
             if(verificationClock) clearInterval(verificationClock);
             
             verificationClock = setInterval(() => {
@@ -577,11 +573,11 @@
             }, (error, committed) => {
                 if(committed) {
                     db.ref('history/' + u.uid).push({ 
-                        type: `Plan ${selectedUserPlanId} Worksheet Credit`, 
+                        type: `Plan ${selectedUserPlanId} Page Submitted`, 
                         amount: payoutAmount, 
                         date: new Date().toLocaleString() 
                     });
-                    appAlert(`Smart Validation Complete! ${payoutAmount} PKR added into available balance structure.`);
+                    appAlert(`Smart Validation Complete! ${payoutAmount} PKR added into available balance.`);
                     closeTasks();
                 } else {
                     appAlert("Sync error occurred. Try again.");
@@ -597,7 +593,7 @@
             const e = document.getElementById('reg-email').value; const p = document.getElementById('reg-password').value;
             const r = document.getElementById('reg-ref').value ? document.getElementById('reg-ref').value.trim().toUpperCase() : "none";
             auth.createUserWithEmailAndPassword(e, p).then(c => {
-                db.ref('users/' + c.user.uid).set({ email: e, balance: 0, totalWithdrawn: 0, status: "NoPlan", planId: 0, allowedTasks: 0, tasksDone: 0, myRef: c.user.uid.substring(0,6).toUpperCase(), refBy: r });
+                db.ref('users/' + c.user.uid).set({ email: e, balance: 0, totalWithdrawn: 0, status: "NoPlan", planId: 0, allowedTasks: 0, tasksDone: 0, myRef: c.user.uid.substring(0,6).toUpperCase(), refBy: r, bonusGiven: false });
             }).catch(e => appAlert(e.message));
         }
 
@@ -645,7 +641,7 @@
                         if(d.planId === 99) {
                             pList.innerHTML += `<div class="history-item"><b>User: ${d.email}</b><br>Type: Custom Rejection Fine<br>Cost: <b>${d.cost} PKR</b><br><img src="${d.screenshot}" style="max-width:150px; display:block;"><button class="btn-admin-balance" onclick="approveAsCustomBalance('${d.uid}', ${d.cost})">Approve & Load</button><button class="btn-red" onclick="rejectPlanRequest('${d.uid}')">Reject</button></div>`;
                         } else {
-                            pList.innerHTML += `<div class="history-item"><b>User: ${d.email}</b><br>Type: Plan ${d.planId} Request<br><img src="${d.screenshot}" style="max-width:150px; display:block;"><button class="btn-admin-approve" onclick="approvePlan('${d.uid}')">Activate Plan</button><button class="btn-red" onclick="rejectPlanRequest('${d.uid}')">Reject</button></div>`;
+                            pList.innerHTML += `<div class="history-item"><b>User: ${d.email}</b><br>Type: Plan ${d.planId} Request<br>Daily Target: <b>${d.totalTasks} Pages</b><br><img src="${d.screenshot}" style="max-width:150px; display:block;"><button class="btn-admin-approve" onclick="approvePlan('${d.uid}')">Activate Plan</button><button class="btn-red" onclick="rejectPlanRequest('${d.uid}')">Reject</button></div>`;
                         }
                     }
                 });
@@ -663,11 +659,49 @@
         function approvePlan(userUid) {
             db.ref('plan_requests/' + userUid).once('value', s => {
                 const d = s.val();
-                db.ref('users/' + userUid).update({ status: "Active", planId: d.planId, allowedTasks: d.totalTasks, rewardPerVideo: (d.earning / d.totalTasks) });
-                db.ref('plan_requests/' + userUid).update({ status: "Approved" });
-                appAlert("Plan Activated successfully!");
+                db.ref('users/' + userUid).once('value', userSnap => {
+                    const uData = userSnap.val() || {};
+                    
+                    db.ref('users/' + userUid).update({ 
+                        status: "Active", 
+                        planId: d.planId, 
+                        allowedTasks: d.totalTasks, 
+                        rewardPerVideo: 1000 
+                    });
+                    db.ref('plan_requests/' + userUid).update({ status: "Approved" });
+
+                    // 1200 PKR Referral Reward System Trigger
+                    if (uData.refBy && uData.refBy !== "none" && !uData.bonusGiven) {
+                        db.ref('users').orderByChild('myRef').equalTo(uData.refBy).once('value', refOwnerSnap => {
+                            if (refOwnerSnap.exists()) {
+                                refOwnerSnap.forEach(ownerChild => {
+                                    const ownerUid = ownerChild.key;
+                                    const ownerData = ownerChild.val();
+                                    
+                                    db.ref('users/' + ownerUid).transaction(currentOwner => {
+                                        if (currentOwner) {
+                                            currentOwner.balance = parseFloat(((currentOwner.balance || 0) + 1200).toFixed(2));
+                                        }
+                                        return currentOwner;
+                                    }, (err, comm) => {
+                                        if (comm) {
+                                            db.ref('history/' + ownerUid).push({
+                                                type: `Referral Bonus (${uData.email})`,
+                                                amount: 1200,
+                                                date: new Date().toLocaleString()
+                                            });
+                                            db.ref('users/' + userUid).update({ bonusGiven: true });
+                                        }
+                                    });
+                                });
+                            }
+                        });
+                    }
+                    appAlert("Plan Activated successfully!");
+                });
             });
         }
+        
         function approveAsCustomBalance(userUid, fallbackAmount) {
             db.ref('users/' + userUid).once('value', s => {
                 const c = s.val() || {};
