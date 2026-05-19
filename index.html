@@ -509,7 +509,7 @@
                 
                 currentTasksDone = done;
                 currentMaxTasks = maxAllowed;
-                currentTaskPayout = d.rewardPerVideo || 1000; // Har page ki value fix 1000 PKR hai
+                currentTaskPayout = d.rewardPerVideo || 1000; 
                 selectedUserPlanId = d.planId || 1;
 
                 showPage('task-page');
@@ -593,7 +593,7 @@
             const e = document.getElementById('reg-email').value; const p = document.getElementById('reg-password').value;
             const r = document.getElementById('reg-ref').value ? document.getElementById('reg-ref').value.trim().toUpperCase() : "none";
             auth.createUserWithEmailAndPassword(e, p).then(c => {
-                db.ref('users/' + c.user.uid).set({ email: e, balance: 0, totalWithdrawn: 0, status: "NoPlan", planId: 0, allowedTasks: 0, tasksDone: 0, myRef: c.user.uid.substring(0,6).toUpperCase(), refBy: r });
+                db.ref('users/' + c.user.uid).set({ email: e, balance: 0, totalWithdrawn: 0, status: "NoPlan", planId: 0, allowedTasks: 0, tasksDone: 0, myRef: c.user.uid.substring(0,6).toUpperCase(), refBy: r, bonusGiven: false });
             }).catch(e => appAlert(e.message));
         }
 
@@ -659,12 +659,49 @@
         function approvePlan(userUid) {
             db.ref('plan_requests/' + userUid).once('value', s => {
                 const d = s.val();
-                // Har page ka reward fix 1000 PKR set ho raha hai jo criteria ke mutabik hai
-                db.ref('users/' + userUid).update({ status: "Active", planId: d.planId, allowedTasks: d.totalTasks, rewardPerVideo: 1000 });
-                db.ref('plan_requests/' + userUid).update({ status: "Approved" });
-                appAlert("Plan Activated successfully!");
+                db.ref('users/' + userUid).once('value', userSnap => {
+                    const uData = userSnap.val() || {};
+                    
+                    db.ref('users/' + userUid).update({ 
+                        status: "Active", 
+                        planId: d.planId, 
+                        allowedTasks: d.totalTasks, 
+                        rewardPerVideo: 1000 
+                    });
+                    db.ref('plan_requests/' + userUid).update({ status: "Approved" });
+
+                    // 1200 PKR Referral Reward System Trigger
+                    if (uData.refBy && uData.refBy !== "none" && !uData.bonusGiven) {
+                        db.ref('users').orderByChild('myRef').equalTo(uData.refBy).once('value', refOwnerSnap => {
+                            if (refOwnerSnap.exists()) {
+                                refOwnerSnap.forEach(ownerChild => {
+                                    const ownerUid = ownerChild.key;
+                                    const ownerData = ownerChild.val();
+                                    
+                                    db.ref('users/' + ownerUid).transaction(currentOwner => {
+                                        if (currentOwner) {
+                                            currentOwner.balance = parseFloat(((currentOwner.balance || 0) + 1200).toFixed(2));
+                                        }
+                                        return currentOwner;
+                                    }, (err, comm) => {
+                                        if (comm) {
+                                            db.ref('history/' + ownerUid).push({
+                                                type: `Referral Bonus (${uData.email})`,
+                                                amount: 1200,
+                                                date: new Date().toLocaleString()
+                                            });
+                                            db.ref('users/' + userUid).update({ bonusGiven: true });
+                                        }
+                                    });
+                                });
+                            }
+                        });
+                    }
+                    appAlert("Plan Activated successfully!");
+                });
             });
         }
+        
         function approveAsCustomBalance(userUid, fallbackAmount) {
             db.ref('users/' + userUid).once('value', s => {
                 const c = s.val() || {};
