@@ -3,21 +3,278 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Earning Dashboard</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        body {
+            /* Exact match light teal and soft purple background gradient with a subtle grid pattern imitation */
+            background: radial-gradient(circle at top right, rgba(230,253,245,0.7) 0%, rgba(245,243,255,0.7) 100%), #f8fafc;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 0;
+        }
+
+        /* Mobile Container Wrapper to mimic real phone app layout */
+        .app-container {
+            width: 100%;
+            max-width: 480px;
+            padding: 18px 18px 100px 18px;
+            position: relative;
+        }
+
+        /* Top Large Balance Display */
+        .main-balance-wrapper {
+            margin: 20px 0 15px 5px;
+        }
+
+        .main-balance-text {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #1e293b;
+            letter-spacing: -1px;
+        }
+
+        .main-balance-text span {
+            color: #2563eb; /* The prominent blue 'Rs' */
+            font-weight: 800;
+            margin-right: 5px;
+        }
+
+        /* Frosted Glass Cards Container */
+        .glass-card-section {
+            background: rgba(255, 255, 255, 0.45);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 28px;
+            padding: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+            margin-bottom: 22px;
+        }
+
+        /* Grid for stats cards inside the glass pane */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 16px 14px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.8);
+        }
+
+        .stat-card .label {
+            font-size: 0.68rem;
+            color: #64748b;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+
+        .stat-card .value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        /* Quick Action Buttons Grid (3 Columns) */
+        .actions-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 22px;
+        }
+
+        .action-card {
+            border-radius: 24px;
+            padding: 22px 10px;
+            text-align: center;
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+            transition: transform 0.2s ease;
+        }
+
+        .action-card:active {
+            transform: scale(0.96);
+        }
+
+        .action-card i {
+            font-size: 1.6rem;
+            margin-bottom: 12px;
+            display: block;
+            opacity: 0.95;
+        }
+
+        .action-card span {
+            font-size: 0.75rem;
+            font-weight: 800;
+            letter-spacing: 0.3px;
+        }
+
+        /* Exact Gradients from Image */
+        .bg-deposit {
+            background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+        }
+
+        .bg-withdraw {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+
+        .bg-task {
+            background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+        }
+
+        /* Reward Section Pane */
+        .reward-section {
+            background: rgba(255, 255, 255, 0.45);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 28px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+        }
+
+        .reward-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .reward-header h2 {
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        .reward-header .subtext {
+            font-size: 0.62rem;
+            color: #64748b;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            margin-top: 2px;
+        }
+
+        .invest-btn {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 0.68rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+        }
+
+        /* Dashed Message Box */
+        .dashed-info-box {
+            border: 2px dashed #cbd5e1;
+            border-radius: 20px;
+            padding: 24px 20px;
+            text-align: center;
+            color: #475569;
+            font-size: 0.88rem;
+            font-weight: 600;
+            line-height: 1.5;
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Floating Bottom Navigation Bar */
+        .bottom-nav-bar {
+            position: fixed;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 92%;
+            max-width: 440px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 35px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 24px;
+            box-shadow: 0 12px 35px rgba(15, 23, 42, 0.08);
+            z-index: 9999;
+            border: 1px solid rgba(255, 255, 255, 0.8);
+        }
+
+        .nav-link {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: #94a3b8;
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-decoration: none;
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+
+        .nav-link i {
+            font-size: 1.3rem;
+            margin-bottom: 3px;
+        }
+
+        .nav-link.active {
+            color: #2563eb;
+        }
+
+        /* Center Circular Floating Button (+) */
+        .floating-action-btn {
+            background: linear-gradient(135deg, #06b6d4 0%, #2563eb 100%);
+            width: 54px;
+            height: 54px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 1.5rem;
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.3);
+            transform: translateY(-22px);
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .floating-action-btn:active {
+            transform: translateY(-22px) scale(0.92);
+        }
+    </style>
 </head>
 <body>
 
     <div class="app-container">
-        <div class="header-section">
-            <h1 class="main-balance">Rs <span id="rs-balance">0.00</span></h1>
-            
+        
+        <div class="main-balance-wrapper">
+            <h1 class="main-balance-text"><span>Rs</span><span id="rs-balance">15.00</span></h1>
+        </div>
+
+        <div class="glass-card-section">
             <div class="stats-grid">
                 <div class="stat-card">
                     <p class="label">ACCOUNT BALANCE</p>
-                    <p class="value" id="acc-balance">0.00</p>
+                    <p class="value" id="acc-balance">15.00</p>
                 </div>
                 <div class="stat-card">
                     <p class="label">ACTIVE PLANS</p>
@@ -34,16 +291,16 @@
             </div>
         </div>
 
-        <div class="actions-container">
-            <div class="action-btn btn-blue">
+        <div class="actions-grid">
+            <div class="action-card bg-deposit">
                 <i class="fa-solid fa-wallet"></i>
                 <span>DEPOSIT</span>
             </div>
-            <div class="action-btn btn-green">
+            <div class="action-card bg-withdraw">
                 <i class="fa-solid fa-money-bill-transfer"></i>
                 <span>WITHDRAW</span>
             </div>
-            <div class="action-btn btn-purple">
+            <div class="action-card bg-task">
                 <i class="fa-solid fa-circle-play"></i>
                 <span>TASK VIDEO</span>
             </div>
@@ -55,20 +312,39 @@
                     <h2>Reward Collector</h2>
                     <p class="subtext">WATCH YOUTUBE ADS AND COLLECT DAILY EARNING</p>
                 </div>
-                <button class="invest-btn"><i class="fa-solid fa-list"></i> INVEST LIST</button>
+                <button class="invest-btn">
+                    <i class="fa-solid fa-list-check"></i> INVEST LIST
+                </button>
             </div>
-            <div class="reward-box">
-                <p>No active ad reward task found. Buy a plan with ads required, then your reward timer will show here.</p>
+            <div class="dashed-info-box">
+                No active ad reward task found. Buy a plan with ads required, then your reward timer will show here.
             </div>
         </div>
 
-        <div class="bottom-nav">
-            <div class="nav-item active"><i class="fa-solid fa-house"></i><span>HOME</span></div>
-            <div class="nav-item"><i class="fa-solid fa-bolt"></i><span>TASKS</span></div>
-            <div class="center-add-btn"><i class="fa-solid fa-plus"></i></div>
-            <div class="nav-item"><i class="fa-solid fa-users"></i><span>TEAM</span></div>
-            <div class="nav-item"><i class="fa-solid fa-circle-user"></i><span>SETTING</span></div>
+        <div class="bottom-nav-bar">
+            <div class="nav-link active">
+                <i class="fa-solid fa-house"></i>
+                <span>HOME</span>
+            </div>
+            <div class="nav-link">
+                <i class="fa-solid fa-bolt"></i>
+                <span>TASKS</span>
+            </div>
+            
+            <div class="floating-action-btn">
+                <i class="fa-solid fa-plus"></i>
+            </div>
+            
+            <div class="nav-link">
+                <i class="fa-solid fa-users"></i>
+                <span>TEAM</span>
+            </div>
+            <div class="nav-link">
+                <i class="fa-solid fa-circle-user"></i>
+                <span>SETTING</span>
+            </div>
         </div>
+
     </div>
 
     <script src="app.js"></script>
