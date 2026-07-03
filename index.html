@@ -17,7 +17,6 @@
         }
 
         body {
-            /* Exact match light teal and soft purple background gradient with a subtle grid pattern imitation */
             background: radial-gradient(circle at top right, rgba(230,253,245,0.7) 0%, rgba(245,243,255,0.7) 100%), #f8fafc;
             display: flex;
             justify-content: center;
@@ -25,7 +24,7 @@
             padding: 0;
         }
 
-        /* Mobile Container Wrapper to mimic real phone app layout */
+        /* Mobile Container Wrapper */
         .app-container {
             width: 100%;
             max-width: 480px;
@@ -46,7 +45,7 @@
         }
 
         .main-balance-text span {
-            color: #2563eb; /* The prominent blue 'Rs' */
+            color: #2563eb; 
             font-weight: 800;
             margin-right: 5px;
         }
@@ -63,7 +62,7 @@
             margin-bottom: 22px;
         }
 
-        /* Grid for stats cards inside the glass pane */
+        /* Grid for stats cards */
         .stats-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -91,7 +90,7 @@
             color: #0f172a;
         }
 
-        /* Quick Action Buttons Grid (3 Columns) */
+        /* Quick Action Buttons Grid */
         .actions-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -126,20 +125,12 @@
             letter-spacing: 0.3px;
         }
 
-        /* Exact Gradients from Image */
-        .bg-deposit {
-            background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
-        }
+        /* Gradients */
+        .bg-deposit { background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%); }
+        .bg-withdraw { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+        .bg-task { background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%); }
 
-        .bg-withdraw {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        }
-
-        .bg-task {
-            background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
-        }
-
-        /* Reward Section Pane */
+        /* Reward Section */
         .reward-section {
             background: rgba(255, 255, 255, 0.45);
             backdrop-filter: blur(20px);
@@ -186,7 +177,6 @@
             box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
         }
 
-        /* Dashed Message Box */
         .dashed-info-box {
             border: 2px dashed #cbd5e1;
             border-radius: 20px;
@@ -199,7 +189,7 @@
             background: rgba(255, 255, 255, 0.3);
         }
 
-        /* Floating Bottom Navigation Bar */
+        /* Bottom Floating Navigation */
         .bottom-nav-bar {
             position: fixed;
             bottom: 16px;
@@ -228,7 +218,6 @@
             font-weight: 700;
             text-decoration: none;
             cursor: pointer;
-            transition: color 0.2s ease;
         }
 
         .nav-link i {
@@ -236,11 +225,8 @@
             margin-bottom: 3px;
         }
 
-        .nav-link.active {
-            color: #2563eb;
-        }
+        .nav-link.active { color: #2563eb; }
 
-        /* Center Circular Floating Button (+) */
         .floating-action-btn {
             background: linear-gradient(135deg, #06b6d4 0%, #2563eb 100%);
             width: 54px;
@@ -254,11 +240,6 @@
             box-shadow: 0 6px 20px rgba(37, 99, 235, 0.3);
             transform: translateY(-22px);
             cursor: pointer;
-            transition: transform 0.2s ease;
-        }
-
-        .floating-action-btn:active {
-            transform: translateY(-22px) scale(0.92);
         }
     </style>
 </head>
@@ -267,14 +248,14 @@
     <div class="app-container">
         
         <div class="main-balance-wrapper">
-            <h1 class="main-balance-text"><span>Rs</span><span id="rs-balance">15.00</span></h1>
+            <h1 class="main-balance-text"><span>Rs</span><span id="rs-balance">0.00</span></h1>
         </div>
 
         <div class="glass-card-section">
             <div class="stats-grid">
                 <div class="stat-card">
                     <p class="label">ACCOUNT BALANCE</p>
-                    <p class="value" id="acc-balance">15.00</p>
+                    <p class="value" id="acc-balance">0.00</p>
                 </div>
                 <div class="stat-card">
                     <p class="label">ACTIVE PLANS</p>
@@ -300,7 +281,7 @@
                 <i class="fa-solid fa-money-bill-transfer"></i>
                 <span>WITHDRAW</span>
             </div>
-            <div class="action-card bg-task">
+            <div class="action-card bg-task" id="task-video-btn">
                 <i class="fa-solid fa-circle-play"></i>
                 <span>TASK VIDEO</span>
             </div>
@@ -330,11 +311,9 @@
                 <i class="fa-solid fa-bolt"></i>
                 <span>TASKS</span>
             </div>
-            
             <div class="floating-action-btn">
                 <i class="fa-solid fa-plus"></i>
             </div>
-            
             <div class="nav-link">
                 <i class="fa-solid fa-users"></i>
                 <span>TEAM</span>
@@ -347,6 +326,76 @@
 
     </div>
 
-    <script src="app.js"></script>
+    <script>
+        const SUPABASE_URL = 'https://kfbvwxafwbptdllonbwm.supabase.co'; 
+        const SUPABASE_KEY = 'Sb_publishable_EFOjhEF20LOuN_rr3MTAzQ_CkWhQVU8';
+
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // Aapki exact live Row ID auto-configured hai
+        const USER_ID = "22deb1ca-dfc3-4794-978c-2b64d8424f1e"; 
+
+        async function loadInitialData() {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', USER_ID)
+                .single();
+
+            if (error) {
+                console.error("Data load failed:", error.message);
+                return;
+            }
+
+            if (data) {
+                updateUIBalance(parseFloat(data.balance || 0), data.active_plans || 0, parseFloat(data.total_withdraw || 0), parseFloat(data.total_deposit || 0));
+            }
+        }
+
+        async function completeVideoTask() {
+            const { data: currentProfile, error: fetchError } = await supabase
+                .from('profiles')
+                .select('balance, active_plans, total_withdraw, total_deposit')
+                .eq('id', USER_ID)
+                .single();
+
+            if (fetchError) {
+                alert("User fetch failed: " + fetchError.message);
+                return;
+            }
+
+            const currentBalance = parseFloat(currentProfile.balance || 0);
+            const newBalance = currentBalance + 50;
+
+            const { error: updateError } = await supabase
+                .from('profiles')
+                .update({ balance: newBalance })
+                .eq('id', USER_ID);
+
+            if (updateError) {
+                alert("Database update failed: " + updateError.message);
+            } else {
+                alert("Task Complete! 🎉 50 PKR live database mein add ho gaye.");
+                updateUIBalance(newBalance, currentProfile.active_plans, currentProfile.total_withdraw, currentProfile.total_deposit);
+            }
+        }
+
+        function updateUIBalance(balance, plans, withdraw, deposit) {
+            document.getElementById('rs-balance').innerText = balance.toFixed(2);
+            document.getElementById('acc-balance').innerText = balance.toFixed(2);
+            document.getElementById('active-plans').innerText = plans;
+            document.getElementById('total-withdraw').innerText = withdraw.toFixed(2);
+            document.getElementById('total-deposit').innerText = deposit.toFixed(2);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadInitialData();
+
+            const taskBtn = document.getElementById('task-video-btn');
+            if (taskBtn) {
+                taskBtn.addEventListener('click', completeVideoTask);
+            }
+        });
+    </script>
 </body>
 </html>
