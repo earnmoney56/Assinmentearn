@@ -4,8 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Earning Dashboard</title>
+    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Supabase JS Library -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
@@ -30,16 +33,6 @@
             position: relative;
         }
 
-        /* Views (Screens) Management */
-        .app-view {
-            display: none;
-        }
-
-        .app-view.active {
-            display: block;
-        }
-
-        /* --- HOME SCREEN STYLES --- */
         .main-balance-wrapper {
             margin: 20px 0 15px 5px;
         }
@@ -150,82 +143,6 @@
             background: rgba(255, 255, 255, 0.3);
         }
 
-        /* --- TASKS SCREEN STYLES --- */
-        .screen-header {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin: 15px 0 25px 0;
-        }
-
-        .back-btn {
-            background: white; border: none; width: 40px; height: 40px;
-            border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-            cursor: pointer; font-size: 1.1rem; color: #1e293b;
-            display: flex; align-items: center; justify-content: center;
-        }
-
-        .screen-title { font-size: 1.5rem; font-weight: 800; color: #0f172a; }
-
-        .task-card {
-            background: white; border-radius: 24px; padding: 16px;
-            margin-bottom: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.02);
-            border: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 12px;
-        }
-
-        .task-info h3 { font-size: 1rem; color: #1e293b; font-weight: 700; }
-        .task-info p { font-size: 0.75rem; color: #10b981; font-weight: 700; margin-top: 2px; }
-
-        .play-btn {
-            background: #2563eb; color: white; border: none; padding: 12px;
-            border-radius: 16px; font-weight: 700; cursor: pointer; width: 100%;
-            font-size: 0.85rem; display: flex; align-items: center; justify-content: center; gap: 8px;
-        }
-
-        .video-box {
-            width: 100%; display: none; margin-top: 10px; border-radius: 16px;
-            overflow: hidden; background: black; position: relative;
-        }
-
-        video { width: 100%; display: block; background: #000; }
-
-        .timer-badge {
-            position: absolute; top: 10px; right: 10px;
-            background: rgba(0,0,0,0.7); color: white; padding: 4px 10px;
-            border-radius: 20px; font-size: 0.75rem; font-weight: 700;
-            z-index: 10;
-        }
-
-        .claim-btn {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white; border: none; padding: 12px; border-radius: 16px;
-            font-weight: 800; cursor: pointer; width: 100%; margin-top: 10px;
-            display: none; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
-        }
-
-        /* --- WITHDRAW SCREEN STYLES --- */
-        .form-card {
-            background: white; border-radius: 28px; padding: 24px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.02); border: 1px solid #e2e8f0;
-        }
-
-        .input-group { margin-bottom: 18px; }
-        .input-group label { display: block; font-size: 0.78rem; font-weight: 800; color: #64748b; margin-bottom: 8px; }
-        
-        select, input {
-            width: 100%; padding: 14px; border-radius: 16px; border: 1px solid #cbd5e1;
-            font-size: 0.95rem; font-weight: 600; color: #1e293b; outline: none; background: #f8fafc;
-        }
-
-        select:focus, input:focus { border-color: #2563eb; background: white; }
-
-        .submit-btn {
-            width: 100%; background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-            color: white; border: none; padding: 16px; border-radius: 18px;
-            font-size: 1rem; font-weight: 800; cursor: pointer; margin-top: 10px;
-            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.2);
-        }
-
         /* --- BOTTOM NAVIGATION BAR --- */
         .bottom-nav-bar {
             position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
@@ -246,123 +163,51 @@
 </head>
 <body>
 
-    <div class="app-container">
+    <div class="app-container" id="mainAppContent">
+        <!-- HOME VIEW -->
+        <div class="main-balance-wrapper">
+            <h1 class="main-balance-text"><span>Rs</span><span id="rs-balance">0.00</span></h1>
+        </div>
 
-        <div id="homeView" class="app-view active">
-            <div class="main-balance-wrapper">
-                <h1 class="main-balance-text"><span>Rs</span><span id="rs-balance">0.00</span></h1>
-            </div>
-
-            <div class="glass-card-section">
-                <div class="stats-grid">
-                    <div class="stat-card"><p class="label">ACCOUNT BALANCE</p><p class="value" id="acc-balance">0.00</p></div>
-                    <div class="stat-card"><p class="label">ACTIVE PLANS</p><p class="value" id="active-plans">0</p></div>
-                    <div class="stat-card"><p class="label">TOTAL WITHDRAW</p><p class="value" id="total-withdraw">0.00</p></div>
-                    <div class="stat-card"><p class="label">TOTAL DEPOSIT</p><p class="value" id="total-deposit">0.00</p></div>
-                </div>
-            </div>
-
-            <div class="actions-grid">
-                <div class="action-card bg-deposit"><i class="fa-solid fa-wallet"></i><span>DEPOSIT</span></div>
-                <div class="action-card bg-withdraw" onclick="switchView('withdrawView')"><i class="fa-solid fa-money-bill-transfer"></i><span>WITHDRAW</span></div>
-                <div class="action-card bg-task" onclick="switchView('tasksView')"><i class="fa-solid fa-circle-play"></i><span>TASK VIDEO</span></div>
-            </div>
-
-            <div class="reward-section">
-                <div class="reward-header">
-                    <div><h2>Reward Collector</h2><p class="subtext">WATCH YOUTUBE ADS AND COLLECT DAILY EARNING</p></div>
-                    <button class="invest-btn"><i class="fa-solid fa-list-check"></i> INVEST LIST</button>
-                </div>
-                <div class="dashed-info-box">No active ad reward task found. Buy a plan with ads required, then your reward timer will show here.</div>
+        <div class="glass-card-section">
+            <div class="stats-grid">
+                <div class="stat-card"><p class="label">ACCOUNT BALANCE</p><p class="value" id="acc-balance">0.00</p></div>
+                <div class="stat-card"><p class="label">ACTIVE PLANS</p><p class="value" id="active-plans">0</p></div>
+                <div class="stat-card"><p class="label">TOTAL WITHDRAW</p><p class="value" id="total-withdraw">0.00</p></div>
+                <div class="stat-card"><p class="label">TOTAL DEPOSIT</p><p class="value" id="total-deposit">0.00</p></div>
             </div>
         </div>
 
-        <div id="tasksView" class="app-view">
-            <div class="screen-header">
-                <button class="back-btn" onclick="switchView('homeView')"><i class="fa-solid fa-arrow-left"></i></button>
-                <h1 class="screen-title">Daily Video Tasks</h1>
-            </div>
-
-            <div class="task-card" id="task1">
-                <div class="task-info"><h3>Short Ad Video Task #1</h3><p>Reward: Rs 50.00</p></div>
-                <button class="play-btn" onclick="startVideo('task1', 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4')"><i class="fa-solid fa-play"></i> Play 30s Ad</button>
-                <div class="video-box">
-                    <div class="timer-badge">30s</div>
-                    <video playsinline webkit-playsinline muted></video>
-                </div>
-                <button class="claim-btn" onclick="claimReward('task1')">Claim Rs 50.00 🎉</button>
-            </div>
-
-            <div class="task-card" id="task2">
-                <div class="task-info"><h3>Short Ad Video Task #2</h3><p>Reward: Rs 50.00</p></div>
-                <button class="play-btn" onclick="startVideo('task2', 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4')"><i class="fa-solid fa-play"></i> Play 30s Ad</button>
-                <div class="video-box">
-                    <div class="timer-badge">30s</div>
-                    <video playsinline webkit-playsinline muted></video>
-                </div>
-                <button class="claim-btn" onclick="claimReward('task2')">Claim Rs 50.00 🎉</button>
-            </div>
+        <div class="actions-grid">
+            <div class="action-card bg-deposit"><i class="fa-solid fa-wallet"></i><span>DEPOSIT</span></div>
+            <div class="action-card bg-withdraw" onclick="openWithdrawPage()"><i class="fa-solid fa-money-bill-transfer"></i><span>WITHDRAW</span></div>
+            <div class="action-card bg-task" onclick="openTasksPage()"><i class="fa-solid fa-circle-play"></i><span>TASK VIDEO</span></div>
         </div>
 
-        <div id="withdrawView" class="app-view">
-            <div class="screen-header">
-                <button class="back-btn" onclick="switchView('homeView')"><i class="fa-solid fa-arrow-left"></i></button>
-                <h1 class="screen-title">Withdraw Funds</h1>
+        <div class="reward-section">
+            <div class="reward-header">
+                <div><h2>Reward Collector</h2><p class="subtext">WATCH YOUTUBE ADS AND COLLECT DAILY EARNING</p></div>
+                <button class="invest-btn"><i class="fa-solid fa-list-check"></i> INVEST LIST</button>
             </div>
-
-            <div class="form-card">
-                <div class="input-group">
-                    <label>CHOOSE METHOD</label>
-                    <select id="method">
-                        <option value="JazzCash">JazzCash</option>
-                        <option value="EasyPaisa">EasyPaisa</option>
-                    </select>
-                </div>
-                <div class="input-group">
-                    <label>ACCOUNT NUMBER</label>
-                    <input type="number" id="acc-num" placeholder="e.g. 03001234567">
-                </div>
-                <div class="input-group">
-                    <label>WITHDRAW AMOUNT (PKR)</label>
-                    <input type="number" id="amount" placeholder="Minimum Rs 500">
-                </div>
-                <button class="submit-btn" onclick="submitWithdrawal()">Submit Request</button>
-            </div>
+            <div class="dashed-info-box">No active ad reward task found. Buy a plan with ads required, then your reward timer will show here.</div>
         </div>
 
+        <!-- BOTTOM NAV -->
         <div class="bottom-nav-bar">
-            <div class="nav-link active" id="nav-home" onclick="switchView('homeView')"><i class="fa-solid fa-house"></i><span>HOME</span></div>
-            <div class="nav-link" id="nav-tasks" onclick="switchView('tasksView')"><i class="fa-solid fa-bolt"></i><span>TASKS</span></div>
-            <div class="nav-link" id="nav-withdraw" onclick="switchView('withdrawView')"><i class="fa-solid fa-money-bill-transfer"></i><span>WITHDRAW</span></div>
+            <div class="nav-link active" onclick="location.reload()"><i class="fa-solid fa-house"></i><span>HOME</span></div>
+            <div class="nav-link" onclick="openTasksPage()"><i class="fa-solid fa-bolt"></i><span>TASKS</span></div>
+            <div class="nav-link" onclick="openWithdrawPage()"><i class="fa-solid fa-money-bill-transfer"></i><span>WITHDRAW</span></div>
         </div>
-
     </div>
 
     <script>
         const SUPABASE_URL = 'https://kfbvwxafwbptdllonbwm.supabase.co'; 
         const SUPABASE_KEY = 'Sb_publishable_EFOjhEF20LOuN_rr3MTAzQ_CkWhQVU8';
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-        // Live Row ID Configured
-        const USER_ID = "22deb1ca-dfc3-4794-978c-2b64d8424f1e"; 
-
-        // Switch Screens dynamically
-        function switchView(viewId) {
-            document.querySelectorAll('.app-view').forEach(view => view.classList.remove('active'));
-            document.getElementById(viewId).classList.add('active');
-
-            // Bottom Nav Active state color switch
-            document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
-            if(viewId === 'homeView') document.getElementById('nav-home').classList.add('active');
-            if(viewId === 'tasksView') document.getElementById('nav-tasks').classList.add('active');
-            if(viewId === 'withdrawView') document.getElementById('nav-withdraw').classList.add('active');
-            
-            // Re-load balance values if user returns home
-            if(viewId === 'homeView') loadInitialData();
-        }
+        const USER_ID = "22deb1ca-dfc3-4794-978c-2b64d8424f1e";
 
         async function loadInitialData() {
-            const { data, error } = await supabase.from('profiles').select('*').eq('id', USER_ID).single();
+            const { data } = await supabase.from('profiles').select('*').eq('id', USER_ID).single();
             if (data) {
                 document.getElementById('rs-balance').innerText = parseFloat(data.balance || 0).toFixed(2);
                 document.getElementById('acc-balance').innerText = parseFloat(data.balance || 0).toFixed(2);
@@ -372,84 +217,118 @@
             }
         }
 
-        // 30 Seconds Mobile-Optimized Video Ad Tracker
-        function startVideo(taskId, videoUrl) {
-            const card = document.getElementById(taskId);
-            const playBtn = card.querySelector('.play-btn');
-            const videoBox = card.querySelector('.video-box');
-            const video = card.querySelector('video');
-            const timerBadge = card.querySelector('.timer-badge');
-            const claimBtn = card.querySelector('.claim-btn');
+        // ================= OPEN TASKS PAGE (FORCE RENDER) =================
+        function openTasksPage() {
+            document.body.innerHTML = `
+                <div style="width:100%; max-width:480px; padding:20px; margin:auto;">
+                    <div style="display:flex; align-items:center; gap:15px; margin-bottom:25px;">
+                        <button onclick="location.reload()" style="background:white; border:none; width:40px; height:40px; border-radius:50%; box-shadow:0 4px 10px rgba(0,0,0,0.1); cursor:pointer;"><i class="fa-solid fa-arrow-left"></i></button>
+                        <h1 style="font-size:1.5rem; font-weight:800; color:#0f172a;">Daily Video Tasks</h1>
+                    </div>
 
-            playBtn.style.display = 'none';
-            videoBox.style.display = 'block';
-            
-            video.src = videoUrl;
-            video.load();
-            
-            // Mobile safe play trick
-            var playPromise = video.play();
-            if (playPromise !== undefined) {
-                playPromise.then(_ => {
-                    // Autoplay started safely
-                }).catch(error => {
-                    // Fallback control just in case
-                    video.muted = true;
-                    video.play();
-                });
-            }
+                    <!-- Video Card 1 -->
+                    <div id="videoContainer1" style="background:white; border-radius:24px; padding:16px; margin-bottom:16px; box-shadow:0 4px 20px rgba(0,0,0,0.05);">
+                        <h3 style="font-size:1rem; font-weight:700; color:#1e293b; margin-bottom:5px;">Short Ad Task #1</h3>
+                        <p style="color:#10b981; font-weight:700; font-size:0.8rem; margin-bottom:15px;">Reward: Rs 50.00</p>
+                        
+                        <div id="playerBox1" style="width:100%; height:200px; background:black; border-radius:16px; overflow:hidden; position:relative; margin-bottom:12px;">
+                            <video id="myVideo1" style="width:100%; height:100%; object-fit:cover;" src="https://html5demos.com/assets/dizzy.mp4" playsinline controls></video>
+                            <div id="badge1" style="position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.8); color:white; padding:5px 12px; border-radius:20px; font-weight:700; font-size:0.8rem;">30s</div>
+                        </div>
+                        <button id="claimBtn1" onclick="claimVideoReward('videoContainer1')" style="width:100%; background:linear-gradient(135deg, #10b981 0%, #059669 100%); color:white; border:none; padding:14px; border-radius:16px; font-weight:800; font-size:1rem; cursor:pointer; display:none;">CLAIM RS 50.00 🎉</button>
+                    </div>
+                </div>
+            `;
 
-            let timeLeft = 30; 
-            timerBadge.innerText = timeLeft + 's';
+            // Setup Custom Dynamic Tracking directly on HTML5 standard video
+            const video1 = document.getElementById('myVideo1');
+            const badge1 = document.getElementById('badge1');
+            const claimBtn1 = document.getElementById('claimBtn1');
+            let timerLeft = 30;
+            let countdownActive = false;
 
-            const interval = setInterval(() => {
-                timeLeft--;
-                timerBadge.innerText = timeLeft + 's';
-                if (timeLeft <= 0) {
-                    clearInterval(interval);
-                    videoBox.style.display = 'none';
-                    video.pause();
-                    claimBtn.style.display = 'block'; // Reward unlock
+            video1.onplay = function() {
+                if (!countdownActive) {
+                    countdownActive = true;
+                    const interval = setInterval(() => {
+                        if(!video1.paused && !video1.ended) {
+                            timerLeft--;
+                            badge1.innerText = timerLeft + 's';
+                            if(timerLeft <= 0) {
+                                clearInterval(interval);
+                                video1.style.display = 'none';
+                                badge1.style.display = 'none';
+                                claimBtn1.style.display = 'block';
+                            }
+                        }
+                    }, 1000);
                 }
-            }, 1000);
+            };
         }
 
-        async function claimReward(taskId) {
-            const card = document.getElementById(taskId);
+        async function claimVideoReward(containerId) {
             const { data: profile } = await supabase.from('profiles').select('balance').eq('id', USER_ID).single();
-            
-            const currentBalance = parseFloat(profile.balance || 0);
-            const newBalance = currentBalance + 50;
+            const newBal = parseFloat(profile.balance || 0) + 50;
 
-            const { error } = await supabase.from('profiles').update({ balance: newBalance }).eq('id', USER_ID);
-
-            if (!error) {
-                alert("Rs 50.00 claimed successfully and synchronized live! 🎉");
-                card.remove(); // Task complete hone par layout clean ho jaye
+            const { error } = await supabase.from('profiles').update({ balance: newBal }).eq('id', USER_ID);
+            if(!error) {
+                alert("Mubarak ho! Rs 50.00 wallet mein kamyabi se jama ho gaye hain. 🎉");
+                document.getElementById(containerId).remove();
             } else {
-                alert("Database synchronization failed.");
+                alert("Database update error.");
             }
         }
 
-        async function submitWithdrawal() {
-            const method = document.getElementById('method').value;
-            const number = document.getElementById('acc-num').value;
-            const amount = parseFloat(document.getElementById('amount').value);
+        // ================= OPEN WITHDRAW PAGE (FORCE RENDER) =================
+        function openWithdrawPage() {
+            document.body.innerHTML = `
+                <div style="width:100%; max-width:480px; padding:20px; margin:auto;">
+                    <div style="display:flex; align-items:center; gap:15px; margin-bottom:25px;">
+                        <button onclick="location.reload()" style="background:white; border:none; width:40px; height:40px; border-radius:50%; box-shadow:0 4px 10px rgba(0,0,0,0.1); cursor:pointer;"><i class="fa-solid fa-arrow-left"></i></button>
+                        <h1 style="font-size:1.5rem; font-weight:800; color:#0f172a;">Withdraw Request</h1>
+                    </div>
+
+                    <div style="background:white; border-radius:28px; padding:24px; box-shadow:0 10px 30px rgba(0,0,0,0.02); border:1px solid #e2e8f0;">
+                        <div style="margin-bottom:18px;">
+                            <label style="display:block; font-size:0.78rem; font-weight:800; color:#64748b; margin-bottom:8px;">CHOOSE METHOD</label>
+                            <select id="wMethod" style="width:100%; padding:14px; border-radius:16px; border:1px solid #cbd5e1; background:#f8fafc; font-weight:600;">
+                                <option value="JazzCash">JazzCash</option>
+                                <option value="EasyPaisa">EasyPaisa</option>
+                            </select>
+                        </div>
+                        <div style="margin-bottom:18px;">
+                            <label style="display:block; font-size:0.78rem; font-weight:800; color:#64748b; margin-bottom:8px;">ACCOUNT NUMBER</label>
+                            <input type="number" id="wNumber" placeholder="e.g. 03001234567" style="width:100%; padding:14px; border-radius:16px; border:1px solid #cbd5e1; background:#f8fafc; font-weight:600;">
+                        </div>
+                        <div style="margin-bottom:18px;">
+                            <label style="display:block; font-size:0.78rem; font-weight:800; color:#64748b; margin-bottom:8px;">WITHDRAW AMOUNT (PKR)</label>
+                            <input type="number" id="wAmount" placeholder="Minimum Rs 500" style="width:100%; padding:14px; border-radius:16px; border:1px solid #cbd5e1; background:#f8fafc; font-weight:600;">
+                        </div>
+                        <button onclick="processWithdrawal()" style="width:100%; background:linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color:white; border:none; padding:16px; border-radius:18px; font-size:1rem; font-weight:800; cursor:pointer;">Submit Request</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function processWithdrawal() {
+            const method = document.getElementById('wMethod').value;
+            const number = document.getElementById('wNumber').value;
+            const amount = parseFloat(document.getElementById('wAmount').value);
 
             if(!number || !amount) {
-                alert("Kindly fill all details completely.");
+                alert("Please fill all details completely.");
                 return;
             }
 
             const { data: profile } = await supabase.from('profiles').select('balance, total_withdraw').eq('id', USER_ID).single();
-            const currentBalance = parseFloat(profile.balance || 0);
+            const currentBal = parseFloat(profile.balance || 0);
 
-            if(amount > currentBalance) {
-                alert("Insufficient Balance available!");
+            if(amount > currentBal) {
+                alert("Aapka balance is withdraw request ke liye kam hai!");
                 return;
             }
 
-            const newBalance = currentBalance - amount;
+            const newBalance = currentBal - amount;
             const newTotalWithdraw = parseFloat(profile.total_withdraw || 0) + amount;
 
             const { error } = await supabase.from('profiles').update({ 
@@ -458,12 +337,10 @@
             }).eq('id', USER_ID);
 
             if(!error) {
-                alert(`Withdrawal request of Rs ${amount} submitted successfully via ${method} to account ${number}! 🚀`);
-                document.getElementById('acc-num').value = "";
-                document.getElementById('amount').value = "";
-                switchView('homeView');
+                alert(`Withdrawal request of Rs ${amount} submitted via ${method} to ${number} successfully! 🚀`);
+                location.reload();
             } else {
-                alert("Error submitting request.");
+                alert("Withdraw submission failed.");
             }
         }
 
