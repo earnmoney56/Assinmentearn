@@ -187,12 +187,13 @@
             overflow: hidden; background: black; position: relative;
         }
 
-        video { width: 100%; display: block; }
+        video { width: 100%; display: block; background: #000; }
 
         .timer-badge {
             position: absolute; top: 10px; right: 10px;
             background: rgba(0,0,0,0.7); color: white; padding: 4px 10px;
             border-radius: 20px; font-size: 0.75rem; font-weight: 700;
+            z-index: 10;
         }
 
         .claim-btn {
@@ -284,20 +285,20 @@
 
             <div class="task-card" id="task1">
                 <div class="task-info"><h3>Short Ad Video Task #1</h3><p>Reward: Rs 50.00</p></div>
-                <button class="play-btn" onclick="startVideo('task1', 'https://www.w3schools.com/html/mov_bbb.mp4')"><i class="fa-solid fa-play"></i> Play 30s Ad</button>
+                <button class="play-btn" onclick="startVideo('task1', 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4')"><i class="fa-solid fa-play"></i> Play 30s Ad</button>
                 <div class="video-box">
                     <div class="timer-badge">30s</div>
-                    <video playsinline></video>
+                    <video playsinline webkit-playsinline muted></video>
                 </div>
                 <button class="claim-btn" onclick="claimReward('task1')">Claim Rs 50.00 🎉</button>
             </div>
 
             <div class="task-card" id="task2">
                 <div class="task-info"><h3>Short Ad Video Task #2</h3><p>Reward: Rs 50.00</p></div>
-                <button class="play-btn" onclick="startVideo('task2', 'https://www.w3schools.com/html/movie.mp4')"><i class="fa-solid fa-play"></i> Play 30s Ad</button>
+                <button class="play-btn" onclick="startVideo('task2', 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4')"><i class="fa-solid fa-play"></i> Play 30s Ad</button>
                 <div class="video-box">
                     <div class="timer-badge">30s</div>
-                    <video playsinline></video>
+                    <video playsinline webkit-playsinline muted></video>
                 </div>
                 <button class="claim-btn" onclick="claimReward('task2')">Claim Rs 50.00 🎉</button>
             </div>
@@ -343,7 +344,7 @@
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         // Live Row ID Configured
-        const USER_ID = "22deb1ca-dfc3-4794-978c-2b64d8424f1e";
+        const USER_ID = "22deb1ca-dfc3-4794-978c-2b64d8424f1e"; 
 
         // Switch Screens dynamically
         function switchView(viewId) {
@@ -371,7 +372,7 @@
             }
         }
 
-        // 30 Seconds Video Ad Functionality Tracker
+        // 30 Seconds Mobile-Optimized Video Ad Tracker
         function startVideo(taskId, videoUrl) {
             const card = document.getElementById(taskId);
             const playBtn = card.querySelector('.play-btn');
@@ -382,8 +383,21 @@
 
             playBtn.style.display = 'none';
             videoBox.style.display = 'block';
+            
             video.src = videoUrl;
-            video.play();
+            video.load();
+            
+            // Mobile safe play trick
+            var playPromise = video.play();
+            if (playPromise !== undefined) {
+                playPromise.then(_ => {
+                    // Autoplay started safely
+                }).catch(error => {
+                    // Fallback control just in case
+                    video.muted = true;
+                    video.play();
+                });
+            }
 
             let timeLeft = 30; 
             timerBadge.innerText = timeLeft + 's';
