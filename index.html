@@ -208,6 +208,15 @@
             await supabase.from('profiles').upsert({ id_user: myUserId, is_online: state, last_seen: new Date().toISOString() }, { onConflict: 'id_user' });
         }
         window.addEventListener('beforeunload', () => syncOnlineStatus(false));
+        // Register Service Worker for PWA Add to Home Screen support
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+        .then(reg => console.log('Service Worker Registered'))
+        .catch(err => console.log('Service Worker Failed', err));
+    });
+}
+
     </script>
 </body>
 </html>
