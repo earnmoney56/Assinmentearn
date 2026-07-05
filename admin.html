@@ -3,122 +3,150 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Chat Controller</title>
+    <title>Admin WhatsApp Support Desk</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { margin: 0; font-family: Arial, sans-serif; display: flex; height: 100vh; background: #f0f2f5; }
-        .sidebar { width: 30%; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; }
-        .sidebar-header { background: #075e54; color: white; padding: 15px; font-size: 20px; font-weight: bold; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; background: #f0f2f5; }
+        .sidebar { width: 30%; background: white; border-right: 1px solid #e9edef; display: flex; flex-direction: column; }
+        .sidebar-header { background: #f0f2f5; padding: 15px; font-weight: bold; font-size: 18px; border-bottom: 1px solid #e9edef; }
         .user-list { flex: 1; overflow-y: auto; }
-        .user-item { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
-        .user-item:hover, .user-item.active { background: #f0f2f5; }
-        .status-badge { width: 12px; height: 12px; border-radius: 50%; }
-        .online { background: #2ecc71; }
-        .offline { background: #95a5a6; }
-        
-        .main-chat { flex: 1; display: flex; flex-direction: column; background: #ece5dd; }
-        .chat-header { background: #075e54; color: white; padding: 15px; font-size: 18px; }
-        .chat-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
-        .msg { max-width: 70%; padding: 10px; border-radius: 8px; box-shadow: 0 1px 1px rgba(0,0,0,0.1); }
-        .msg.admin { background: #d9fdd3; align-self: flex-end; }
-        .msg.client { background: white; align-self: flex-start; }
-        .msg img, .msg video { max-width: 100%; border-radius: 6px; }
-        
-        .admin-input-bar { background: #f0f2f5; padding: 15px; display: flex; gap: 10px; align-items: center; }
-        .input-field { flex: 1; padding: 12px; border-radius: 20px; border: none; outline: none; font-size: 14px; }
-        .send-btn { background: #128c7e; color: white; border: none; padding: 12px 25px; border-radius: 20px; cursor: pointer; }
+        .user-item { padding: 15px; border-bottom: 1px solid #f0f2f5; cursor: pointer; display: flex; align-items: center; gap: 10px; }
+        .user-item:hover, .user-item.active { background: #ebebeb; }
+        .main-chat { width: 70%; display: flex; flex-direction: column; background: #ece5dd; position: relative; }
+        .chat-header { background: #f0f2f5; padding: 15px; font-weight: 600; }
+        .chat-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .message { max-width: 65%; padding: 8px 14px; border-radius: 10px; font-size: 15px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+        .message.sent { background: #d9fdd3; align-self: flex-end; }
+        .message.received { background: white; align-self: flex-start; }
+        .message img, .message video { max-width: 100%; border-radius: 8px; margin-top: 5px; display: block; max-height: 180px; }
+        .message audio { max-width: 100%; margin-top: 5px; display: block; }
+        .input-area { background: #f0f2f5; padding: 10px; display: flex; align-items: center; gap: 10px; }
+        .input-box { flex: 1; border: none; padding: 10px 15px; border-radius: 20px; outline: none; font-size: 15px; }
+        .btn { background: #128c7e; color: white; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        #file-input { display: none; }
     </style>
 </head>
 <body>
 
     <div class="sidebar">
-        <div class="sidebar-header">Customers List</div>
-        <div class="user-list" id="users-panel"></div>
+        <div class="sidebar-header"><i class="fab fa-whatsapp" style="color: #25d366;"></i> Active Inboxes</div>
+        <div class="user-list" id="users-box"></div>
     </div>
 
     <div class="main-chat">
-        <div class="chat-header" id="current-user-header">Select a user to chat</div>
-        <div class="chat-box" id="admin-chat-box"></div>
-        <div class="admin-input-bar">
-            <input type="text" id="admin-input" class="input-field" placeholder="Type response...">
-            <button class="send-btn" id="admin-send-btn">Send</button>
+        <div class="chat-header" id="active-user-title">Select a customer to chat</div>
+        <div class="chat-container" id="chat-box"></div>
+        <div class="input-area">
+            <label for="file-input" class="btn" style="background:#54656f;"><i class="fas fa-paperclip"></i></label>
+            <input type="file" id="file-input" accept="image/*,video/*">
+            <input type="text" id="msg-input" class="input-box" placeholder="Type a reply...">
+            <button id="btn-send" class="btn"><i class="fas fa-paper-plane"></i></button>
         </div>
     </div>
 
     <script>
         const SUPABASE_URL = "https://nkwllaxgrmmlrqacbaro.supabase.co";
         const SUPABASE_KEY = "sb_publishable_ZTqBnJInrVgfpegOJfS6KQ_wwzYSQf0";
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const dbClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let activeClientId = null;
+        let selectedRoomId = null;
 
-        async function initAdmin() {
-            loadUsers();
-            supabase.channel('admin:sync')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => loadUsers())
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-                if(activeClientId && (payload.new.sender === activeClientId || payload.new.receiver === activeClientId)) {
-                    renderAdminMsg(payload.new);
-                }
-            }).subscribe();
-        }
-
-        async function loadUsers() {
-            let { data: users } = await supabase.from('profiles').select('*');
-            const panel = document.getElementById('users-panel');
-            panel.innerHTML = '';
-            if(users) {
-                users.forEach(u => {
+        async function loadActiveUsers() {
+            try {
+                // Get list of unique customers/rooms
+                let { data: items } = await dbClient.from('messages').select('room_id').not('room_id', 'is', null);
+                const uniqueRooms = [...new Set(items.map(i => i.room_id))];
+                
+                const list = document.getElementById('users-box');
+                list.innerHTML = '';
+                uniqueRooms.forEach(room => {
                     const div = document.createElement('div');
                     div.classList.add('user-item');
-                    if(u.id_user === activeClientId) div.classList.add('active');
-                    div.onclick = () => selectUser(u.id_user);
-                    div.innerHTML = `<div><strong>${u.id_user}</strong><br><small style="color:#777">Last seen: ${new Date(u.last_seen).toLocaleTimeString()}</small></div>
-                                     <div class="status-badge ${u.is_online ? 'online' : 'offline'}"></div>`;
-                    panel.appendChild(div);
+                    if(room === selectedRoomId) div.classList.add('active');
+                    div.innerHTML = `<i class="fas fa-user-circle" style="font-size:24px; color:#54656f;"></i> <span>${room}</span>`;
+                    div.onclick = () => selectUser(room);
+                    list.appendChild(div);
                 });
-            }
+            } catch(e) {}
         }
 
-        async function selectUser(uid) {
-            activeClientId = uid;
-            document.getElementById('current-user-header').innerText = `Chatting with: ${uid}`;
-            loadUsers();
-            
-            let { data: msgs } = await supabase.from('messages').select('*').order('created_at', { ascending: true });
-            const box = document.getElementById('admin-chat-box');
-            box.innerHTML = '';
-            if(msgs) {
-                msgs.forEach(m => {
-                    if(m.sender === uid || m.receiver === uid) renderAdminMsg(m);
-                });
-            }
+        async function selectUser(roomId) {
+            selectedRoomId = roomId;
+            document.getElementById('active-user-title').innerText = "Chatting with: " + roomId;
+            loadMessages();
         }
 
-        function renderAdminMsg(m) {
-            const box = document.getElementById('admin-chat-box');
+        async function loadMessages() {
+            if(!selectedRoomId) return;
+            const box = document.getElementById('chat-box');
+            try {
+                let { data: items } = await dbClient.from('messages').select('*').eq('room_id', selectedRoomId).order('inserted_at', { ascending: true });
+                box.innerHTML = '';
+                if(items) items.forEach(m => renderMsg(m));
+            } catch(e) {}
+        }
+
+        function renderMsg(msg) {
+            const box = document.getElementById('chat-box');
+            if(!box || document.getElementById(`m-${msg.id}`)) return;
             const d = document.createElement('div');
-            d.classList.add('msg', m.sender === 'admin' ? 'admin' : 'client');
+            d.id = `m-${msg.id}`;
+            d.classList.add('message', msg.sender === 'admin' ? 'sent' : 'received');
             
-            if(m.type === 'text') d.innerHTML = m.message;
-            else if(m.type === 'image') d.innerHTML = `<img src="${m.file_url}">`;
-            else if(m.type === 'video') d.innerHTML = `<video src="${m.file_url}" controls></video>`;
-            else if(m.type === 'audio') d.innerHTML = `<audio src="${m.file_url}" controls></audio>`;
-            
+            let html = `<div>${msg.message_text || ''}</div>`;
+            if(msg.media_url) {
+                if(msg.type === 'image') html += `<img src="${msg.media_url}">`;
+                else if(msg.type === 'video') html += `<video src="${msg.media_url}" controls></video>`;
+                else if(msg.type === 'voice') html += `<audio src="${msg.media_url}" controls></audio>`;
+            }
+            d.innerHTML = html;
             box.appendChild(d);
             box.scrollTop = box.scrollHeight;
         }
 
-        document.getElementById('admin-send-btn').addEventListener('click', async () => {
-            const inp = document.getElementById('admin-input');
-            if(!activeClientId || !inp.value.trim()) return;
-            const text = inp.value.trim();
+        async function uploadToSupabase(file, ext, folder) {
+            const fileName = `${folder}/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
+            const { data, error } = await dbClient.storage.from('chat-media').upload(fileName, file);
+            if (error) return null;
+            return dbClient.storage.from('chat-media').getPublicUrl(fileName).data.publicUrl;
+        }
+
+        async function sendAdminMessage() {
+            if(!selectedRoomId) return;
+            const inp = document.getElementById('msg-input');
+            const val = inp.value.trim();
+            if(!val) return;
             inp.value = '';
-            await supabase.from('messages').insert([{ sender: 'admin', receiver: activeClientId, message: text, type: 'text' }]);
+
+            await dbClient.from('messages').insert([{ message_text: val, sender: 'admin', receiver: selectedRoomId, room_id: selectedRoomId, type: 'text', media_url: null }]);
+        }
+
+        document.getElementById('file-input').addEventListener('change', async (e) => {
+            if(!selectedRoomId) return;
+            const file = e.target.files[0];
+            if(!file) return;
+            let type = file.type.startsWith('video/') ? 'video' : 'image';
+            const ext = file.name.split('.').pop();
+            const publicUrl = await uploadToSupabase(file, ext, type);
+            if(publicUrl) {
+                await dbClient.from('messages').insert([{ message_text: `Admin sent a ${type}`, sender: 'admin', receiver: selectedRoomId, room_id: selectedRoomId, type: type, media_url: publicUrl }]);
+            }
         });
 
-        window.onload = initAdmin;
+        document.getElementById('btn-send').onclick = sendAdminMessage;
+        document.getElementById('msg-input').onkeypress = (e) => { if(e.key === 'Enter') sendAdminMessage(); };
+
+        window.onload = () => {
+            loadActiveUsers();
+            dbClient.channel('admin-sync').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, p => {
+                loadActiveUsers();
+                if(selectedRoomId && p.new.room_id === selectedRoomId) {
+                    renderMsg(p.new);
+                }
+            }).subscribe();
+        };
     </script>
 </body>
 </html>
