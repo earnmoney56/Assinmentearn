@@ -5,79 +5,71 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat App</title>
     
-    <!-- PWA Manifest for Add to Home Screen -->
-    <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22ChatApp%22%2C%22short_name%22%3A%22ChatApp%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23ffffff%22%2C%22theme_color%22%3A%22%23075e54%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A%2F%2Fcdn-icons-png.flaticon.com%2F512%2F134%2F134937.png%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%22%7D%5D%7D">
+    <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22ChatApp%22%2C%22short_name%22%3A%22ChatApp%22%2C%22start_url%22%3A%22.%2Findex.html%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23ffffff%22%2C%22theme_color%22%3A%22%23075e54%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A%2F%2Fcdn-icons-png.flaticon.com%2F512%2F134%2F134937.png%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%22%7D%5D%7D">
     
-    <!-- Supabase Library -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <!-- FontAwesome Icons for WhatsApp style -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
     <style>
-        :root {
-            --wa-green: #075e54;
-            --wa-light: #128c7e;
-            --bg-color: #ece5dd;
-        }
-        body, html { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; background: #f0f2f5; height: 100%; }
+        :root { --wa-green: #075e54; --wa-light: #128c7e; --bg-color: #ece5dd; }
+        body, html { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; background: #f0f2f5; height: 100%; overflow: hidden; }
         .screen { display: flex; flex-direction: column; height: 100vh; width: 100%; box-sizing: border-box; }
         .hidden { display: none !important; }
 
-        /* 1. Install Gate Screen Styling */
-        #install-screen { justify-content: center; align-items: center; background: white; text-align: center; padding: 20px; }
-        #install-screen i { font-size: 80px; color: var(--wa-green); margin-bottom: 20px; }
-        .btn-install { background: var(--wa-green); color: white; border: none; padding: 15px 40px; font-size: 18px; font-weight: bold; border-radius: 30px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        /* Install Screen */
+        #install-screen { justify-content: center; align-items: center; background: white; text-align: center; padding: 30px; }
+        #install-screen i { font-size: 90px; color: var(--wa-green); margin-bottom: 25px; }
+        .btn-install { background: var(--wa-green); color: white; border: none; padding: 16px 45px; font-size: 18px; font-weight: bold; border-radius: 30px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transition: 0.2s; }
+        .btn-install:active { transform: scale(0.95); }
 
-        /* 2. Chat Screen Styling (WhatsApp Look) */
-        .wa-header { background: var(--wa-green); color: white; padding: 10px 15px; display: flex; align-items: center; gap: 10px; font-size: 18px; }
+        /* Chat Window (WhatsApp UI) */
+        .wa-header { background: var(--wa-green); color: white; padding: 12px 15px; display: flex; align-items: center; gap: 12px; font-size: 18px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .wa-header .status-dot { width: 10px; height: 10px; background: #2ecc71; border-radius: 50%; display: inline-block; }
         .wa-header .sub-text { font-size: 12px; color: #b3d4d0; display: block; }
         
         .chat-container { flex: 1; background: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); background-color: var(--bg-color); overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
         
-        .message { max-width: 75%; padding: 8px 12px; border-radius: 8px; font-size: 15px; position: relative; word-break: break-word; box-shadow: 0 1px 1px rgba(0,0,0,0.1); }
-        .message.sent { background: #d9fdd3; align-self: flex-end; }
-        .message.received { background: white; align-self: flex-start; }
+        .message { max-width: 75%; padding: 8px 14px; border-radius: 10px; font-size: 15px; position: relative; word-break: break-word; box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+        .message.sent { background: #d9fdd3; align-self: flex-end; border-top-right-radius: 0; }
+        .message.received { background: white; align-self: flex-start; border-top-left-radius: 0; }
         .message .time { font-size: 10px; color: #667781; text-align: right; margin-top: 4px; }
         
-        /* Media items inside chat */
-        .message img, .message video { max-width: 100%; border-radius: 6px; margin-top: 5px; display: block; }
+        .message img, .message video { max-width: 100%; border-radius: 8px; margin-top: 5px; display: block; }
         .message audio { width: 100%; margin-top: 5px; }
 
-        /* Input Area */
-        .input-area { background: #f0f2f5; padding: 10px; display: flex; align-items: center; gap: 8px; border-top: 1px solid #e9edef; }
-        .input-box { flex: 1; background: white; border-radius: 20px; padding: 10px 15px; border: none; outline: none; font-size: 15px; }
-        .icon-btn { color: #54656f; font-size: 22px; cursor: pointer; background: none; border: none; outline: none; }
-        .send-btn { background: var(--wa-light); color: white; width: 45px; height: 45px; border-radius: 50%; border: none; display: flex; justify-content: center; align-items: center; font-size: 18px; cursor: pointer; }
+        /* Input Bar */
+        .input-area { background: #f0f2f5; padding: 10px 15px; display: flex; align-items: center; gap: 10px; border-top: 1px solid #e9edef; }
+        .input-box { flex: 1; background: white; border-radius: 25px; padding: 12px 18px; border: none; outline: none; font-size: 15px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .icon-btn { color: #54656f; font-size: 24px; cursor: pointer; display: flex; align-items: center; }
+        .send-btn { background: var(--wa-light); color: white; width: 46px; height: 46px; border-radius: 50%; border: none; display: flex; justify-content: center; align-items: center; font-size: 18px; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     </style>
 </head>
 <body>
 
-    <!-- SCREEN 1: INSTALL APP GATEWAY -->
     <div id="install-screen" class="screen">
         <i class="fab fa-whatsapp"></i>
-        <h2>Welcome to Support Chat</h2>
-        <p style="color: #667781; margin-bottom: 30px;">To continue and chat with our team, please add this app to your home screen first.</p>
+        <h2 style="color: #111b21;">Welcome to Support Chat</h2>
+        <p style="color: #667781; margin: 0 20px 35px 20px; line-height: 1.4;">To continue and chat with our live support team, please add this web app to your home screen setup.</p>
         <button id="btn-install-app" class="btn-install">Add to Home Screen</button>
     </div>
 
-    <!-- SCREEN 2: MAIN WHATSAPP STYLE CHAT -->
     <div id="chat-screen" class="screen hidden">
         <div class="wa-header">
-            <i class="fas fa-user-circle font-size: 30px;"></i>
+            <i class="fas fa-user-circle" style="font-size: 35px;"></i>
             <div>
-                <span id="header-title">Support Team</span>
-                <span class="sub-text"><span class="status-dot"></span> Online</span>
+                <span style="font-weight: 600;">Support Agent</span>
+                <span class="sub-text"><span class="status-dot"></span> Active Now</span>
             </div>
         </div>
         
         <div class="chat-container" id="chat-box">
-            <!-- Messages will load dynamically here -->
+            <div class="message received">
+                Welcome! How can we assist you today? Feel free to send text, pictures, videos, or voice clips.
+                <div class="time">Just now</div>
+            </div>
         </div>
 
         <div class="input-area">
-            <!-- Attachment Button (for Pictures/Videos/Voice) -->
             <label for="file-input" class="icon-btn"><i class="fas fa-paperclip"></i></label>
             <input type="file" id="file-input" class="hidden" accept="image/*,video/*,audio/*">
             
@@ -88,171 +80,134 @@
     </div>
 
     <script>
-        // Supabase Keys Configuration
+        // Database credentials connected 
         const SUPABASE_URL = "https://nkwllaxgrmmlrqacbaro.supabase.co";
         const SUPABASE_KEY = "sb_publishable_ZTqBnJInrVgfpegOJfS6KQ_wwzYSQf0";
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let deferredPrompt;
+        let deferredPrompt = null;
         const installScreen = document.getElementById('install-screen');
         const chatScreen = document.getElementById('chat-screen');
         const btnInstall = document.getElementById('btn-install-app');
         
-        // Generating a unique random User ID for this browser session so no login is needed
-        let myUserId = localStorage.getItem('chat_user_id');
+        // Generate anonymous unique session tracking key
+        let myUserId = localStorage.getItem('chat_session_uid');
         if (!myUserId) {
-            myUserId = 'user_' + Math.random().toString(36).substring(2, 9);
-            localStorage.setItem('chat_user_id', myUserId);
+            myUserId = 'client_' + Math.random().toString(36).substring(2, 11);
+            localStorage.setItem('chat_session_uid', myUserId);
         }
 
-        // ---------------- PWA INSTALL LOGIC ----------------
+        // Catch PWA event if browser permits
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
-            // Show install gate screen if app is not yet installed
-            installScreen.classList.remove('hidden');
-            chatScreen.classList.add('hidden');
         });
 
+        // Smart Button click engine
         btnInstall.addEventListener('click', async () => {
             if (deferredPrompt) {
                 deferredPrompt.prompt();
                 const { outcome } = await deferredPrompt.userChoice;
-                if (outcome === 'accepted') {
-                    enterChat();
-                }
                 deferredPrompt = null;
+                // Instant unlock right after they deal with prompt
+                openChatWorkspace();
             } else {
-                // If browser already bypassed or custom trigger, let them enter for testing
-                alert("App shortcut process complete.");
-                enterChat();
+                // If browser doesn't trigger native prompt, show helper guide and unlock instantly!
+                alert("Tip: If it doesn't add automatically, click your browser's Top-Right 3 Dots menu and tap 'Add to Home screen' anytime!");
+                openChatWorkspace();
             }
         });
 
-        // Check if already running as standalone app (Installed mode)
-        if (window.matchMedia('(display-mode: standalone)').matches || localStorage.getItem('is_installed') === 'true') {
-            enterChat();
+        // Fast re-entry bypass if already processed before
+        if (localStorage.getItem('app_installed_verified') === 'true') {
+            openChatWorkspace();
         }
 
-        function enterChat() {
-            localStorage.setItem('is_installed', 'true');
+        function openChatWorkspace() {
+            localStorage.setItem('app_installed_verified', 'true');
             installScreen.classList.add('hidden');
             chatScreen.classList.remove('hidden');
-            initChatSystem();
-            updateOnlineStatus(true);
-            requestNotificationPermission();
+            startLiveStream();
+            syncOnlineStatus(true);
+            Notification.requestPermission();
         }
 
-        // ---------------- CHAT LOGIC ----------------
-        function initChatSystem() {
-            fetchMessages();
+        // ----------- CHAT STREAM SYNCHRONIZATION -----------
+        function startLiveStream() {
+            syncMessages();
             
-            // Listen for incoming messages in real-time
-            supabase.channel('public:messages')
+            // Listen live to data pushes
+            supabase.channel('room:messages')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-                displaySingleMessage(payload.new);
-                if(payload.new.sender !== myUserId) {
-                    showWebNotification(payload.new.message || "New media attachment received.");
+                renderMsg(payload.new);
+                if(payload.new.sender !== myUserId && Notification.permission === "granted") {
+                    new Notification("Support Team", { body: payload.new.message || "Sent an attachment.", icon: "https://cdn-icons-png.flaticon.com/512/134/134937.png" });
                 }
             })
             .subscribe();
         }
 
-        async function fetchMessages() {
-            let { data: messages } = await supabase.from('messages').select('*').order('created_at', { ascending: true });
-            if (messages) {
+        async function syncMessages() {
+            let { data: items } = await supabase.from('messages').select('*').order('created_at', { ascending: true });
+            if (items) {
                 document.getElementById('chat-box').innerHTML = '';
-                messages.forEach(msg => displaySingleMessage(msg));
+                items.forEach(m => renderMsg(m));
             }
         }
 
-        function displaySingleMessage(msg) {
-            const chatBox = document.getElementById('chat-box');
-            const div = document.createElement('div');
-            div.classList.add('message');
-            div.classList.add(msg.sender === myUserId ? 'sent' : 'received');
+        function renderMsg(msg) {
+            const box = document.getElementById('chat-box');
+            const d = document.createElement('div');
+            d.classList.add('message', msg.sender === myUserId ? 'sent' : 'received');
 
-            if(msg.type === 'text') {
-                div.innerHTML = `<div>${msg.message}</div>`;
-            } else if(msg.type === 'image') {
-                div.innerHTML = `<img src="${msg.file_url}" alt="image"><div style="margin-top:5px;">${msg.message || ''}</div>`;
-            } else if(msg.type === 'video') {
-                div.innerHTML = `<video src="${msg.file_url}" controls></video><div style="margin-top:5px;">${msg.message || ''}</div>`;
-            } else if(msg.type === 'audio') {
-                div.innerHTML = `<audio src="${msg.file_url}" controls></audio>`;
-            }
+            if(msg.type === 'text') d.innerHTML = `<div>${msg.message}</div>`;
+            else if(msg.type === 'image') d.innerHTML = `<img src="${msg.file_url}"><div style='margin-top:4px;'>${msg.message || ''}</div>`;
+            else if(msg.type === 'video') d.innerHTML = `<video src="${msg.file_url}" controls></video>`;
+            else if(msg.type === 'audio') d.innerHTML = `<audio src="${msg.file_url}" controls></audio>`;
 
-            const timeDiv = document.createElement('div');
-            timeDiv.classList.add('time');
-            timeDiv.innerText = new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            div.appendChild(timeDiv);
-
-            chatBox.appendChild(div);
-            chatBox.scrollTop = chatBox.scrollHeight;
+            const t = document.createElement('div');
+            t.classList.add('time');
+            t.innerText = new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            d.appendChild(t);
+            box.appendChild(d);
+            box.scrollTop = box.scrollHeight;
         }
 
-        // Send Text Message
+        // Send pipeline trigger
         document.getElementById('btn-send').addEventListener('click', async () => {
-            const input = document.getElementById('msg-input');
-            const text = input.value.trim();
-            if(!text) return;
+            const inp = document.getElementById('msg-input');
+            const val = inp.value.trim();
+            if(!val) return;
+            inp.value = '';
 
-            await supabase.from('messages').insert([
-                { sender: myUserId, message: text, type: 'text' }
-            ]);
-            input.value = '';
+            await supabase.from('messages').insert([{ sender: myUserId, message: val, type: 'text' }]);
         });
 
-        // Handle File Attachments (Pictures/Videos/Audio)
+        // Attachment file stream handling
         document.getElementById('file-input').addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
+            const f = e.target.files[0];
+            if (!f) return;
 
-            let fileType = 'text';
-            if (file.type.startsWith('image/')) fileType = 'image';
-            else if (file.type.startsWith('video/')) fileType = 'video';
-            else if (file.type.startsWith('audio/')) fileType = 'audio';
+            let mode = 'text';
+            if (f.type.startsWith('image/')) mode = 'image';
+            else if (f.type.startsWith('video/')) mode = 'video';
+            else if (f.type.startsWith('audio/')) mode = 'audio';
 
-            // Upload directly to Supabase storage Bucket named 'chat-media'
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${Math.random()}.${fileExt}`;
-            const filePath = `${myUserId}/${fileName}`;
+            const path = `${myUserId}/${Date.now()}_${f.name}`;
+            let { error } = await supabase.storage.from('chat-media').upload(path, f);
 
-            let { error: uploadError } = await supabase.storage.from('chat-media').upload(filePath, file);
-
-            if (!uploadError) {
-                const { data } = supabase.storage.from('chat-media').getPublicUrl(filePath);
-                await supabase.from('messages').insert([
-                    { sender: myUserId, file_url: data.publicUrl, type: fileType, message: '' }
-                ]);
+            if (!error) {
+                const { data } = supabase.storage.from('chat-media').getPublicUrl(path);
+                await supabase.from('messages').insert([{ sender: myUserId, file_url: data.publicUrl, type: mode, message: '' }]);
             } else {
-                alert("Storage error: Make sure a 'chat-media' bucket exists in Supabase.");
+                alert("Please ensure your Supabase storage has a public bucket named 'chat-media'.");
             }
         });
 
-        // ---------------- ONLINE STATUS & NOTIFICATIONS ----------------
-        async function updateOnlineStatus(isOnline) {
-            // Inserts/Updates user status in profiles table
-            await supabase.from('profiles').upsert({ 
-                id_user: myUserId, 
-                is_online: isOnline, 
-                last_seen: new Date().toISOString() 
-            }, { onConflict: 'id_user' });
+        async function syncOnlineStatus(state) {
+            await supabase.from('profiles').upsert({ id_user: myUserId, is_online: state, last_seen: new Date().toISOString() }, { onConflict: 'id_user' });
         }
-
-        window.addEventListener('beforeunload', () => updateOnlineStatus(false));
-
-        function requestNotificationPermission() {
-            if (Notification.permission !== "granted") {
-                Notification.requestPermission();
-            }
-        }
-
-        function showWebNotification(text) {
-            if (Notification.permission === "granted") {
-                new Notification("New Message from Support", { body: text, icon: "https://cdn-icons-png.flaticon.com/512/134/134937.png" });
-            }
-        }
+        window.addEventListener('beforeunload', () => syncOnlineStatus(false));
     </script>
 </body>
 </html>
