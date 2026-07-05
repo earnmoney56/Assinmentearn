@@ -2,25 +2,61 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Live Support Chat</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
     <style>
         :root { --wa-green: #075e54; --wa-light: #128c7e; --bg-color: #ece5dd; }
-        body, html { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; background: #f0f2f5; height: 100%; overflow: hidden; }
-        .screen { display: flex; flex-direction: column; height: 100vh; width: 100%; box-sizing: border-box; }
         
-        /* Header Look */
-        .wa-header { background: var(--wa-green); color: white; padding: 12px 15px; display: flex; align-items: center; gap: 12px; font-size: 18px; }
+        * { box-sizing: border-box; }
+        
+        body, html { 
+            margin: 0; 
+            padding: 0; 
+            font-family: 'Segoe UI', sans-serif; 
+            background: #f0f2f5; 
+            height: 100%; 
+            width: 100%;
+            overflow: hidden; 
+        }
+        
+        .screen { 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh; 
+            width: 100%; 
+        }
+        
+        /* Responsive Header */
+        .wa-header { 
+            background: var(--wa-green); 
+            color: white; 
+            padding: 10px 15px; 
+            display: flex; 
+            align-items: center; 
+            gap: 12px; 
+            font-size: 16px; 
+            flex-shrink: 0;
+            height: 60px;
+        }
         .wa-header .status-dot { width: 10px; height: 10px; background: #2ecc71; border-radius: 50%; display: inline-block; }
-        .wa-header .sub-text { font-size: 12px; color: #b3d4d0; display: block; }
+        .wa-header .sub-text { font-size: 11px; color: #b3d4d0; display: block; }
         
-        /* Chat Box Wallpaper */
-        .chat-container { flex: 1; background: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); background-color: var(--bg-color); overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+        /* Chat Container Layout */
+        .chat-container { 
+            flex: 1; 
+            background: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); 
+            background-color: var(--bg-color); 
+            overflow-y: auto; 
+            padding: 15px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 10px; 
+        }
         
-        /* Messages bubbles */
+        /* Message Bubbles */
         .message { max-width: 75%; padding: 8px 14px; border-radius: 10px; font-size: 15px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.08); word-break: break-word; }
         .message.sent { background: #d9fdd3; align-self: flex-end; border-top-right-radius: 0; }
         .message.received { background: white; align-self: flex-start; border-top-left-radius: 0; }
@@ -29,18 +65,50 @@
         .message img, .message video { max-width: 100%; border-radius: 8px; margin-top: 5px; display: block; }
         .message audio { width: 100%; margin-top: 5px; }
 
-        /* Input Area */
-        .input-area { background: #f0f2f5; padding: 10px 15px; display: flex; align-items: center; gap: 10px; border-top: 1px solid #e9edef; }
-        .input-box { flex: 1; background: white; border-radius: 25px; padding: 12px 18px; border: none; outline: none; font-size: 15px; }
-        .icon-btn { color: #54656f; font-size: 24px; cursor: pointer; }
-        .send-btn { background: var(--wa-light); color: white; width: 46px; height: 46px; border-radius: 50%; border: none; display: flex; justify-content: center; align-items: center; font-size: 18px; cursor: pointer; }
+        /* Fixed Input Area for Mobile Phones */
+        .input-area { 
+            background: #f0f2f5; 
+            padding: 10px; 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+            border-top: 1px solid #e9edef; 
+            flex-shrink: 0;
+            height: 60px;
+            width: 100%;
+        }
+        .input-box { 
+            flex: 1; 
+            background: white; 
+            border-radius: 25px; 
+            padding: 10px 15px; 
+            border: none; 
+            outline: none; 
+            font-size: 15px; 
+            height: 40px;
+        }
+        .icon-btn { color: #54656f; font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .send-btn { 
+            background: var(--wa-light); 
+            color: white; 
+            width: 40px; 
+            height: 40px; 
+            border-radius: 50%; 
+            border: none; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            font-size: 16px; 
+            cursor: pointer; 
+            flex-shrink: 0;
+        }
     </style>
 </head>
 <body>
 
     <div class="screen">
         <div class="wa-header">
-            <i class="fas fa-user-circle" style="font-size: 35px;"></i>
+            <i class="fas fa-user-circle" style="font-size: 32px;"></i>
             <div>
                 <span style="font-weight: 600;">Support Team</span>
                 <span class="sub-text"><span class="status-dot"></span> Active Online</span>
@@ -52,7 +120,7 @@
 
         <div class="input-area">
             <label for="file-input" class="icon-btn"><i class="fas fa-paperclip"></i></label>
-            <input type="file" id="file-input" class="hidden" style="display:none;" accept="image/*,video/*,audio/*">
+            <input type="file" id="file-input" style="display:none;" accept="image/*,video/*,audio/*">
             
             <input type="text" id="msg-input" class="input-box" placeholder="Type a message...">
             <button id="btn-send" class="send-btn"><i class="fas fa-paper-plane"></i></button>
@@ -70,7 +138,6 @@
             localStorage.setItem('user_chat_uid', myUserId);
         }
 
-        // Init Realtime Chat Connection
         function startChat() {
             loadMessages();
             supabase.channel('global:messages')
@@ -85,8 +152,16 @@
 
         async function loadMessages() {
             let { data: items } = await supabase.from('messages').select('*').order('created_at', { ascending: true });
+            const box = document.getElementById('chat-box');
+            box.innerHTML = '';
+            
+            // Default Greeting Message
+            const greet = document.createElement('div');
+            greet.classList.add('message', 'received');
+            greet.innerHTML = `<div>Welcome! How can we assist you today? Feel free to send text, pictures, or voice clips.</div><div class="time">Just now</div>`;
+            box.appendChild(greet);
+
             if (items) {
-                document.getElementById('chat-box').innerHTML = '';
                 items.forEach(m => {
                     if(m.sender === myUserId || m.receiver === myUserId) renderMsg(m);
                 });
