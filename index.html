@@ -42,7 +42,6 @@
         
         .message img, .message video { max-width: 100%; max-height: 250px; border-radius: 8px; margin-top: 5px; display: block; }
         .message audio { width: 100%; margin-top: 5px; }
-        .message a { color: #0275d8; text-decoration: underline; font-weight: bold; }
 
         .input-area { 
             position: fixed; bottom: 0; left: 0; right: 0;
@@ -97,37 +96,27 @@
         const SUPABASE_KEY = "sb_publishable_ZTqBnJInrVgfpegOJfS6KQ_wwzYSQf0";
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // Tracker Session LocalStorage
+        // Ek unique ID user ke browser mein save karne ke liye taake pata chale message kisne bheja
         let myUserId = localStorage.getItem('user_chat_uuid');
         if (!myUserId) {
             myUserId = 'user-' + Math.random().toString(36).substring(2, 15);
             localStorage.setItem('user_chat_uuid', myUserId);
         }
 
+        // Database se purane messages load karne ka function
         async function loadMessages() {
             const box = document.getElementById('chat-box');
             box.innerHTML = '';
-            
-            // Welcome Greeting Note
-            const greet = document.createElement('div');
-            greet.classList.add('message', 'received');
-            greet.innerHTML = `<div>Welcome! How can we assist you today? Feel free to drop a message.</div><div class="time">Just now</div>`;
-            box.appendChild(greet);
 
             try {
                 let { data: items, error } = await supabase.from('messages').select('*').order('inserted_at', { ascending: true });
                 if (items && !error) {
-                    items.forEach(m => {
-                        renderMsg(m);
-                    });
+                    items.forEach(m => renderMsg(m));
                 }
             } catch(e) { console.error(e); }
         }
 
-        function isLink(text) {
-            return text && (text.startsWith('http://') || text.startsWith('https://'));
-        }
-
+        // Message ko screen par dikhane ka function
         function renderMsg(msg) {
             const box = document.getElementById('chat-box');
             if(!box || !msg.id || document.getElementById(`m-${msg.id}`)) return;
@@ -135,27 +124,26 @@
             const d = document.createElement('div');
             d.id = `m-${msg.id}`;
             
-            // Flex routing for alternate structural data keys (msg_sender vs sender)
-            const senderId = msg.msg_sender || msg.sender;
-            const isSentByMe = (senderId === myUserId);
-            
+            // Agar sender ki ID meri ID se match karegi toh message right (green) par dikhega, warna left (white) par
+            const isSentByMe = (msg.sender === myUserId);
             d.classList.add('message', isSentByMe ? 'sent' : 'received');
 
             const textContent = msg.message_text || '';
+            const mediaUrl = msg.media_url || '';
             const msgType = msg.type || 'text';
             
-            if (msgType === 'image' || textContent.match(/\.(jpeg|jpg|gif|png)$/) != null) {
-                d.innerHTML = `<img src="${textContent}">`;
-            } else if (msgType === 'video' || textContent.match(/\.(mp4|webm)$/) != null) {
-                d.innerHTML = `<video src="${textContent}" controls></video>`;
-            } else if (msgType === 'audio' || textContent.match(/\.(mp3|ogg|wav)$/) != null) {
-                d.innerHTML = `<audio src="${textContent}" controls></audio>`;
-            } else if (isLink(textContent)) {
-                d.innerHTML = `<div><a href="${textContent}" target="_blank">${textContent}</a></div>`;
+            // Check image, video, audio or normal text
+            if (msgType === 'image' && mediaUrl) {
+                d.innerHTML = `<img src="${mediaUrl}">`;
+            } else if (msgType === 'video' && mediaUrl) {
+                d.innerHTML = `<video src="${mediaUrl}" controls></video>`;
+            } else if (msgType === 'audio' && mediaUrl) {
+                d.innerHTML = `<audio src="${mediaUrl}" controls></audio>`;
             } else {
                 d.innerHTML = `<div>${textContent}</div>`;
             }
 
+            // Timestamp formatting
             const t = document.createElement('div');
             t.classList.add('time');
             t.innerText = new Date(msg.inserted_at || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
@@ -164,42 +152,27 @@
             box.scrollTop = box.scrollHeight;
         }
 
+        // Message database mein send karne ka function
         async function sendMessage() {
             const inp = document.getElementById('msg-input');
             const val = inp.value.trim();
             if(!val) return;
             inp.value = '';
 
-            // Dynamic payload supporting both structural schemas simultaneously
-            const payload = { 
-                message_text: val,
-                msg_sender: myUserId,
-                sender: myUserId,
-                user_id: myUserId,
-                type: 'text'
-            };
-
-            // Instant UI render for local feedback
-            const tempId = 'temp-' + Date.now();
-            renderMsg({ id: tempId, message_text: val, msg_sender: myUserId, type: 'text', inserted_at: new Date().toISOString() });
-
             try {
-                const { data, error } = await supabase.from('messages').insert([payload]).select();
+                const { data, error } = await supabase.from('messages').insert([{ 
+                    message_text: val,
+                    sender: myUserId,
+                    type: 'text'
+                }]).select();
+                
                 if (error) {
-                    console.error("Supabase Error Details:", error);
-                    alert("Error logic: " + error.message);
-                } else if (data && data[0]) {
-                    // Replace temp local element if needed
-                    const tempElem = document.getElementById(`m-${tempId}`);
-                    if(tempElem) tempElem.remove();
-                    renderMsg(data[0]);
+                    alert("Supabase Error: " + error.message);
                 }
-            } catch(e) { 
-                console.error("Failed pipeline insert: ", e); 
-            }
+            } catch(e) { console.error(e); }
         }
 
-        // Upload handler
+        // Media files upload karne ka handling
         document.getElementById('media-upload').addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file) return;
@@ -213,17 +186,13 @@
                 let { error: uploadErr } = await supabase.storage.from('chat-media').upload(uniquePath, file);
                 if (!uploadErr) {
                     const { data } = supabase.storage.from('chat-media').getPublicUrl(uniquePath);
-                    
                     await supabase.from('messages').insert([{ 
-                        message_text: data.publicUrl,
-                        msg_sender: myUserId,
+                        media_url: data.publicUrl,
                         sender: myUserId,
-                        user_id: myUserId,
                         type: fileTypeMode
                     }]);
-                    loadMessages();
                 } else {
-                    alert("Bucket Error: Check if 'chat-media' bucket exists and is set to Public.");
+                    alert("Storage Error: Please make sure a public storage bucket named 'chat-media' is created in Supabase.");
                 }
             } catch(err) { console.error(err); }
         });
@@ -233,6 +202,7 @@
             if(e.key === 'Enter') sendMessage();
         });
 
+        // Realtime data sync listener
         window.addEventListener('DOMContentLoaded', () => {
             loadMessages();
             try {
