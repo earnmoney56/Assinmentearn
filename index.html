@@ -5,35 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Live Support Chat</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        :root { --wa-green: #075e54; --wa-light: #128c7e; --bg-color: #ece5dd; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body, html { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; height: 100%; width: 100%; overflow: hidden; }
-        .wa-header { position: fixed; top: 0; left: 0; right: 0; background: var(--wa-green); color: white; padding: 10px 15px; display: flex; align-items: center; gap: 12px; height: 60px; z-index: 1000; }
-        .chat-container { position: absolute; top: 60px; bottom: 75px; left: 0; right: 0; background: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png') var(--bg-color); overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
-        .message { max-width: 75%; padding: 8px 14px; border-radius: 10px; font-size: 15px; background: white; align-self: flex-start; }
-        .message.sent { background: #d9fdd3; align-self: flex-end; }
-        .input-area { position: fixed; bottom: 0; left: 0; right: 0; background: #f0f2f5; padding: 10px 12px 22px 12px; display: flex; align-items: center; gap: 8px; height: 75px; z-index: 1000; }
-        .input-wrapper { flex: 1; background: white; border-radius: 25px; display: flex; align-items: center; padding: 0 12px; border: 1px solid #ccc; height: 44px; }
-        .input-box { flex: 1; background: transparent; border: none; outline: none; font-size: 16px; height: 100%; }
-        .send-btn { background: var(--wa-light); color: white; width: 44px; height: 44px; border-radius: 50%; border: none; display: flex; justify-content: center; align-items: center; font-size: 18px; cursor: pointer; }
+        body, html { font-family: Arial, sans-serif; background: #ece5dd; height: 100%; width: 100%; overflow: hidden; }
+        
+        .header { background: #075e54; color: white; padding: 15px; font-weight: bold; font-size: 18px; text-align: center; position: fixed; top: 0; left: 0; right: 0; height: 55px; z-index: 10; }
+        
+        .chat-box { position: absolute; top: 55px; bottom: 65px; left: 0; right: 0; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+        
+        .msg { max-width: 75%; padding: 10px 14px; border-radius: 8px; font-size: 16px; word-break: break-word; box-shadow: 0 1px 1px rgba(0,0,0,0.1); }
+        .msg.sent { background: #d9fdd3; align-self: flex-end; }
+        .msg.received { background: white; align-self: flex-start; }
+        
+        .input-area { position: fixed; bottom: 0; left: 0; right: 0; background: #f0f2f5; padding: 10px; display: flex; gap: 8px; height: 65px; border-top: 1px solid #ddd; z-index: 10; }
+        .input-box { flex: 1; padding: 10px 15px; border-radius: 20px; border: 1px solid #ccc; font-size: 16px; outline: none; background: white; }
+        .send-btn { background: #128c7e; color: white; border: none; padding: 0 20px; border-radius: 20px; font-size: 16px; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <div class="wa-header">
-        <i class="fas fa-user-circle" style="font-size: 32px;"></i>
-        <div><span style="font-weight: 600;">Support Team (Debug Mode)</span></div>
-    </div>
-    
-    <div class="chat-container" id="chat-box"></div>
+    <div class="header">Support Team Chat</div>
+    <div class="chat-box" id="chat-box"></div>
 
     <div class="input-area">
-        <div class="input-wrapper">
-            <input type="text" id="msg-input" class="input-box" placeholder="Type a message...">
-        </div>
-        <button id="btn-send" class="send-btn"><i class="fas fa-paper-plane"></i></button>
+        <input type="text" id="msg-input" class="input-box" placeholder="Type a message...">
+        <button id="btn-send" class="send-btn">Send</button>
     </div>
 
     <script>
@@ -41,60 +37,63 @@
         const SUPABASE_KEY = "sb_publishable_ZTqBnJInrVgfpegOJfS6KQ_wwzYSQf0";
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let myUserId = localStorage.getItem('user_chat_uuid') || 'user-' + Math.random().toString(36).substring(2, 15);
-        localStorage.setItem('user_chat_uuid', myUserId);
-
-        async function loadMessages() {
-            const box = document.getElementById('chat-box');
-            box.innerHTML = '<div>Loading historical data...</div>';
-
-            try {
-                let { data: items, error } = await supabase.from('messages').select('*');
-                box.innerHTML = '';
-                if (error) {
-                    alert("Fetch Error: " + error.message);
-                } else if (items) {
-                    items.forEach(m => {
-                        const d = document.createElement('div');
-                        d.classList.add('message');
-                        if(m.sender === myUserId) d.classList.add('sent');
-                        d.innerText = m.message_text || '';
-                        box.appendChild(d);
-                    });
-                }
-            } catch(e) { alert("Catch Load Error: " + e.message); }
+        // Client Identity Session
+        let myUserId = localStorage.getItem('user_chat_uuid');
+        if (!myUserId) {
+            myUserId = 'user-' + Math.random().toString(36).substring(2, 15);
+            localStorage.setItem('user_chat_uuid', myUserId);
         }
 
-        async function sendMessage() {
+        // Load Messages from Supabase
+        async function fetchMessages() {
+            const box = document.getElementById('chat-box');
+            try {
+                let { data: records, error } = await supabase.from('messages').select('*').order('inserted_at', { ascending: true });
+                if (!error && records) {
+                    box.innerHTML = '';
+                    records.forEach(m => {
+                        if (m.message_text) {
+                            const d = document.createElement('div');
+                            d.classList.add('msg');
+                            d.classList.add(m.sender === myUserId ? 'sent' : 'received');
+                            d.innerText = m.message_text;
+                            box.appendChild(d);
+                        }
+                    });
+                    box.scrollTop = box.scrollHeight;
+                }
+            } catch (err) { console.error(err); }
+        }
+
+        // Send Message to Supabase
+        async function pushMessage() {
             const inp = document.getElementById('msg-input');
-            const val = inp.value.trim();
-            if(!val) return;
+            const txt = inp.value.trim();
+            if (!txt) return;
             inp.value = '';
 
             try {
-                // Testing direct payload insert mapping
-                const { data, error } = await supabase.from('messages').insert([
-                    { 
-                        message_text: val, 
-                        sender: myUserId, 
-                        type: 'text' 
-                    }
-                ]).select();
-                
+                const { error } = await supabase.from('messages').insert([
+                    { message_text: txt, sender: myUserId, type: 'text' }
+                ]);
                 if (error) {
-                    alert("Supabase Insertion Failed: " + error.message + "\nCode: " + error.code);
-                } else {
-                    alert("Success! Data inserted smoothly.");
-                    loadMessages();
+                    alert("Supabase Error: " + error.message);
                 }
-            } catch(e) { 
-                alert("App Runtime Exception: " + e.message);
-            }
+            } catch (e) { alert("App Error: " + e.message); }
         }
 
-        document.getElementById('btn-send').addEventListener('click', sendMessage);
-        document.getElementById('msg-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') sendMessage(); });
-        window.addEventListener('DOMContentLoaded', loadMessages);
+        document.getElementById('btn-send').addEventListener('click', pushMessage);
+        document.getElementById('msg-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') pushMessage(); });
+
+        // Auto Refresh & Sync
+        window.addEventListener('DOMContentLoaded', () => {
+            fetchMessages();
+            // Listen for new entries live
+            supabase.channel('public:messages')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => {
+                fetchMessages();
+            }).subscribe();
+        });
     </script>
 </body>
 </html>
