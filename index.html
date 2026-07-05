@@ -97,11 +97,11 @@
         const SUPABASE_KEY = "sb_publishable_ZTqBnJInrVgfpegOJfS6KQ_wwzYSQf0";
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // Client/Admin Identifier Check
-        let myUserUUID = localStorage.getItem('user_chat_uuid');
-        if (!myUserUUID) {
-            myUserUUID = 'user-' + Math.random().toString(36).substring(2, 15);
-            localStorage.setItem('user_chat_uuid', myUserUUID);
+        // Tracker Session LocalStorage
+        let myUserId = localStorage.getItem('user_chat_uuid');
+        if (!myUserId) {
+            myUserId = 'user-' + Math.random().toString(36).substring(2, 15);
+            localStorage.setItem('user_chat_uuid', myUserId);
         }
 
         async function loadMessages() {
@@ -111,11 +111,10 @@
             // Welcome Greeting Note
             const greet = document.createElement('div');
             greet.classList.add('message', 'received');
-            greet.innerHTML = `<div>Welcome! How can we assist you today? Feel free to drop a message, photo, link, or voice note here.</div><div class="time">Just now</div>`;
+            greet.innerHTML = `<div>Welcome! How can we assist you today? Feel free to drop a message.</div><div class="time">Just now</div>`;
             box.appendChild(greet);
 
             try {
-                // Fetch entries matching Seyam's real column schema structures
                 let { data: items, error } = await supabase.from('messages').select('*').order('inserted_at', { ascending: true });
                 if (items && !error) {
                     items.forEach(m => {
@@ -136,23 +135,23 @@
             const d = document.createElement('div');
             d.id = `m-${msg.id}`;
             
-            // Detect if admin sent it or default user client
-            const isFromAdmin = (msg.email === 'admin' || msg.sender === 'admin');
-            d.classList.add('message', isFromAdmin ? 'received' : 'sent');
-
-            // Routing the core content data type safely
-            const textContent = msg.message_text || '';
+            // Flex routing for alternate structural data keys (msg_sender vs sender)
+            const senderId = msg.msg_sender || msg.sender;
+            const isSentByMe = (senderId === myUserId);
             
-            if (isLink(textContent)) {
-                if (textContent.match(/\.(jpeg|jpg|gif|png)$/) != null) {
-                    d.innerHTML = `<img src="${textContent}">`;
-                } else if (textContent.match(/\.(mp4|webm)$/) != null) {
-                    d.innerHTML = `<video src="${textContent}" controls></video>`;
-                } else if (textContent.match(/\.(mp3|ogg|wav)$/) != null) {
-                    d.innerHTML = `<audio src="${textContent}" controls></audio>`;
-                } else {
-                    d.innerHTML = `<div><a href="${textContent}" target="_blank">${textContent}</a></div>`;
-                }
+            d.classList.add('message', isSentByMe ? 'sent' : 'received');
+
+            const textContent = msg.message_text || '';
+            const msgType = msg.type || 'text';
+            
+            if (msgType === 'image' || textContent.match(/\.(jpeg|jpg|gif|png)$/) != null) {
+                d.innerHTML = `<img src="${textContent}">`;
+            } else if (msgType === 'video' || textContent.match(/\.(mp4|webm)$/) != null) {
+                d.innerHTML = `<video src="${textContent}" controls></video>`;
+            } else if (msgType === 'audio' || textContent.match(/\.(mp3|ogg|wav)$/) != null) {
+                d.innerHTML = `<audio src="${textContent}" controls></audio>`;
+            } else if (isLink(textContent)) {
+                d.innerHTML = `<div><a href="${textContent}" target="_blank">${textContent}</a></div>`;
             } else {
                 d.innerHTML = `<div>${textContent}</div>`;
             }
@@ -171,42 +170,60 @@
             if(!val) return;
             inp.value = '';
 
-            // Post targeting exact database structural match scheme layout
+            // Dynamic payload supporting both structural schemas simultaneously
+            const payload = { 
+                message_text: val,
+                msg_sender: myUserId,
+                sender: myUserId,
+                user_id: myUserId,
+                type: 'text'
+            };
+
+            // Instant UI render for local feedback
+            const tempId = 'temp-' + Date.now();
+            renderMsg({ id: tempId, message_text: val, msg_sender: myUserId, type: 'text', inserted_at: new Date().toISOString() });
+
             try {
-                const { data, error } = await supabase.from('messages').insert([{ 
-                    message_text: val,
-                    email: 'client',
-                    sender: myUserUUID,
-                    user_id: myUserUUID
-                }]).select();
-                
-                if (data && data[0]) {
+                const { data, error } = await supabase.from('messages').insert([payload]).select();
+                if (error) {
+                    console.error("Supabase Error Details:", error);
+                    alert("Error logic: " + error.message);
+                } else if (data && data[0]) {
+                    // Replace temp local element if needed
+                    const tempElem = document.getElementById(`m-${tempId}`);
+                    if(tempElem) tempElem.remove();
                     renderMsg(data[0]);
                 }
-            } catch(e) { console.error("Database Save Interrupted: ", e); }
+            } catch(e) { 
+                console.error("Failed pipeline insert: ", e); 
+            }
         }
 
-        // Upload to Storage Bucket Integration 
+        // Upload handler
         document.getElementById('media-upload').addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file) return;
 
+            let fileTypeMode = 'image';
+            if (file.type.startsWith('video/')) fileTypeMode = 'video';
+            if (file.type.startsWith('audio/')) fileTypeMode = 'audio';
+
             const uniquePath = `uploads/${Date.now()}_${file.name}`;
             try {
-                // Uploads content straight to active public 'chat-media' structural system bucket
                 let { error: uploadErr } = await supabase.storage.from('chat-media').upload(uniquePath, file);
                 if (!uploadErr) {
                     const { data } = supabase.storage.from('chat-media').getPublicUrl(uniquePath);
                     
                     await supabase.from('messages').insert([{ 
                         message_text: data.publicUrl,
-                        email: 'client',
-                        sender: myUserUUID,
-                        user_id: myUserUUID
+                        msg_sender: myUserId,
+                        sender: myUserId,
+                        user_id: myUserId,
+                        type: fileTypeMode
                     }]);
                     loadMessages();
                 } else {
-                    alert("Please ensure your Supabase Storage dashboard has a public bucket exactly named 'chat-media'.");
+                    alert("Bucket Error: Check if 'chat-media' bucket exists and is set to Public.");
                 }
             } catch(err) { console.error(err); }
         });
