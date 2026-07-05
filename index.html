@@ -77,7 +77,6 @@
             const box = document.getElementById('chat-box');
             if(!box || !msg.message_text) return;
             
-            // If temporary message with same temporary ID exists, don't re-render
             if (msg.id && document.getElementById(`m-${msg.id}`)) return;
             
             const d = document.createElement('div');
@@ -125,9 +124,10 @@
         async function uploadToSupabase(file, ext, folder) {
             const fileName = `${folder}/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
             try {
-                const { data, error } = await dbClient.storage.from('chat-media').upload(fileName, file);
+                // Bucket name updated to match your exact dashboard 'chat media' space format
+                const { data, error } = await dbClient.storage.from('chat media').upload(fileName, file);
                 if (error) { console.error("Upload error details:", error); return null; }
-                return dbClient.storage.from('chat-media').getPublicUrl(fileName).data.publicUrl;
+                return dbClient.storage.from('chat media').getPublicUrl(fileName).data.publicUrl;
             } catch(err) { console.error(err); return null; }
         }
 
@@ -155,7 +155,7 @@
                 await dbClient.from('messages').insert([{ message_text: `Sent a ${type}`, sender: myUserId, receiver: 'admin', room_id: currentRoomId, type: type, media_url: publicUrl }]);
                 loadMessages();
             } else {
-                alert("Upload failed. Please check connection.");
+                alert("Upload failed. Please check bucket name and RLS policy setup.");
             }
         });
 
