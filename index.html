@@ -9,54 +9,92 @@
 
     <style>
         :root { --wa-green: #075e54; --wa-light: #128c7e; --bg-color: #ece5dd; }
-        * { box-sizing: border-box; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         
         body, html { 
-            margin: 0; padding: 0; 
             font-family: 'Segoe UI', sans-serif; 
             background: #f0f2f5; 
             height: 100%; width: 100%;
             overflow: hidden; 
         }
         
-        .screen { display: flex; flex-direction: column; height: 100vh; width: 100%; }
+        .screen { 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh; 
+            width: 100%; 
+        }
         
+        /* Fixed Header */
         .wa-header { 
-            background: var(--wa-green); color: white; 
-            padding: 10px 15px; display: flex; align-items: center; gap: 12px; 
-            font-size: 16px; flex-shrink: 0; height: 60px;
+            background: var(--wa-green); 
+            color: white; 
+            padding: 10px 15px; 
+            display: flex; 
+            align-items: center; 
+            gap: 12px; 
+            font-size: 16px; 
+            flex-shrink: 0;
+            height: 60px;
+            z-index: 10;
         }
         .wa-header .status-dot { width: 10px; height: 10px; background: #2ecc71; border-radius: 50%; display: inline-block; }
         .wa-header .sub-text { font-size: 11px; color: #b3d4d0; display: block; }
         
+        /* Main Scrolling Chat Box */
         .chat-container { 
             flex: 1; 
             background: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); 
             background-color: var(--bg-color); 
-            overflow-y: auto; padding: 15px; 
-            display: flex; flex-direction: column; gap: 10px; 
+            overflow-y: auto; 
+            padding: 15px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 10px; 
         }
         
+        /* Message Layouts */
         .message { max-width: 75%; padding: 8px 14px; border-radius: 10px; font-size: 15px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.08); word-break: break-word; }
         .message.sent { background: #d9fdd3; align-self: flex-end; border-top-right-radius: 0; }
         .message.received { background: white; align-self: flex-start; border-top-left-radius: 0; }
         .message .time { font-size: 10px; color: #667781; text-align: right; margin-top: 4px; }
         
+        /* Bottom Input Bar - Forced to stay at bottom */
         .input-area { 
-            background: #f0f2f5; padding: 10px; 
-            display: flex; align-items: center; gap: 10px; 
-            border-top: 1px solid #e9edef; flex-shrink: 0; height: 60px; width: 100%;
+            background: #f0f2f5; 
+            padding: 10px; 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+            border-top: 1px solid #e9edef; 
+            flex-shrink: 0; 
+            height: 60px; 
+            width: 100%;
+            z-index: 10;
         }
         .input-box { 
-            flex: 1; background: white; border-radius: 25px; 
-            padding: 10px 15px; border: none; outline: none; 
-            font-size: 15px; height: 40px;
+            flex: 1; 
+            background: white; 
+            border-radius: 25px; 
+            padding: 10px 15px; 
+            border: none; 
+            outline: none; 
+            font-size: 15px; 
+            height: 40px;
         }
         .send-btn { 
-            background: var(--wa-light); color: white; 
-            width: 40px; height: 40px; border-radius: 50%; 
-            border: none; display: flex; justify-content: center; 
-            align-items: center; font-size: 16px; cursor: pointer; flex-shrink: 0;
+            background: var(--wa-light); 
+            color: white; 
+            width: 40px; 
+            height: 40px; 
+            border-radius: 50%; 
+            border: none; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            font-size: 16px; 
+            cursor: pointer; 
+            flex-shrink: 0;
         }
     </style>
 </head>
@@ -72,7 +110,11 @@
         </div>
         
         <div class="chat-container" id="chat-box">
+            <div class="message received">
+                Welcome! How can we assist you today? Feel free to drop a message here.
+                <div class="time">Just now</div>
             </div>
+        </div>
 
         <div class="input-area">
             <input type="text" id="msg-input" class="input-box" placeholder="Type a message...">
@@ -81,58 +123,37 @@
     </div>
 
     <script>
+        // Supabase Setup
         const SUPABASE_URL = "https://nkwllaxgrmmlrqacbaro.supabase.co";
         const SUPABASE_KEY = "sb_publishable_ZTqBnJInrVgfpegOJfS6KQ_wwzYSQf0";
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // Generate dynamic anonymous user ID for tracking
+        // Safe Session Tracking ID
         let myUserUUID = localStorage.getItem('user_chat_uuid');
         if (!myUserUUID) {
-            // Generates a mock compliant UUID format
-            myUserUUID = '11111111-2222-3333-4444-' + Math.random().toString(10).substring(2, 14);
+            myUserUUID = 'user-' + Math.random().toString(36).substring(2, 15);
             localStorage.setItem('user_chat_uuid', myUserUUID);
         }
 
-        function startChat() {
-            loadMessages();
-            
-            // Realtime update listener
-            supabase.channel('global:messages')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-                if(payload.new.user_id === myUserUUID || payload.new.email === 'admin') {
-                    renderMsg(payload.new);
-                }
-            }).subscribe();
-        }
-
         async function loadMessages() {
-            let { data: items } = await supabase.from('messages').select('*').order('created_at', { ascending: true });
-            const box = document.getElementById('chat-box');
-            box.innerHTML = '';
-            
-            // Auto Welcome Note
-            const greet = document.createElement('div');
-            greet.classList.add('message', 'received');
-            greet.innerHTML = `<div>Welcome! How can we assist you today? Feel free to send us a message here.</div><div class="time">Just now</div>`;
-            box.appendChild(greet);
-
-            if (items) {
-                items.forEach(m => {
-                    if(m.user_id === myUserUUID || m.email === 'admin') {
-                        renderMsg(m);
-                    }
-                });
-            }
+            try {
+                let { data: items, error } = await supabase.from('messages').select('*').order('created_at', { ascending: true });
+                if (items && !error) {
+                    items.forEach(m => {
+                        if(m.user_id === myUserUUID || m.email === 'admin') {
+                            renderMsg(m);
+                        }
+                    });
+                }
+            } catch(e) { console.log("Fetch Error Safely Handled", e); }
         }
 
         function renderMsg(msg) {
             const box = document.getElementById('chat-box');
-            if(document.getElementById(`m-${msg.id}`)) return;
+            if(!box || document.getElementById(`m-${msg.id}`)) return;
 
             const d = document.createElement('div');
             d.id = `m-${msg.id}`;
-            
-            // Check if sent by admin or this user
             d.classList.add('message', msg.email === 'admin' ? 'received' : 'sent');
             d.innerHTML = `<div>${msg.message}</div>`;
 
@@ -144,23 +165,41 @@
             box.scrollTop = box.scrollHeight;
         }
 
-        document.getElementById('btn-send').addEventListener('click', async () => {
+        async function sendMessage() {
             const inp = document.getElementById('msg-input');
             const val = inp.value.trim();
             if(!val) return;
             inp.value = '';
 
-            // Matching your exact table layout column structure from database
-            await supabase.from('messages').insert([
-                { 
-                    user_id: myUserUUID, 
-                    email: 'client', 
-                    message: val 
-                }
-            ]);
+            // Add straight to UI first for lightning-fast response look
+            const tempId = Date.now();
+            renderMsg({ id: tempId, message: val, email: 'client', created_at: new Date().toISOString() });
+
+            try {
+                await supabase.from('messages').insert([{ user_id: myUserUUID, email: 'client', message: val }]);
+            } catch(e) { console.log(e); }
+        }
+
+        // Action Listeners
+        document.getElementById('btn-send').addEventListener('click', sendMessage);
+        document.getElementById('msg-input').addEventListener('keypress', (e) => {
+            if(e.key === 'Enter') sendMessage();
         });
 
-        window.onload = startChat;
+        // Initialize safely after layout loads
+        window.addEventListener('DOMContentLoaded', () => {
+            loadMessages();
+            
+            // Realtime Stream
+            try {
+                supabase.channel('global:messages')
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+                    if(payload.new.user_id === myUserUUID || payload.new.email === 'admin') {
+                        renderMsg(payload.new);
+                    }
+                }).subscribe();
+            } catch(e) { console.log(e); }
+        });
     </script>
 </body>
 </html>
