@@ -9,98 +9,54 @@
 
     <style>
         :root { --wa-green: #075e54; --wa-light: #128c7e; --bg-color: #ece5dd; }
-        
         * { box-sizing: border-box; }
         
         body, html { 
-            margin: 0; 
-            padding: 0; 
+            margin: 0; padding: 0; 
             font-family: 'Segoe UI', sans-serif; 
             background: #f0f2f5; 
-            height: 100%; 
-            width: 100%;
+            height: 100%; width: 100%;
             overflow: hidden; 
         }
         
-        .screen { 
-            display: flex; 
-            flex-direction: column; 
-            height: 100vh; 
-            width: 100%; 
-        }
+        .screen { display: flex; flex-direction: column; height: 100vh; width: 100%; }
         
-        /* Responsive Header */
         .wa-header { 
-            background: var(--wa-green); 
-            color: white; 
-            padding: 10px 15px; 
-            display: flex; 
-            align-items: center; 
-            gap: 12px; 
-            font-size: 16px; 
-            flex-shrink: 0;
-            height: 60px;
+            background: var(--wa-green); color: white; 
+            padding: 10px 15px; display: flex; align-items: center; gap: 12px; 
+            font-size: 16px; flex-shrink: 0; height: 60px;
         }
         .wa-header .status-dot { width: 10px; height: 10px; background: #2ecc71; border-radius: 50%; display: inline-block; }
         .wa-header .sub-text { font-size: 11px; color: #b3d4d0; display: block; }
         
-        /* Chat Container Layout */
         .chat-container { 
             flex: 1; 
             background: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); 
             background-color: var(--bg-color); 
-            overflow-y: auto; 
-            padding: 15px; 
-            display: flex; 
-            flex-direction: column; 
-            gap: 10px; 
+            overflow-y: auto; padding: 15px; 
+            display: flex; flex-direction: column; gap: 10px; 
         }
         
-        /* Message Bubbles */
         .message { max-width: 75%; padding: 8px 14px; border-radius: 10px; font-size: 15px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.08); word-break: break-word; }
         .message.sent { background: #d9fdd3; align-self: flex-end; border-top-right-radius: 0; }
         .message.received { background: white; align-self: flex-start; border-top-left-radius: 0; }
         .message .time { font-size: 10px; color: #667781; text-align: right; margin-top: 4px; }
         
-        .message img, .message video { max-width: 100%; border-radius: 8px; margin-top: 5px; display: block; }
-        .message audio { width: 100%; margin-top: 5px; }
-
-        /* Fixed Input Area for Mobile Phones */
         .input-area { 
-            background: #f0f2f5; 
-            padding: 10px; 
-            display: flex; 
-            align-items: center; 
-            gap: 10px; 
-            border-top: 1px solid #e9edef; 
-            flex-shrink: 0;
-            height: 60px;
-            width: 100%;
+            background: #f0f2f5; padding: 10px; 
+            display: flex; align-items: center; gap: 10px; 
+            border-top: 1px solid #e9edef; flex-shrink: 0; height: 60px; width: 100%;
         }
         .input-box { 
-            flex: 1; 
-            background: white; 
-            border-radius: 25px; 
-            padding: 10px 15px; 
-            border: none; 
-            outline: none; 
-            font-size: 15px; 
-            height: 40px;
+            flex: 1; background: white; border-radius: 25px; 
+            padding: 10px 15px; border: none; outline: none; 
+            font-size: 15px; height: 40px;
         }
-        .icon-btn { color: #54656f; font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .send-btn { 
-            background: var(--wa-light); 
-            color: white; 
-            width: 40px; 
-            height: 40px; 
-            border-radius: 50%; 
-            border: none; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            font-size: 16px; 
-            cursor: pointer; 
-            flex-shrink: 0;
+            background: var(--wa-light); color: white; 
+            width: 40px; height: 40px; border-radius: 50%; 
+            border: none; display: flex; justify-content: center; 
+            align-items: center; font-size: 16px; cursor: pointer; flex-shrink: 0;
         }
     </style>
 </head>
@@ -119,9 +75,6 @@
             </div>
 
         <div class="input-area">
-            <label for="file-input" class="icon-btn"><i class="fas fa-paperclip"></i></label>
-            <input type="file" id="file-input" style="display:none;" accept="image/*,video/*,audio/*">
-            
             <input type="text" id="msg-input" class="input-box" placeholder="Type a message...">
             <button id="btn-send" class="send-btn"><i class="fas fa-paper-plane"></i></button>
         </div>
@@ -132,22 +85,24 @@
         const SUPABASE_KEY = "sb_publishable_ZTqBnJInrVgfpegOJfS6KQ_wwzYSQf0";
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let myUserId = localStorage.getItem('user_chat_uid');
-        if (!myUserId) {
-            myUserId = 'client_' + Math.random().toString(36).substring(2, 11);
-            localStorage.setItem('user_chat_uid', myUserId);
+        // Generate dynamic anonymous user ID for tracking
+        let myUserUUID = localStorage.getItem('user_chat_uuid');
+        if (!myUserUUID) {
+            // Generates a mock compliant UUID format
+            myUserUUID = '11111111-2222-3333-4444-' + Math.random().toString(10).substring(2, 14);
+            localStorage.setItem('user_chat_uuid', myUserUUID);
         }
 
         function startChat() {
             loadMessages();
+            
+            // Realtime update listener
             supabase.channel('global:messages')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-                if(payload.new.sender === myUserId || payload.new.receiver === myUserId || payload.new.sender === 'admin') {
+                if(payload.new.user_id === myUserUUID || payload.new.email === 'admin') {
                     renderMsg(payload.new);
                 }
             }).subscribe();
-            
-            updateStatus(true);
         }
 
         async function loadMessages() {
@@ -155,15 +110,17 @@
             const box = document.getElementById('chat-box');
             box.innerHTML = '';
             
-            // Default Greeting Message
+            // Auto Welcome Note
             const greet = document.createElement('div');
             greet.classList.add('message', 'received');
-            greet.innerHTML = `<div>Welcome! How can we assist you today? Feel free to send text, pictures, or voice clips.</div><div class="time">Just now</div>`;
+            greet.innerHTML = `<div>Welcome! How can we assist you today? Feel free to send us a message here.</div><div class="time">Just now</div>`;
             box.appendChild(greet);
 
             if (items) {
                 items.forEach(m => {
-                    if(m.sender === myUserId || m.receiver === myUserId) renderMsg(m);
+                    if(m.user_id === myUserUUID || m.email === 'admin') {
+                        renderMsg(m);
+                    }
                 });
             }
         }
@@ -174,12 +131,10 @@
 
             const d = document.createElement('div');
             d.id = `m-${msg.id}`;
-            d.classList.add('message', msg.sender === myUserId ? 'sent' : 'received');
-
-            if(msg.type === 'text') d.innerHTML = `<div>${msg.message}</div>`;
-            else if(msg.type === 'image') d.innerHTML = `<img src="${msg.file_url}"><div style='margin-top:4px;'>${msg.message || ''}</div>`;
-            else if(msg.type === 'video') d.innerHTML = `<video src="${msg.file_url}" controls></video>`;
-            else if(msg.type === 'audio') d.innerHTML = `<audio src="${msg.file_url}" controls></audio>`;
+            
+            // Check if sent by admin or this user
+            d.classList.add('message', msg.email === 'admin' ? 'received' : 'sent');
+            d.innerHTML = `<div>${msg.message}</div>`;
 
             const t = document.createElement('div');
             t.classList.add('time');
@@ -194,26 +149,17 @@
             const val = inp.value.trim();
             if(!val) return;
             inp.value = '';
-            await supabase.from('messages').insert([{ sender: myUserId, receiver: 'admin', message: val, type: 'text' }]);
+
+            // Matching your exact table layout column structure from database
+            await supabase.from('messages').insert([
+                { 
+                    user_id: myUserUUID, 
+                    email: 'client', 
+                    message: val 
+                }
+            ]);
         });
 
-        document.getElementById('file-input').addEventListener('change', async (e) => {
-            const f = e.target.files[0];
-            if (!f) return;
-            let mode = f.type.startsWith('image/') ? 'image' : f.type.startsWith('video/') ? 'video' : 'audio';
-            const path = `${myUserId}/${Date.now()}_${f.name}`;
-            
-            let { error } = await supabase.storage.from('chat-media').upload(path, f);
-            if (!error) {
-                const { data } = supabase.storage.from('chat-media').getPublicUrl(path);
-                await supabase.from('messages').insert([{ sender: myUserId, receiver: 'admin', file_url: data.publicUrl, type: mode, message: '' }]);
-            }
-        });
-
-        async function updateStatus(isOnline) {
-            await supabase.from('profiles').upsert({ id_user: myUserId, is_online: isOnline, last_seen: new Date().toISOString() }, { onConflict: 'id_user' });
-        }
-        window.addEventListener('beforeunload', () => updateStatus(false));
         window.onload = startChat;
     </script>
 </body>
