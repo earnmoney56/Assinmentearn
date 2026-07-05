@@ -209,6 +209,7 @@
         }
         window.addEventListener('beforeunload', () => syncOnlineStatus(false));
         // Register Service Worker for PWA Add to Home Screen support
+   // Register Service Worker for PWA Add to Home Screen support
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')
@@ -216,7 +217,7 @@ if ('serviceWorker' in navigator) {
         .catch(err => console.log('Service Worker Failed', err));
     });
 }
-
-    </script>
+</script>
 </body>
 </html>
+
