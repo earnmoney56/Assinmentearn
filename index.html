@@ -35,18 +35,15 @@
             display: flex; flex-direction: column; gap: 10px; 
         }
         
-        /* Message Layout updates */
         .message { max-width: 75%; padding: 8px 14px; border-radius: 10px; font-size: 15px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.08); word-break: break-word; }
         .message.sent { background: #d9fdd3; align-self: flex-end; border-top-right-radius: 0; }
         .message.received { background: white; align-self: flex-start; border-top-left-radius: 0; }
         .message .time { font-size: 10px; color: #667781; text-align: right; margin-top: 4px; }
         
-        /* Media items rendering styles */
         .message img, .message video { max-width: 100%; max-height: 250px; border-radius: 8px; margin-top: 5px; display: block; }
         .message audio { width: 100%; margin-top: 5px; }
         .message a { color: #0275d8; text-decoration: underline; font-weight: bold; }
 
-        /* Bottom Toolbar Area with Attachment Support */
         .input-area { 
             position: fixed; bottom: 0; left: 0; right: 0;
             background: #f0f2f5; 
@@ -74,33 +71,33 @@
 </head>
 <body>
 
-    <div class="wa-header">
-        <i class="fas fa-user-circle" style="font-size: 32px;"></i>
-        <div>
-            <span style="font-weight: 600;">Support Team</span>
-            <span class="sub-text"><span class="status-dot"></span> Active Online</span>
+    <div class="screen">
+        <div class="wa-header">
+            <i class="fas fa-user-circle" style="font-size: 32px;"></i>
+            <div>
+                <span style="font-weight: 600;">Support Team</span>
+                <span class="sub-text"><span class="status-dot"></span> Active Online</span>
+            </div>
         </div>
-    </div>
-    
-    <div class="chat-container" id="chat-box"></div>
+        
+        <div class="chat-container" id="chat-box"></div>
 
-    <div class="input-area">
-        <div class="input-wrapper">
-            <label for="media-upload" class="clip-btn"><i class="fas fa-paperclip"></i></label>
-            <input type="file" id="media-upload" style="display:none;" accept="image/*,video/*,audio/*">
-            
-            <input type="text" id="msg-input" class="input-box" placeholder="Type a message...">
+        <div class="input-area">
+            <div class="input-wrapper">
+                <label for="media-upload" class="clip-btn"><i class="fas fa-paperclip"></i></label>
+                <input type="file" id="media-upload" style="display:none;" accept="image/*,video/*,audio/*">
+                <input type="text" id="msg-input" class="input-box" placeholder="Type a message...">
+            </div>
+            <button id="btn-send" class="send-btn"><i class="fas fa-paper-plane"></i></button>
         </div>
-        <button id="btn-send" class="send-btn"><i class="fas fa-paper-plane"></i></button>
     </div>
 
     <script>
-        // Supabase Endpoint Connection Strings
         const SUPABASE_URL = "https://nkwllaxgrmmlrqacbaro.supabase.co";
         const SUPABASE_KEY = "sb_publishable_ZTqBnJInrVgfpegOJfS6KQ_wwzYSQf0";
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // Safe Session Tracking UUID 
+        // Client/Admin Identifier Check
         let myUserUUID = localStorage.getItem('user_chat_uuid');
         if (!myUserUUID) {
             myUserUUID = 'user-' + Math.random().toString(36).substring(2, 15);
@@ -111,57 +108,58 @@
             const box = document.getElementById('chat-box');
             box.innerHTML = '';
             
-            // Core Welcome Notification Note
+            // Welcome Greeting Note
             const greet = document.createElement('div');
             greet.classList.add('message', 'received');
-            greet.innerHTML = `<div>Welcome! How can we assist you today? Feel free to drop a message, link, photo, or audio clip here.</div><div class="time">Just now</div>`;
+            greet.innerHTML = `<div>Welcome! How can we assist you today? Feel free to drop a message, photo, link, or voice note here.</div><div class="time">Just now</div>`;
             box.appendChild(greet);
 
             try {
-                let { data: items, error } = await supabase.from('messages').select('*').order('created_at', { ascending: true });
+                // Fetch entries matching Seyam's real column schema structures
+                let { data: items, error } = await supabase.from('messages').select('*').order('inserted_at', { ascending: true });
                 if (items && !error) {
                     items.forEach(m => {
-                        if(m.user_id === myUserUUID || m.sender === myUserUUID || m.email === 'admin') {
-                            renderMsg(m);
-                        }
+                        renderMsg(m);
                     });
                 }
             } catch(e) { console.error(e); }
         }
 
         function isLink(text) {
-            return text.startsWith('http://') || text.startsWith('https://');
+            return text && (text.startsWith('http://') || text.startsWith('https://'));
         }
 
         function renderMsg(msg) {
             const box = document.getElementById('chat-box');
-            if(!box || document.getElementById(`m-${msg.id}`)) return;
+            if(!box || !msg.id || document.getElementById(`m-${msg.id}`)) return;
 
             const d = document.createElement('div');
             d.id = `m-${msg.id}`;
             
-            // Distinguish Admin replies vs Client items
-            const isReceived = (msg.email === 'admin' || msg.sender === 'admin');
-            d.classList.add('message', isReceived ? 'received' : 'sent');
+            // Detect if admin sent it or default user client
+            const isFromAdmin = (msg.email === 'admin' || msg.sender === 'admin');
+            d.classList.add('message', isFromAdmin ? 'received' : 'sent');
 
-            // Advanced parsing routing (Text, Links, Media)
-            if (!msg.type || msg.type === 'text') {
-                if (isLink(msg.message)) {
-                    d.innerHTML = `<div><a href="${msg.message}" target="_blank">${msg.message}</a></div>`;
+            // Routing the core content data type safely
+            const textContent = msg.message_text || '';
+            
+            if (isLink(textContent)) {
+                if (textContent.match(/\.(jpeg|jpg|gif|png)$/) != null) {
+                    d.innerHTML = `<img src="${textContent}">`;
+                } else if (textContent.match(/\.(mp4|webm)$/) != null) {
+                    d.innerHTML = `<video src="${textContent}" controls></video>`;
+                } else if (textContent.match(/\.(mp3|ogg|wav)$/) != null) {
+                    d.innerHTML = `<audio src="${textContent}" controls></audio>`;
                 } else {
-                    d.innerHTML = `<div>${msg.message}</div>`;
+                    d.innerHTML = `<div><a href="${textContent}" target="_blank">${textContent}</a></div>`;
                 }
-            } else if (msg.type === 'image') {
-                d.innerHTML = `<img src="${msg.file_url || msg.message}"><div style='margin-top:4px;'>${msg.message && !isLink(msg.message) ? msg.message : ''}</div>`;
-            } else if (msg.type === 'video') {
-                d.innerHTML = `<video src="${msg.file_url || msg.message}" controls></video>`;
-            } else if (msg.type === 'audio') {
-                d.innerHTML = `<audio src="${msg.file_url || msg.message}" controls></audio>`;
+            } else {
+                d.innerHTML = `<div>${textContent}</div>`;
             }
 
             const t = document.createElement('div');
             t.classList.add('time');
-            t.innerText = new Date(msg.created_at || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            t.innerText = new Date(msg.inserted_at || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             d.appendChild(t);
             box.appendChild(d);
             box.scrollTop = box.scrollHeight;
@@ -173,52 +171,42 @@
             if(!val) return;
             inp.value = '';
 
-            const localTimestamp = new Date().toISOString();
-            
-            // Render locally on UI right away
-            renderMsg({ id: 'temp-' + Date.now(), message: val, email: 'client', type: 'text', created_at: localTimestamp });
-
-            // Robust dynamic schema backup payload insert strategy
+            // Post targeting exact database structural match scheme layout
             try {
-                await supabase.from('messages').insert([{ 
-                    user_id: myUserUUID,
+                const { data, error } = await supabase.from('messages').insert([{ 
+                    message_text: val,
+                    email: 'client',
                     sender: myUserUUID,
-                    email: 'client', 
-                    message: val,
-                    type: 'text'
-                }]);
-            } catch(e) { console.error("Data push failed", e); }
+                    user_id: myUserUUID
+                }]).select();
+                
+                if (data && data[0]) {
+                    renderMsg(data[0]);
+                }
+            } catch(e) { console.error("Database Save Interrupted: ", e); }
         }
 
-        // Sourcing Files Upload to Supabase Storage Buckets
+        // Upload to Storage Bucket Integration 
         document.getElementById('media-upload').addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file) return;
 
-            let fileTypeMode = 'image';
-            if (file.type.startsWith('video/')) fileTypeMode = 'video';
-            if (file.type.startsWith('audio/')) fileTypeMode = 'audio';
-
-            const uniquePath = `${myUserUUID}/${Date.now()}_${file.name}`;
-            
-            // Notice: Assumes public permission storage bucket named 'chat-media' exists
+            const uniquePath = `uploads/${Date.now()}_${file.name}`;
             try {
-                let { error } = await supabase.storage.from('chat-media').upload(uniquePath, file);
-                if (!error) {
+                // Uploads content straight to active public 'chat-media' structural system bucket
+                let { error: uploadErr } = await supabase.storage.from('chat-media').upload(uniquePath, file);
+                if (!uploadErr) {
                     const { data } = supabase.storage.from('chat-media').getPublicUrl(uniquePath);
                     
-                    renderMsg({ id: 'temp-' + Date.now(), message: '', file_url: data.publicUrl, email: 'client', type: fileTypeMode, created_at: new Date().toISOString() });
-                    
                     await supabase.from('messages').insert([{ 
-                        user_id: myUserUUID,
-                        sender: myUserUUID,
+                        message_text: data.publicUrl,
                         email: 'client',
-                        message: data.publicUrl,
-                        file_url: data.publicUrl,
-                        type: fileTypeMode
+                        sender: myUserUUID,
+                        user_id: myUserUUID
                     }]);
+                    loadMessages();
                 } else {
-                    alert("Storage upload issue. Please ensure a public bucket named 'chat-media' is active in Supabase Storage dashboard.");
+                    alert("Please ensure your Supabase Storage dashboard has a public bucket exactly named 'chat-media'.");
                 }
             } catch(err) { console.error(err); }
         });
@@ -233,9 +221,7 @@
             try {
                 supabase.channel('global:messages')
                 .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-                    if(payload.new.user_id === myUserUUID || payload.new.sender === myUserUUID || payload.new.email === 'admin') {
-                        renderMsg(payload.new);
-                    }
+                    renderMsg(payload.new);
                 }).subscribe();
             } catch(e) { console.error(e); }
         });
