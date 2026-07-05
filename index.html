@@ -2,52 +2,56 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Live Support Chat</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin WhatsApp Support Desk</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        :root { --wa-green: #075e54; --wa-light: #128c7e; --bg-color: #ece5dd; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body, html { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; height: 100%; width: 100%; overflow: hidden; }
-        .wa-header { position: fixed; top: 0; left: 0; right: 0; background: var(--wa-green); color: white; padding: 10px 15px; display: flex; align-items: center; gap: 12px; font-size: 16px; height: 60px; z-index: 1000; }
-        .wa-header .status-dot { width: 10px; height: 10px; background: #2ecc71; border-radius: 50%; display: inline-block; }
-        .wa-header .sub-text { font-size: 11px; color: #b3d4d0; display: block; }
-        .chat-container { position: absolute; top: 60px; bottom: 75px; left: 0; right: 0; background: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); background-color: var(--bg-color); overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
-        .message { max-width: 75%; padding: 8px 14px; border-radius: 10px; font-size: 15px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.08); word-break: break-word; }
-        .message.sent { background: #d9fdd3; align-self: flex-end; border-top-right-radius: 0; }
-        .message.received { background: white; align-self: flex-start; border-top-left-radius: 0; }
-        .message img, .message video { max-width: 100%; border-radius: 8px; margin-top: 5px; display: block; max-height: 200px; }
+        body { font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; background: #f0f2f5; }
+        .sidebar { width: 35%; background: white; border-right: 1px solid #e9edef; display: flex; flex-direction: column; }
+        .sidebar-header { background: #075e54; color: white; padding: 15px; font-weight: bold; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+        .user-list { flex: 1; overflow-y: auto; background: #fff; }
+        .user-item { padding: 12px 15px; border-bottom: 1px solid #f0f2f5; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 14px; color: #333; }
+        .user-item:hover, .user-item.active { background: #e9edef; font-weight: 600; }
+        .main-chat { width: 65%; display: flex; flex-direction: column; background: #ece5dd; background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); }
+        .chat-header { background: #f0f2f5; padding: 15px; font-weight: 600; font-size: 15px; border-bottom: 1px solid #e9edef; color: #444; }
+        .chat-container { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+        .message { max-width: 75%; padding: 8px 14px; border-radius: 10px; font-size: 14px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.08); word-break: break-word; }
+        .message.sent { background: #d9fdd3; align-self: flex-end; }
+        .message.received { background: white; align-self: flex-start; }
+        .message img, .message video { max-width: 100%; border-radius: 8px; margin-top: 5px; display: block; max-height: 180px; }
         .message audio { max-width: 100%; margin-top: 5px; display: block; }
-        .message .time { font-size: 10px; color: #667781; text-align: right; margin-top: 4px; }
-        .input-area { position: fixed; bottom: 0; left: 0; right: 0; background: #f0f2f5; padding: 10px 12px 22px 12px; display: flex; align-items: center; gap: 8px; border-top: 1px solid #e9edef; height: 75px; z-index: 1000; }
-        .input-wrapper { flex: 1; background: white; border-radius: 25px; display: flex; align-items: center; padding: 0 12px; border: 1px solid #ccc; height: 44px; gap: 8px; }
-        .input-box { flex: 1; background: transparent; border: none; outline: none; font-size: 16px; height: 100%; }
-        .icon-btn { color: #54656f; font-size: 20px; cursor: pointer; padding: 4px; }
-        .icon-btn.recording { color: #e74c3c; animation: pulse 1s infinite; }
-        .send-btn { background: var(--wa-light); color: white; width: 44px; height: 44px; border-radius: 50%; border: none; display: flex; justify-content: center; align-items: center; font-size: 18px; cursor: pointer; flex-shrink: 0; }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        .input-area { background: #f0f2f5; padding: 10px; display: flex; align-items: center; gap: 8px; border-top: 1px solid #e9edef; }
+        .input-box { flex: 1; border: 1px solid #ccc; padding: 10px 15px; border-radius: 20px; outline: none; font-size: 14px; background: white; }
+        .btn { background: #128c7e; color: white; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
         #file-input { display: none; }
+        
+        /* Mobile Compatibility */
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            .sidebar { width: 100%; height: 35vh; }
+            .main-chat { width: 100%; height: 65vh; }
+        }
     </style>
 </head>
 <body>
-    <div class="screen">
-        <div class="wa-header">
-            <i class="fas fa-user-circle" style="font-size: 32px;"></i>
-            <div>
-                <span style="font-weight: 600;">Support Team</span>
-                <span class="sub-text"><span class="status-dot"></span> Active Online</span>
-            </div>
+
+    <div class="sidebar">
+        <div class="sidebar-header"><i class="fab fa-whatsapp"></i> Chat Inboxes (Admin)</div>
+        <div class="user-list" id="users-box">
+            <div style="padding: 20px; text-align: center; color: #999;">Loading chats...</div>
         </div>
+    </div>
+
+    <div class="main-chat">
+        <div class="chat-header" id="active-user-title">Select a customer to view conversation</div>
         <div class="chat-container" id="chat-box"></div>
         <div class="input-area">
-            <div class="input-wrapper">
-                <label for="file-input" class="icon-btn"><i class="fas fa-paperclip"></i></label>
-                <input type="file" id="file-input" accept="image/*,video/*">
-                <input type="text" id="msg-input" class="input-box" placeholder="Type a message...">
-                <i id="mic-btn" class="fas fa-microphone icon-btn"></i>
-            </div>
-            <button id="btn-send" class="send-btn"><i class="fas fa-paper-plane"></i></button>
+            <label for="file-input" class="btn" style="background:#54656f;"><i class="fas fa-paperclip"></i></label>
+            <input type="file" id="file-input" accept="image/*,video/*">
+            <input type="text" id="msg-input" class="input-box" placeholder="Type a reply...">
+            <button id="btn-send" class="btn"><i class="fas fa-paper-plane"></i></button>
         </div>
     </div>
 
@@ -56,69 +60,75 @@
         const SUPABASE_KEY = "sb_publishable_ZTqBnJInrVgfpegOJfS6KQ_wwzYSQf0";
         const dbClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let myUserId = localStorage.getItem('user_chat_uuid') || 'customer-' + Math.random().toString(36).substring(2, 15);
-        localStorage.setItem('user_chat_uuid', myUserId);
-        
-        const currentRoomId = myUserId; 
-        let mediaRecorder, audioChunks = [], isRecording = false;
+        let selectedRoomId = null;
+
+        async function loadActiveUsers() {
+            try {
+                // Fetch latest messages to construct individual rooms
+                let { data: items, error } = await dbClient.from('messages').select('room_id').order('inserted_at', { ascending: false });
+                if(error) return;
+                
+                // Get unique active rooms
+                const uniqueRooms = [...new Set(items.map(i => i.room_id).filter(Boolean))];
+                
+                const list = document.getElementById('users-box');
+                list.innerHTML = '';
+                
+                if(uniqueRooms.length === 0) {
+                    list.innerHTML = `<div style="padding:20px; text-align:center; color:#999;">No active rooms found</div>`;
+                    return;
+                }
+
+                uniqueRooms.forEach(room => {
+                    const div = document.createElement('div');
+                    div.classList.add('user-item');
+                    if(room === selectedRoomId) div.classList.add('active');
+                    div.innerHTML = `<i class="fas fa-user-circle" style="font-size:24px; color:#54656f;"></i> <span>${room}</span>`;
+                    div.onclick = () => selectUser(room);
+                    list.appendChild(div);
+                });
+            } catch(e) { console.error(e); }
+        }
+
+        async function selectUser(roomId) {
+            selectedRoomId = roomId;
+            // Update active state in UI list
+            document.querySelectorAll('.user-item').forEach(el => {
+                if(el.querySelector('span').innerText === roomId) el.classList.add('active');
+                else el.classList.remove('active');
+            });
+            document.getElementById('active-user-title').innerText = "In conversation with: " + roomId;
+            loadMessages();
+        }
 
         async function loadMessages() {
+            if(!selectedRoomId) return;
             const box = document.getElementById('chat-box');
             try {
-                let { data: items, error } = await dbClient.from('messages').select('*').eq('room_id', currentRoomId).order('inserted_at', { ascending: true });
-                if (!error && items) {
-                    box.innerHTML = '';
-                    items.forEach(m => renderMsg(m));
-                }
-            } catch(e) { console.error(e); }
+                let { data: items } = await dbClient.from('messages').select('*').eq('room_id', selectedRoomId).order('inserted_at', { ascending: true });
+                box.innerHTML = '';
+                if(items) items.forEach(m => renderMsg(m));
+            } catch(e) {}
         }
 
         function renderMsg(msg) {
             const box = document.getElementById('chat-box');
-            if(!box || !msg.message_text) return;
-            if (document.getElementById(`m-${msg.id}`)) return;
+            if(!box || document.getElementById(`m-${msg.id}`)) return;
             
             const d = document.createElement('div');
-            d.id = `m-${msg.id || Date.now()}`;
-            d.classList.add('message', msg.sender === myUserId ? 'sent' : 'received');
+            d.id = `m-${msg.id}`;
+            // If sender is admin, it's 'sent' (green), else it's 'received' (white)
+            d.classList.add('message', msg.sender === 'admin' ? 'sent' : 'received');
             
-            let contentHTML = `<div>${msg.message_text}</div>`;
+            let html = `<div>${msg.message_text || ''}</div>`;
             if(msg.media_url) {
-                if(msg.type === 'image') contentHTML += `<img src="${msg.media_url}">`;
-                else if(msg.type === 'video') contentHTML += `<video src="${msg.media_url}" controls></video>`;
-                else if(msg.type === 'voice') contentHTML += `<audio src="${msg.media_url}" controls></audio>`;
+                if(msg.type === 'image') html += `<img src="${msg.media_url}">`;
+                else if(msg.type === 'video') html += `<video src="${msg.media_url}" controls></video>`;
+                else if(msg.type === 'voice') html += `<audio src="${msg.media_url}" controls></audio>`;
             }
-            d.innerHTML = contentHTML;
-            
-            const t = document.createElement('div');
-            t.classList.add('time');
-            t.innerText = new Date(msg.inserted_at || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            d.appendChild(t);
-            
+            d.innerHTML = html;
             box.appendChild(d);
             box.scrollTop = box.scrollHeight;
-        }
-
-        async function sendMessage() {
-            const inp = document.getElementById('msg-input');
-            const val = inp.value.trim();
-            if(!val) return;
-            inp.value = '';
-
-            // Local render instantly so UI doesn't look stuck
-            const tempId = 'temp-' + Date.now();
-            renderMsg({ id: tempId, message_text: val, sender: myUserId, inserted_at: new Date() });
-
-            try {
-                await dbClient.from('messages').insert([{ 
-                    message_text: val, 
-                    sender: myUserId, 
-                    receiver: 'admin', 
-                    room_id: currentRoomId, 
-                    type: 'text', 
-                    media_url: null 
-                }]);
-            } catch(e) { console.log(e); }
         }
 
         async function uploadToSupabase(file, ext, folder) {
@@ -128,58 +138,50 @@
             return dbClient.storage.from('chat-media').getPublicUrl(fileName).data.publicUrl;
         }
 
+        async function sendAdminMessage() {
+            if(!selectedRoomId) return alert("Please select a room first from the top/left panel!");
+            const inp = document.getElementById('msg-input');
+            const val = inp.value.trim();
+            if(!val) return;
+            inp.value = '';
+
+            await dbClient.from('messages').insert([{ 
+                message_text: val, 
+                sender: 'admin', 
+                receiver: selectedRoomId, 
+                room_id: selectedRoomId, 
+                type: 'text', 
+                media_url: null 
+            }]);
+        }
+
         document.getElementById('file-input').addEventListener('change', async (e) => {
+            if(!selectedRoomId) return alert("Select a chat first!");
             const file = e.target.files[0];
             if(!file) return;
             let type = file.type.startsWith('video/') ? 'video' : 'image';
             const ext = file.name.split('.').pop();
-            
-            renderMsg({ id: 'media-temp', message_text: `Uploading ${type}...`, sender: myUserId });
-            
             const publicUrl = await uploadToSupabase(file, ext, type);
             if(publicUrl) {
-                await dbClient.from('messages').insert([{ message_text: `Sent a ${type}`, sender: myUserId, receiver: 'admin', room_id: currentRoomId, type: type, media_url: publicUrl }]);
+                await dbClient.from('messages').insert([{ message_text: `Admin sent a ${type}`, sender: 'admin', receiver: selectedRoomId, room_id: selectedRoomId, type: type, media_url: publicUrl }]);
                 loadMessages();
             }
         });
 
-        document.getElementById('mic-btn').addEventListener('click', async () => {
-            const micBtn = document.getElementById('mic-btn');
-            if (!isRecording) {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream);
-                audioChunks = [];
-                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-                mediaRecorder.onstop = async () => {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
-                    const publicUrl = await uploadToSupabase(audioBlob, 'mp3', 'voice');
-                    if(publicUrl) {
-                        await dbClient.from('messages').insert([{ message_text: 'Voice Message', sender: myUserId, receiver: 'admin', room_id: currentRoomId, type: 'voice', media_url: publicUrl }]);
-                        loadMessages();
-                    }
-                };
-                mediaRecorder.start();
-                isRecording = true;
-                micBtn.classList.add('recording', 'fa-stop');
-            } else {
-                mediaRecorder.stop();
-                isRecording = false;
-                micBtn.classList.remove('recording', 'fa-stop');
-            }
-        });
+        document.getElementById('btn-send').onclick = sendAdminMessage;
+        document.getElementById('msg-input').onkeypress = (e) => { if(e.key === 'Enter') sendAdminMessage(); };
 
-        document.getElementById('btn-send').addEventListener('click', sendMessage);
-        document.getElementById('msg-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') sendMessage(); });
-
-        window.addEventListener('DOMContentLoaded', () => {
-            loadMessages();
-            dbClient.channel('custom-filter-channel')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-                if(payload.new.room_id === currentRoomId) {
-                    renderMsg(payload.new);
+        window.onload = () => {
+            loadActiveUsers();
+            
+            // Listen for any new messages globally to update the sidebar or message stream
+            dbClient.channel('admin-sync-channel').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, p => {
+                loadActiveUsers();
+                if(selectedRoomId && p.new.room_id === selectedRoomId) {
+                    renderMsg(p.new);
                 }
             }).subscribe();
-        });
+        };
     </script>
 </body>
 </html>
