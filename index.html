@@ -3,348 +3,213 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Earning Dashboard</title>
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <!-- FontAwesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Supabase JS Library -->
+    <title>EarnMoney - Reward Collector</title>
+    <!-- Supabase CDN JS Library -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
     <style>
-        * {
+        :root {
+            --primary: #f39c12;
+            --bg: #f4f7f6;
+            --card-bg: #ffffff;
+            --dark: #2c3e50;
+        }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--bg);
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
-            font-family: 'Plus Jakarta Sans', sans-serif;
         }
-
-        body {
-            background: radial-gradient(circle at top right, rgba(230,253,245,0.7) 0%, rgba(245,243,255,0.7) 100%), #f8fafc;
-            display: flex;
-            justify-content: center;
-            min-height: 100vh;
-        }
-
-        .app-container {
-            width: 100%;
-            max-width: 480px;
-            padding: 18px 18px 100px 18px;
-            position: relative;
-        }
-
-        .main-balance-wrapper {
-            margin: 20px 0 15px 5px;
-        }
-
-        .main-balance-text {
-            font-size: 2.5rem;
-            font-weight: 800;
-            color: #1e293b;
-            letter-spacing: -1px;
-        }
-
-        .main-balance-text span {
-            color: #2563eb; 
-            font-weight: 800;
-            margin-right: 5px;
-        }
-
-        .glass-card-section {
-            background: rgba(255, 255, 255, 0.45);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-radius: 28px;
-            padding: 16px;
-            border: 1px solid rgba(255, 255, 255, 0.6);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
-            margin-bottom: 22px;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-        }
-
-        .stat-card {
-            background: rgba(255, 255, 255, 0.9);
-            padding: 16px 14px;
-            border-radius: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.8);
-        }
-
-        .stat-card .label {
-            font-size: 0.68rem;
-            color: #64748b;
-            font-weight: 800;
-            letter-spacing: 0.5px;
-            margin-bottom: 6px;
-        }
-
-        .stat-card .value {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: #0f172a;
-        }
-
-        .actions-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-            margin-bottom: 22px;
-        }
-
-        .action-card {
-            border-radius: 24px;
-            padding: 22px 10px;
-            text-align: center;
-            color: white;
-            cursor: pointer;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
-            transition: transform 0.2s ease;
-        }
-
-        .action-card:active { transform: scale(0.96); }
-        .action-card i { font-size: 1.6rem; margin-bottom: 12px; display: block; opacity: 0.95; }
-        .action-card span { font-size: 0.75rem; font-weight: 800; }
-
-        .bg-deposit { background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%); }
-        .bg-withdraw { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
-        .bg-task { background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%); }
-
-        .reward-section {
-            background: rgba(255, 255, 255, 0.45);
-            backdrop-filter: blur(20px);
-            border-radius: 28px;
+        .container {
             padding: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.6);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+            max-width: 500px;
+            margin: 0 auto;
         }
-
-        .reward-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
+        .card {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
         }
-
-        .reward-header h2 { font-size: 1.4rem; font-weight: 800; color: #0f172a; }
-        .reward-header .subtext { font-size: 0.62rem; color: #64748b; font-weight: 700; margin-top: 2px; }
-
-        .invest-btn {
-            background: #2563eb; color: white; border: none; padding: 8px 14px;
-            border-radius: 20px; font-size: 0.68rem; font-weight: 700; cursor: pointer;
+        h2 { color: var(--dark); margin-top: 0; }
+        input, button {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
         }
-
-        .dashed-info-box {
-            border: 2px dashed #cbd5e1; border-radius: 20px; padding: 24px 20px;
-            text-align: center; color: #475569; font-size: 0.88rem; font-weight: 600;
-            background: rgba(255, 255, 255, 0.3);
+        button {
+            background-color: var(--primary);
+            color: white;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
         }
-
-        /* --- BOTTOM NAVIGATION BAR --- */
-        .bottom-nav-bar {
-            position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
-            width: 92%; max-width: 440px; background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px); border-radius: 35px; display: flex;
-            justify-content: space-between; align-items: center; padding: 10px 24px;
-            box-shadow: 0 12px 35px rgba(15, 23, 42, 0.08); z-index: 9999; border: 1px solid rgba(255, 255, 255, 0.8);
+        .hidden { display: none !important; }
+        /* Chat Interface Styles */
+        .chat-box {
+            height: 300px;
+            border: 1px solid #eee;
+            overflow-y: auto;
+            padding: 10px;
+            margin-bottom: 10px;
+            background: #fafafa;
+            border-radius: 8px;
         }
-
-        .nav-link {
-            display: flex; flex-direction: column; align-items: center;
-            color: #94a3b8; font-size: 0.65rem; font-weight: 700; cursor: pointer;
-        }
-
-        .nav-link i { font-size: 1.3rem; margin-bottom: 3px; }
-        .nav-link.active { color: #2563eb; }
+        .msg { margin: 5px 0; padding: 8px; border-radius: 6px; }
+        .msg.sent { background: #e1ffc7; text-align: right; }
+        .msg.received { background: #fff; border: 1px solid #eee; }
     </style>
 </head>
 <body>
 
-    <div class="app-container" id="mainAppContent">
-        <!-- HOME VIEW -->
-        <div class="main-balance-wrapper">
-            <h1 class="main-balance-text"><span>Rs</span><span id="rs-balance">0.00</span></h1>
+    <div class="container">
+        <!-- 1. Auth Section -->
+        <div id="auth-section" class="card">
+            <h2>Login / Sign Up</h2>
+            <input type="email" id="email" placeholder="Enter Email">
+            <input type="password" id="password" placeholder="Enter Password">
+            <button onclick="handleLogin()">Login</button>
+            <button onclick="handleSignUp()" style="background:#2ecc71;">Sign Up</button>
         </div>
 
-        <div class="glass-card-section">
-            <div class="stats-grid">
-                <div class="stat-card"><p class="label">ACCOUNT BALANCE</p><p class="value" id="acc-balance">0.00</p></div>
-                <div class="stat-card"><p class="label">ACTIVE PLANS</p><p class="value" id="active-plans">0</p></div>
-                <div class="stat-card"><p class="label">TOTAL WITHDRAW</p><p class="value" id="total-withdraw">0.00</p></div>
-                <div class="stat-card"><p class="label">TOTAL DEPOSIT</p><p class="value" id="total-deposit">0.00</p></div>
+        <!-- 2. Main Dashboard & Reward Collector -->
+        <div id="dashboard-section" class="card hidden">
+            <h2>Welcome to Reward Collector</h2>
+            <div style="font-size: 24px; margin: 15px 0;">Balance: <strong id="balance-display">0</strong> Points</div>
+            <button onclick="collectDailyReward()" style="background:#3498db;">Collect Daily Reward (+100)</button>
+            <button onclick="logout()" style="background:#e74c3c; margin-top: 20px;">Logout</button>
+        </div>
+
+        <!-- 3. Real-time Customer Chat Support Section -->
+        <div id="chat-section" class="card hidden">
+            <h3>Live Chat Support</h3>
+            <div id="chat-messages" class="chat-box"></div>
+            <div style="display: flex; gap: 5px;">
+                <input type="text" id="chat-input" placeholder="Type a message...">
+                <button onclick="sendMessage()" style="width: 80px;">Send</button>
             </div>
-        </div>
-
-        <div class="actions-grid">
-            <div class="action-card bg-deposit"><i class="fa-solid fa-wallet"></i><span>DEPOSIT</span></div>
-            <div class="action-card bg-withdraw" onclick="openWithdrawPage()"><i class="fa-solid fa-money-bill-transfer"></i><span>WITHDRAW</span></div>
-            <div class="action-card bg-task" onclick="openTasksPage()"><i class="fa-solid fa-circle-play"></i><span>TASK VIDEO</span></div>
-        </div>
-
-        <div class="reward-section">
-            <div class="reward-header">
-                <div><h2>Reward Collector</h2><p class="subtext">WATCH YOUTUBE ADS AND COLLECT DAILY EARNING</p></div>
-                <button class="invest-btn"><i class="fa-solid fa-list-check"></i> INVEST LIST</button>
-            </div>
-            <div class="dashed-info-box">No active ad reward task found. Buy a plan with ads required, then your reward timer will show here.</div>
-        </div>
-
-        <!-- BOTTOM NAV -->
-        <div class="bottom-nav-bar">
-            <div class="nav-link active" onclick="location.reload()"><i class="fa-solid fa-house"></i><span>HOME</span></div>
-            <div class="nav-link" onclick="openTasksPage()"><i class="fa-solid fa-bolt"></i><span>TASKS</span></div>
-            <div class="nav-link" onclick="openWithdrawPage()"><i class="fa-solid fa-money-bill-transfer"></i><span>WITHDRAW</span></div>
         </div>
     </div>
 
     <script>
-        const SUPABASE_URL = 'https://kfbvwxafwbptdllonbwm.supabase.co'; 
-        const SUPABASE_KEY = 'Sb_publishable_EFOjhEF20LOuN_rr3MTAzQ_CkWhQVU8';
+        // Aapke Supabase Credentials auto-injected yahan hain
+        const SUPABASE_URL = "https://nkwllaxgrmmlrqacbaro.supabase.co";
+        const SUPABASE_KEY = "sb_publishable_ZTqBnJInrVgfpegOJfS6KQ_wwzYSQf0";
+        
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        const USER_ID = "22deb1ca-dfc3-4794-978c-2b64d8424f1e";
 
-        async function loadInitialData() {
-            const { data } = await supabase.from('profiles').select('*').eq('id', USER_ID).single();
-            if (data) {
-                document.getElementById('rs-balance').innerText = parseFloat(data.balance || 0).toFixed(2);
-                document.getElementById('acc-balance').innerText = parseFloat(data.balance || 0).toFixed(2);
-                document.getElementById('active-plans').innerText = data.active_plans || 0;
-                document.getElementById('total-withdraw').innerText = parseFloat(data.total_withdraw || 0).toFixed(2);
-                document.getElementById('total-deposit').innerText = parseFloat(data.total_deposit || 0).toFixed(2);
-            }
-        }
-
-        // ================= OPEN TASKS PAGE (FORCE RENDER) =================
-        function openTasksPage() {
-            document.body.innerHTML = `
-                <div style="width:100%; max-width:480px; padding:20px; margin:auto;">
-                    <div style="display:flex; align-items:center; gap:15px; margin-bottom:25px;">
-                        <button onclick="location.reload()" style="background:white; border:none; width:40px; height:40px; border-radius:50%; box-shadow:0 4px 10px rgba(0,0,0,0.1); cursor:pointer;"><i class="fa-solid fa-arrow-left"></i></button>
-                        <h1 style="font-size:1.5rem; font-weight:800; color:#0f172a;">Daily Video Tasks</h1>
-                    </div>
-
-                    <!-- Video Card 1 -->
-                    <div id="videoContainer1" style="background:white; border-radius:24px; padding:16px; margin-bottom:16px; box-shadow:0 4px 20px rgba(0,0,0,0.05);">
-                        <h3 style="font-size:1rem; font-weight:700; color:#1e293b; margin-bottom:5px;">Short Ad Task #1</h3>
-                        <p style="color:#10b981; font-weight:700; font-size:0.8rem; margin-bottom:15px;">Reward: Rs 50.00</p>
-                        
-                        <div id="playerBox1" style="width:100%; height:200px; background:black; border-radius:16px; overflow:hidden; position:relative; margin-bottom:12px;">
-                            <video id="myVideo1" style="width:100%; height:100%; object-fit:cover;" src="https://html5demos.com/assets/dizzy.mp4" playsinline controls></video>
-                            <div id="badge1" style="position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.8); color:white; padding:5px 12px; border-radius:20px; font-weight:700; font-size:0.8rem;">30s</div>
-                        </div>
-                        <button id="claimBtn1" onclick="claimVideoReward('videoContainer1')" style="width:100%; background:linear-gradient(135deg, #10b981 0%, #059669 100%); color:white; border:none; padding:14px; border-radius:16px; font-weight:800; font-size:1rem; cursor:pointer; display:none;">CLAIM RS 50.00 🎉</button>
-                    </div>
-                </div>
-            `;
-
-            // Setup Custom Dynamic Tracking directly on HTML5 standard video
-            const video1 = document.getElementById('myVideo1');
-            const badge1 = document.getElementById('badge1');
-            const claimBtn1 = document.getElementById('claimBtn1');
-            let timerLeft = 30;
-            let countdownActive = false;
-
-            video1.onplay = function() {
-                if (!countdownActive) {
-                    countdownActive = true;
-                    const interval = setInterval(() => {
-                        if(!video1.paused && !video1.ended) {
-                            timerLeft--;
-                            badge1.innerText = timerLeft + 's';
-                            if(timerLeft <= 0) {
-                                clearInterval(interval);
-                                video1.style.display = 'none';
-                                badge1.style.display = 'none';
-                                claimBtn1.style.display = 'block';
-                            }
-                        }
-                    }, 1000);
-                }
-            };
-        }
-
-        async function claimVideoReward(containerId) {
-            const { data: profile } = await supabase.from('profiles').select('balance').eq('id', USER_ID).single();
-            const newBal = parseFloat(profile.balance || 0) + 50;
-
-            const { error } = await supabase.from('profiles').update({ balance: newBal }).eq('id', USER_ID);
-            if(!error) {
-                alert("Mubarak ho! Rs 50.00 wallet mein kamyabi se jama ho gaye hain. 🎉");
-                document.getElementById(containerId).remove();
+        // Auth State Change Monitor
+        supabase.auth.onAuthStateChange((event, session) => {
+            if (session) {
+                document.getElementById('auth-section').classList.add('hidden');
+                document.getElementById('dashboard-section').classList.remove('hidden');
+                document.getElementById('chat-section').classList.remove('hidden');
+                loadUserData(session.user.id);
+                listenToChat();
             } else {
-                alert("Database update error.");
+                document.getElementById('auth-section').classList.remove('hidden');
+                document.getElementById('dashboard-section').classList.add('hidden');
+                document.getElementById('chat-section').classList.add('hidden');
+            }
+        });
+
+        // Sign Up Function
+        async function handleSignUp() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const { error } = await supabase.auth.signUp({ email, password });
+            if (error) alert(error.message);
+            else alert("Sign up successful! Please check your email or login.");
+        }
+
+        // Login Function
+        async function handleLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const { error } = await supabase.auth.signInWithPassword({ email, password });
+            if (error) alert(error.message);
+        }
+
+        // Logout
+        async function logout() {
+            await supabase.auth.signOut();
+        }
+
+        // Load Balance/User Data from Supabase Profiles Table
+        async function loadUserData(userId) {
+            let { data, error } = await supabase.from('profiles').select('balance').eq('id', userId).single();
+            if (error && error.code === 'PGRST116') {
+                // Agar profile nahi bani hui toh nai create karein
+                await supabase.from('profiles').insert([{ id: userId, balance: 0 }]);
+                document.getElementById('balance-display').innerText = "0";
+            } else if (data) {
+                document.getElementById('balance-display').innerText = data.balance;
             }
         }
 
-        // ================= OPEN WITHDRAW PAGE (FORCE RENDER) =================
-        function openWithdrawPage() {
-            document.body.innerHTML = `
-                <div style="width:100%; max-width:480px; padding:20px; margin:auto;">
-                    <div style="display:flex; align-items:center; gap:15px; margin-bottom:25px;">
-                        <button onclick="location.reload()" style="background:white; border:none; width:40px; height:40px; border-radius:50%; box-shadow:0 4px 10px rgba(0,0,0,0.1); cursor:pointer;"><i class="fa-solid fa-arrow-left"></i></button>
-                        <h1 style="font-size:1.5rem; font-weight:800; color:#0f172a;">Withdraw Request</h1>
-                    </div>
+        // Collect Reward Logic
+        async function collectDailyReward() {
+            const user = (await supabase.auth.getUser()).data.user;
+            if (!user) return;
+            
+            let currentBalance = parseInt(document.getElementById('balance-display').innerText);
+            let newBalance = currentBalance + 100;
 
-                    <div style="background:white; border-radius:28px; padding:24px; box-shadow:0 10px 30px rgba(0,0,0,0.02); border:1px solid #e2e8f0;">
-                        <div style="margin-bottom:18px;">
-                            <label style="display:block; font-size:0.78rem; font-weight:800; color:#64748b; margin-bottom:8px;">CHOOSE METHOD</label>
-                            <select id="wMethod" style="width:100%; padding:14px; border-radius:16px; border:1px solid #cbd5e1; background:#f8fafc; font-weight:600;">
-                                <option value="JazzCash">JazzCash</option>
-                                <option value="EasyPaisa">EasyPaisa</option>
-                            </select>
-                        </div>
-                        <div style="margin-bottom:18px;">
-                            <label style="display:block; font-size:0.78rem; font-weight:800; color:#64748b; margin-bottom:8px;">ACCOUNT NUMBER</label>
-                            <input type="number" id="wNumber" placeholder="e.g. 03001234567" style="width:100%; padding:14px; border-radius:16px; border:1px solid #cbd5e1; background:#f8fafc; font-weight:600;">
-                        </div>
-                        <div style="margin-bottom:18px;">
-                            <label style="display:block; font-size:0.78rem; font-weight:800; color:#64748b; margin-bottom:8px;">WITHDRAW AMOUNT (PKR)</label>
-                            <input type="number" id="wAmount" placeholder="Minimum Rs 500" style="width:100%; padding:14px; border-radius:16px; border:1px solid #cbd5e1; background:#f8fafc; font-weight:600;">
-                        </div>
-                        <button onclick="processWithdrawal()" style="width:100%; background:linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color:white; border:none; padding:16px; border-radius:18px; font-size:1rem; font-weight:800; cursor:pointer;">Submit Request</button>
-                    </div>
-                </div>
-            `;
-        }
-
-        async function processWithdrawal() {
-            const method = document.getElementById('wMethod').value;
-            const number = document.getElementById('wNumber').value;
-            const amount = parseFloat(document.getElementById('wAmount').value);
-
-            if(!number || !amount) {
-                alert("Please fill all details completely.");
-                return;
-            }
-
-            const { data: profile } = await supabase.from('profiles').select('balance, total_withdraw').eq('id', USER_ID).single();
-            const currentBal = parseFloat(profile.balance || 0);
-
-            if(amount > currentBal) {
-                alert("Aapka balance is withdraw request ke liye kam hai!");
-                return;
-            }
-
-            const newBalance = currentBal - amount;
-            const newTotalWithdraw = parseFloat(profile.total_withdraw || 0) + amount;
-
-            const { error } = await supabase.from('profiles').update({ 
-                balance: newBalance,
-                total_withdraw: newTotalWithdraw
-            }).eq('id', USER_ID);
-
-            if(!error) {
-                alert(`Withdrawal request of Rs ${amount} submitted via ${method} to ${number} successfully! 🚀`);
-                location.reload();
+            const { error } = await supabase.from('profiles').update({ balance: newBalance }).eq('id', user.id);
+            if (!error) {
+                document.getElementById('balance-display').innerText = newBalance;
+                alert("100 Points Added Successfully!");
             } else {
-                alert("Withdraw submission failed.");
+                alert("Error saving reward: " + error.message);
             }
         }
 
-        document.addEventListener('DOMContentLoaded', loadInitialData);
+        // Real-time Chat Messaging Logic
+        async function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const messageText = input.value.trim();
+            const user = (await supabase.auth.getUser()).data.user;
+            if (!messageText || !user) return;
+
+            const { error } = await supabase.from('messages').insert([
+                { user_id: user.id, message: messageText, email: user.email }
+            ]);
+            if (!error) input.value = '';
+        }
+
+        // Real-time listener for incoming chat messages
+        function listenToChat() {
+            supabase.channel('public:messages')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+                displayMessage(payload.new);
+            })
+            .subscribe();
+
+            // Fetch existing messages on load
+            fetchMessages();
+        }
+
+        async function fetchMessages() {
+            let { data: messages } = await supabase.from('messages').select('*').order('created_at', { ascending: true });
+            if (messages) {
+                document.getElementById('chat-messages').innerHTML = '';
+                messages.forEach(msg => displayMessage(msg));
+            }
+        }
+
+        async function displayMessage(msg) {
+            const chatBox = document.getElementById('chat-messages');
+            const user = (await supabase.auth.getUser()).data.user;
+            const div = document.createElement('div');
+            div.classList.add('msg');
+            div.classList.add(msg.user_id === user.id ? 'sent' : 'received');
+            div.innerText = `${msg.email.split('@')[0]}: ${msg.message}`;
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
     </script>
 </body>
 </html>
