@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Chat Controller</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { margin: 0; font-family: Arial, sans-serif; display: flex; height: 100vh; background: #f0f2f5; }
+        .sidebar { width: 30%; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; }
+        .sidebar-header { background: #075e54; color: white; padding: 15px; font-size: 20px; font-weight: bold; }
+        .user-list { flex: 1; overflow-y: auto; }
+        .user-item { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .user-item:hover, .user-item.active { background: #f0f2f5; }
+        .status-badge { width: 12px; height: 12px; border-radius: 50%; }
+        .online { background: #2ecc71; }
+        .offline { background: #95a5a6; }
+        
+        .main-chat { flex: 1; display: flex; flex-direction: column; background: #ece5dd; }
+        .chat-header { background: #075e54; color: white; padding: 15px; font-size: 18px; }
+        .chat-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .msg { max-width: 70%; padding: 10px; border-radius: 8px; box-shadow: 0 1px 1px rgba(0,0,0,0.1); }
+        .msg.admin { background: #d9fdd3; align-self: flex-end; }
+        .msg.client { background: white; align-self: flex-start; }
+        .msg img, .msg video { max-width: 100%; border-radius: 6px; }
+        
+        .admin-input-bar { background: #f0f2f5; padding: 15px; display: flex; gap: 10px; align-items: center; }
+        .input-field { flex: 1; padding: 12px; border-radius: 20px; border: none; outline: none; font-size: 14px; }
+        .send-btn { background: #128c7e; color: white; border: none; padding: 12px 25px; border-radius: 20px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="sidebar-header">Customers List</div>
+        <div class="user-list" id="users-panel"></div>
+    </div>
+
+    <div class="main-chat">
+        <div class="chat-header" id="current-user-header">Select a user to chat</div>
+        <div class="chat-box" id="admin-chat-box"></div>
+        <div class="admin-input-bar">
+            <input type="text" id="admin-input" class="input-field" placeholder="Type response...">
+            <button class="send-btn" id="admin-send-btn">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://nkwllaxgrmmlrqacbaro.supabase.co";
+        const SUPABASE_KEY = "sb_publishable_ZTqBnJInrVgfpegOJfS6KQ_wwzYSQf0";
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let activeClientId = null;
+
+        async function initAdmin() {
+            loadUsers();
+            supabase.channel('admin:sync')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => loadUsers())
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+                if(activeClientId && (payload.new.sender === activeClientId || payload.new.receiver === activeClientId)) {
+                    renderAdminMsg(payload.new);
+                }
+            }).subscribe();
+        }
+
+        async function loadUsers() {
+            let { data: users } = await supabase.from('profiles').select('*');
+            const panel = document.getElementById('users-panel');
+            panel.innerHTML = '';
+            if(users) {
+                users.forEach(u => {
+                    const div = document.createElement('div');
+                    div.classList.add('user-item');
+                    if(u.id_user === activeClientId) div.classList.add('active');
+                    div.onclick = () => selectUser(u.id_user);
+                    div.innerHTML = `<div><strong>${u.id_user}</strong><br><small style="color:#777">Last seen: ${new Date(u.last_seen).toLocaleTimeString()}</small></div>
+                                     <div class="status-badge ${u.is_online ? 'online' : 'offline'}"></div>`;
+                    panel.appendChild(div);
+                });
+            }
+        }
+
+        async function selectUser(uid) {
+            activeClientId = uid;
+            document.getElementById('current-user-header').innerText = `Chatting with: ${uid}`;
+            loadUsers();
+            
+            let { data: msgs } = await supabase.from('messages').select('*').order('created_at', { ascending: true });
+            const box = document.getElementById('admin-chat-box');
+            box.innerHTML = '';
+            if(msgs) {
+                msgs.forEach(m => {
+                    if(m.sender === uid || m.receiver === uid) renderAdminMsg(m);
+                });
+            }
+        }
+
+        function renderAdminMsg(m) {
+            const box = document.getElementById('admin-chat-box');
+            const d = document.createElement('div');
+            d.classList.add('msg', m.sender === 'admin' ? 'admin' : 'client');
+            
+            if(m.type === 'text') d.innerHTML = m.message;
+            else if(m.type === 'image') d.innerHTML = `<img src="${m.file_url}">`;
+            else if(m.type === 'video') d.innerHTML = `<video src="${m.file_url}" controls></video>`;
+            else if(m.type === 'audio') d.innerHTML = `<audio src="${m.file_url}" controls></audio>`;
+            
+            box.appendChild(d);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        document.getElementById('admin-send-btn').addEventListener('click', async () => {
+            const inp = document.getElementById('admin-input');
+            if(!activeClientId || !inp.value.trim()) return;
+            const text = inp.value.trim();
+            inp.value = '';
+            await supabase.from('messages').insert([{ sender: 'admin', receiver: activeClientId, message: text, type: 'text' }]);
+        });
+
+        window.onload = initAdmin;
+    </script>
+</body>
+</html>
