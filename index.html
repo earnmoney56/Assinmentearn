@@ -14,9 +14,13 @@
         .wa-header { position: fixed; top: 0; left: 0; right: 0; background: var(--wa-green); color: white; padding: 10px 15px; display: flex; align-items: center; gap: 12px; font-size: 16px; height: 60px; z-index: 1000; }
         .wa-header .status-dot { width: 10px; height: 10px; background: #2ecc71; border-radius: 50%; display: inline-block; }
         .chat-container { position: absolute; top: 60px; bottom: 75px; left: 0; right: 0; background-color: var(--bg-color); overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
-        .message { max-width: 75%; padding: 8px 14px; border-radius: 10px; font-size: 15px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.08); word-break: break-word; color: black; }
+        .message { max-width: 75%; padding: 6px 10px 20px 12px; border-radius: 10px; font-size: 15px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.08); word-break: break-word; color: black; display: flex; flex-direction: column; }
         .message.sent { background: #d9fdd3; align-self: flex-end; border-top-right-radius: 0; }
         .message.received { background: white; align-self: flex-start; border-top-left-radius: 0; }
+        .msg-meta { position: absolute; bottom: 3px; right: 7px; font-size: 10px; color: #727272; display: flex; align-items: center; gap: 3px; }
+        .tick-icon { font-size: 11px; }
+        .tick-blue { color: #34b7f1; }
+        .tick-gray { color: #8696a0; }
         .input-area { position: fixed; bottom: 0; left: 0; right: 0; background: #f0f2f5; padding: 10px 12px 22px 12px; display: flex; align-items: center; gap: 8px; border-top: 1px solid #e9edef; height: 75px; z-index: 1000; }
         .input-wrapper { flex: 1; background: white; border-radius: 25px; display: flex; align-items: center; padding: 0 12px; border: 1px solid #ccc; height: 44px; }
         .input-box { flex: 1; background: transparent; border: none; outline: none; font-size: 16px; height: 100%; color: black; }
@@ -54,15 +58,58 @@
         let myUserId = localStorage.getItem('user_chat_uuid') || 'User-' + Math.floor(1000 + Math.random() * 9000);
         localStorage.setItem('user_chat_uuid', myUserId);
 
+        // Render Ticks based on Status
+        function getTickHTML(status, isSent) {
+            if (!isSent) return ''; 
+            if (status === 'sent') return '<i class="fas fa-check tick-icon tick-gray"></i>';
+            if (status === 'delivered') return '<i class="fas fa-check-double tick-icon tick-gray"></i>';
+            if (status === 'seen') return '<i class="fas fa-check-double tick-icon tick-blue"></i>';
+            return '<i class="fas fa-clock tick-gray"></i>';
+        }
+
+        // Format Time (HH:MM AM/PM)
+        function formatTime(timestamp) {
+            if(!timestamp) return '';
+            const date = new Date(timestamp);
+            let hours = date.getHours();
+            let minutes = date.getMinutes();
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+            minutes = minutes < 10 ? '0' + minutes : minutes;
+            return hours + ':' + minutes + ' ' + ampm;
+        }
+
+        // Real-time listener for messages
         db.collection("messages").where("room_id", "==", myUserId).onSnapshot((snapshot) => {
             const box = document.getElementById('chat-box');
             box.innerHTML = '';
+            
+            // Sort by absolute creation timestamp
             let sortedDocs = snapshot.docs.sort((a, b) => a.data().time_now - b.data().time_now);
+            
             sortedDocs.forEach((doc) => {
                 const m = doc.data();
+                const isSentByMe = m.sender === myUserId;
+                
+                // If message received from admin and it's not marked as seen yet, update status to seen
+                if (!isSentByMe && m.status !== 'seen') {
+                    db.collection("messages").doc(doc.id).update({ status: 'seen' });
+                }
+
                 const d = document.createElement('div');
-                d.classList.add('message', m.sender === myUserId ? 'sent' : 'received');
-                d.innerHTML = `<div>${m.message_text}</div>`;
+                d.classList.add('message', isSentByMe ? 'sent' : 'received');
+                
+                const timeStr = formatTime(m.time_now);
+                const tickHTML = getTickHTML(m.status, isSentByMe);
+
+                d.innerHTML = `
+                    <div>${m.message_text}</div>
+                    <div class="msg-meta">
+                        <span>${timeStr}</span>
+                        ${tickHTML}
+                    </div>
+                `;
                 box.appendChild(d);
             });
             box.scrollTop = box.scrollHeight;
@@ -73,12 +120,14 @@
             const val = inp.value.trim();
             if(!val) return;
             inp.value = '';
+
             await db.collection("messages").add({
                 message_text: val,
                 sender: myUserId,
                 receiver: 'admin',
                 room_id: myUserId,
-                time_now: Date.now()
+                time_now: Date.now(),
+                status: 'sent' // Initial state: single gray tick
             });
         }
         document.getElementById('btn-send').addEventListener('click', sendMessage);
