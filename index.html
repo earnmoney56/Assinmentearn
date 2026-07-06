@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Live Support Chat</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         :root { --wa-green: #075e54; --wa-light: #128c7e; --bg-color: #ece5dd; }
@@ -16,11 +17,10 @@
         .message { max-width: 75%; padding: 8px 14px; border-radius: 10px; font-size: 15px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.08); word-break: break-word; }
         .message.sent { background: #d9fdd3; align-self: flex-end; border-top-right-radius: 0; }
         .message.received { background: white; align-self: flex-start; border-top-left-radius: 0; }
-        .message .time { font-size: 10px; color: #667781; text-align: right; margin-top: 4px; }
         .input-area { position: fixed; bottom: 0; left: 0; right: 0; background: #f0f2f5; padding: 10px 12px 22px 12px; display: flex; align-items: center; gap: 8px; border-top: 1px solid #e9edef; height: 75px; z-index: 1000; }
-        .input-wrapper { flex: 1; background: white; border-radius: 25px; display: flex; align-items: center; padding: 0 12px; border: 1px solid #ccc; height: 44px; gap: 8px; }
+        .input-wrapper { flex: 1; background: white; border-radius: 25px; display: flex; align-items: center; padding: 0 12px; border: 1px solid #ccc; height: 44px; }
         .input-box { flex: 1; background: transparent; border: none; outline: none; font-size: 16px; height: 100%; }
-        .send-btn { background: var(--wa-light); color: white; width: 44px; height: 44px; border-radius: 50%; border: none; display: flex; justify-content: center; align-items: center; font-size: 18px; cursor: pointer; flex-shrink: 0; }
+        .send-btn { background: var(--wa-light); color: white; width: 44px; height: 44px; border-radius: 50%; border: none; display: flex; justify-content: center; align-items: center; font-size: 18px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -28,7 +28,7 @@
         <i class="fas fa-user-circle" style="font-size: 32px;"></i>
         <div>
             <span style="font-weight: 600;">Support Team (Admin)</span>
-            <span style="font-size: 11px; color: #b3d4d0; display: block;"><span class="status-dot"></span> Active Live</span>
+            <span style="font-size: 11px; color: #b3d4d0; display: block;"><span class="status-dot"></span> Firebase Live</span>
         </div>
     </div>
     <div class="chat-container" id="chat-box"></div>
@@ -40,38 +40,37 @@
     </div>
 
     <script>
-        const SUPABASE_URL = "https://nkwllaxgrmmlrqacbaro.supabase.co";
-        const SUPABASE_KEY = "sb_publishable_ZTqBnJInrVgfpegOJfS6KQ_wwzYSQf0";
-        const dbClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const firebaseConfig = {
+            apiKey: "AIzaSyDe8zFsomI7Qn1PfuJb_FyWOLe1SdqEZHM",
+            authDomain: "wattsapp-27aa4.firebaseapp.com",
+            projectId: "wattsapp-27aa4",
+            storageBucket: "wattsapp-27aa4.appspot.com",
+            messagingSenderId: "826330591993",
+            appId: "1:826330591993:web:51865cddf32ba8b5312028"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
 
-        let myUserId = localStorage.getItem('user_chat_uuid');
-        if(!myUserId) {
-            myUserId = 'User-' + Math.floor(1000 + Math.random() * 9000);
-            localStorage.setItem('user_chat_uuid', myUserId);
-        }
+        let myUserId = localStorage.getItem('user_chat_uuid') || 'User-' + Math.floor(1000 + Math.random() * 9000);
+        localStorage.setItem('user_chat_uuid', myUserId);
 
-        let totalMessagesCount = 0;
-
-        async function loadMessages() {
-            let { data: items } = await dbClient.from('messages').select('*').eq('room_id', myUserId).order('inserted_at', { ascending: true });
-            if (items && items.length !== totalMessagesCount) {
-                totalMessagesCount = items.length;
-                const box = document.getElementById('chat-box');
-                box.innerHTML = '';
-                items.forEach(m => {
-                    const d = document.createElement('div');
-                    d.classList.add('message', m.sender === myUserId ? 'sent' : 'received');
-                    d.innerHTML = `<div>${m.message_text}</div>`;
-                    
-                    const t = document.createElement('div');
-                    t.classList.add('time');
-                    t.innerText = new Date(m.inserted_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                    d.appendChild(t);
-                    box.appendChild(d);
-                });
-                box.scrollTop = box.scrollHeight;
-            }
-        }
+        // Realtime Messages Fetching
+        db.collection("messages")
+          .where("room_id", "==", myUserId)
+          .orderBy("timestamp", "asc")
+          .onSnapshot((snapshot) => {
+              const box = document.getElementById('chat-box');
+              box.innerHTML = '';
+              snapshot.forEach((doc) => {
+                  const m = doc.data();
+                  const d = document.createElement('div');
+                  d.classList.add('message', m.sender === myUserId ? 'sent' : 'received');
+                  d.innerHTML = `<div>${m.message_text}</div>`;
+                  box.appendChild(d);
+              });
+              box.scrollTop = box.scrollHeight;
+          });
 
         async function sendMessage() {
             const inp = document.getElementById('msg-input');
@@ -79,23 +78,17 @@
             if(!val) return;
             inp.value = '';
 
-            await dbClient.from('messages').insert([{ 
-                message_text: val, 
-                sender: myUserId, 
-                receiver: 'admin', 
-                room_id: myUserId, 
-                type: 'text'
-            }]);
-            loadMessages();
+            await db.collection("messages").add({
+                message_text: val,
+                sender: myUserId,
+                receiver: 'admin',
+                room_id: myUserId,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
         }
 
         document.getElementById('btn-send').addEventListener('click', sendMessage);
         document.getElementById('msg-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') sendMessage(); });
-        
-        window.addEventListener('DOMContentLoaded', () => {
-            loadMessages();
-            setInterval(loadMessages, 2000); // Har 2 second baad auto-sync
-        });
     </script>
 </body>
 </html>
