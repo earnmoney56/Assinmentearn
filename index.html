@@ -1,23 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head> 
-    <div id="debug-log" style="position:fixed; top:60px; left:0; right:0; background:rgba(0,0,0,0.8); color:#00ff00; font-family:monospace; font-size:11px; max-height:120px; overflow-y:auto; z-index:9999; padding:5px; pointer-events:none;">Console Logs Will Appear Here...</div>
-
-<script>
-    (function(){
-        const logBox = document.getElementById('debug-log');
-        function appendLog(type, args) {
-            if(!logBox) return;
-            const msg = Array.from(args).map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' ');
-            logBox.innerHTML += `<br>[${type}] ${msg}`;
-            logBox.scrollTop = logBox.scrollHeight;
-        }
-        console.log = function() { appendLog('LOG', arguments); };
-        console.error = function() { appendLog('ERROR', arguments); };
-        window.onerror = function(m, u, l) { appendLog('CRASH', [m, 'at line:', l]); };
-    })();
-</script>
-
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Live Support Chat</title>
@@ -29,8 +12,6 @@
         body, html { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; height: 100%; width: 100%; overflow: hidden; }
         .wa-header { position: fixed; top: 0; left: 0; right: 0; background: var(--wa-green); color: white; padding: 10px 15px; display: flex; align-items: center; gap: 12px; font-size: 16px; height: 60px; z-index: 1000; }
         .wa-header .status-dot { width: 10px; height: 10px; background: #2ecc71; border-radius: 50%; display: inline-block; }
-        .wa-header .status-dot.offline { background: #95a5a6; }
-        .wa-header .sub-text { font-size: 11px; color: #b3d4d0; display: block; }
         .chat-container { position: absolute; top: 60px; bottom: 75px; left: 0; right: 0; background-color: var(--bg-color); overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
         .message { max-width: 75%; padding: 8px 14px; border-radius: 10px; font-size: 15px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.08); word-break: break-word; }
         .message.sent { background: #d9fdd3; align-self: flex-end; border-top-right-radius: 0; }
@@ -43,21 +24,19 @@
     </style>
 </head>
 <body>
-    <div class="screen">
-        <div class="wa-header">
-            <i class="fas fa-user-circle" style="font-size: 32px;"></i>
-            <div>
-                <span style="font-weight: 600;">Support Team (Admin)</span>
-                <span class="sub-text" id="admin-status"><span class="status-dot offline"></span> Offline</span>
-            </div>
+    <div class="wa-header">
+        <i class="fas fa-user-circle" style="font-size: 32px;"></i>
+        <div>
+            <span style="font-weight: 600;">Support Team (Admin)</span>
+            <span style="font-size: 11px; color: #b3d4d0; display: block;"><span class="status-dot"></span> Active Live</span>
         </div>
-        <div class="chat-container" id="chat-box"></div>
-        <div class="input-area">
-            <div class="input-wrapper">
-                <input type="text" id="msg-input" class="input-box" placeholder="Type a message...">
-            </div>
-            <button id="btn-send" class="send-btn"><i class="fas fa-paper-plane"></i></button>
+    </div>
+    <div class="chat-container" id="chat-box"></div>
+    <div class="input-area">
+        <div class="input-wrapper">
+            <input type="text" id="msg-input" class="input-box" placeholder="Type a message...">
         </div>
+        <button id="btn-send" class="send-btn"><i class="fas fa-paper-plane"></i></button>
     </div>
 
     <script>
@@ -70,36 +49,28 @@
             myUserId = 'User-' + Math.floor(1000 + Math.random() * 9000);
             localStorage.setItem('user_chat_uuid', myUserId);
         }
-        const currentRoomId = myUserId;
+
+        let totalMessagesCount = 0;
 
         async function loadMessages() {
-            const box = document.getElementById('chat-box');
-            let { data: items } = await dbClient.from('messages').select('*').eq('room_id', currentRoomId).order('inserted_at', { ascending: true });
-            if (items) {
+            let { data: items } = await dbClient.from('messages').select('*').eq('room_id', myUserId).order('inserted_at', { ascending: true });
+            if (items && items.length !== totalMessagesCount) {
+                totalMessagesCount = items.length;
+                const box = document.getElementById('chat-box');
                 box.innerHTML = '';
-                items.forEach(m => renderMsg(m));
+                items.forEach(m => {
+                    const d = document.createElement('div');
+                    d.classList.add('message', m.sender === myUserId ? 'sent' : 'received');
+                    d.innerHTML = `<div>${m.message_text}</div>`;
+                    
+                    const t = document.createElement('div');
+                    t.classList.add('time');
+                    t.innerText = new Date(m.inserted_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    d.appendChild(t);
+                    box.appendChild(d);
+                });
+                box.scrollTop = box.scrollHeight;
             }
-        }
-
-        function renderMsg(msg) {
-            const box = document.getElementById('chat-box');
-            if(!box || !msg.message_text) return;
-            
-            // Duplicate checks se bachne ke liye
-            if (msg.id && document.getElementById(`m-${msg.id}`)) return;
-            
-            const d = document.createElement('div');
-            if(msg.id) d.id = `m-${msg.id}`;
-            d.classList.add('message', msg.sender === myUserId ? 'sent' : 'received');
-            d.innerHTML = `<div>${msg.message_text}</div>`;
-            
-            const t = document.createElement('div');
-            t.classList.add('time');
-            t.innerText = new Date(msg.inserted_at || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            d.appendChild(t);
-            
-            box.appendChild(d);
-            box.scrollTop = box.scrollHeight;
         }
 
         async function sendMessage() {
@@ -108,54 +79,23 @@
             if(!val) return;
             inp.value = '';
 
-            // Pehle local screen par dikha dein taake delay na lage
-            renderMsg({ message_text: val, sender: myUserId, inserted_at: new Date() });
-
             await dbClient.from('messages').insert([{ 
                 message_text: val, 
                 sender: myUserId, 
                 receiver: 'admin', 
-                room_id: currentRoomId, 
+                room_id: myUserId, 
                 type: 'text'
             }]);
+            loadMessages();
         }
-
-        // Presence (Online/Offline Tracking)
-        const trackChannel = dbClient.channel('presence-global', { config: { presence: { key: myUserId } } });
-        
-        trackChannel
-        .on('presence', { event: 'sync' }, () => {
-            const state = trackChannel.presenceState();
-            if (state['admin']) {
-                document.getElementById('admin-status').innerHTML = '<span class="status-dot"></span> Online';
-            } else {
-                document.getElementById('admin-status').innerHTML = '<span class="status-dot offline"></span> Offline';
-            }
-        })
-        .on('presence', { event: 'leave' }, ({ key }) => {
-            if (key === 'admin') {
-                const now = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                document.getElementById('admin-status').innerHTML = `<span class="status-dot offline"></span> Last seen at ${now}`;
-            }
-        })
-        .subscribe(async (status) => {
-            if (status === 'SUBSCRIBED') {
-                await trackChannel.track({ online_at: new Date().toISOString() });
-            }
-        });
-
-        // Realtime Messages Table updates
-        dbClient.channel('custom-insert-channel')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-            if(payload.new.room_id === currentRoomId) {
-                renderMsg(payload.new);
-            }
-        })
-        .subscribe();
 
         document.getElementById('btn-send').addEventListener('click', sendMessage);
         document.getElementById('msg-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') sendMessage(); });
-        window.addEventListener('DOMContentLoaded', loadMessages);
+        
+        window.addEventListener('DOMContentLoaded', () => {
+            loadMessages();
+            setInterval(loadMessages, 2000); // Har 2 second baad auto-sync
+        });
     </script>
 </body>
 </html>
