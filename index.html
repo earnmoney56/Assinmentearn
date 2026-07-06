@@ -6,6 +6,7 @@
     <title>Live Support Chat</title>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         :root { --wa-green: #075e54; --wa-light: #128c7e; --bg-color: #ece5dd; }
@@ -13,18 +14,32 @@
         body, html { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; height: 100%; width: 100%; overflow: hidden; }
         .wa-header { position: fixed; top: 0; left: 0; right: 0; background: var(--wa-green); color: white; padding: 10px 15px; display: flex; align-items: center; gap: 12px; font-size: 16px; height: 60px; z-index: 1000; }
         .wa-header .status-dot { width: 10px; height: 10px; background: #2ecc71; border-radius: 50%; display: inline-block; }
+        
         .chat-container { position: absolute; top: 60px; bottom: 75px; left: 0; right: 0; background-color: var(--bg-color); overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
-        .message { max-width: 75%; padding: 6px 10px 20px 12px; border-radius: 10px; font-size: 15px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.08); word-break: break-word; color: black; display: flex; flex-direction: column; }
+        
+        /* Message Box Layout Fix for Small Texts */
+        .message { max-width: 75%; padding: 8px 12px 24px 12px; border-radius: 10px; font-size: 15px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.08); word-break: break-word; color: black; display: inline-block; min-width: 90px; }
         .message.sent { background: #d9fdd3; align-self: flex-end; border-top-right-radius: 0; }
         .message.received { background: white; align-self: flex-start; border-top-left-radius: 0; }
-        .msg-meta { position: absolute; bottom: 3px; right: 7px; font-size: 10px; color: #727272; display: flex; align-items: center; gap: 3px; }
+        
+        /* Time and Ticks Styling */
+        .msg-meta { position: absolute; bottom: 3px; right: 8px; font-size: 10px; color: #727272; display: flex; align-items: center; gap: 4px; white-space: nowrap; }
         .tick-icon { font-size: 11px; }
         .tick-blue { color: #34b7f1; }
         .tick-gray { color: #8696a0; }
+        
+        /* Media Elements inside Chat */
+        .chat-media { max-width: 100%; border-radius: 8px; margin-bottom: 4px; display: block; max-height: 200px; object-fit: cover; }
+        .chat-link { color: #0275d8; text-decoration: underline; word-break: break-all; }
+        
+        /* Input Bar with Attachment Button */
         .input-area { position: fixed; bottom: 0; left: 0; right: 0; background: #f0f2f5; padding: 10px 12px 22px 12px; display: flex; align-items: center; gap: 8px; border-top: 1px solid #e9edef; height: 75px; z-index: 1000; }
-        .input-wrapper { flex: 1; background: white; border-radius: 25px; display: flex; align-items: center; padding: 0 12px; border: 1px solid #ccc; height: 44px; }
+        .input-wrapper { flex: 1; background: white; border-radius: 25px; display: flex; align-items: center; padding: 0 12px; border: 1px solid #ccc; height: 44px; gap: 8px; }
         .input-box { flex: 1; background: transparent; border: none; outline: none; font-size: 16px; height: 100%; color: black; }
+        
+        .attach-btn { color: #54656f; font-size: 20px; cursor: pointer; padding: 4px; }
         .send-btn { background: var(--wa-light); color: white; width: 44px; height: 44px; border-radius: 50%; border: none; display: flex; justify-content: center; align-items: center; font-size: 18px; cursor: pointer; }
+        #file-input { display: none; }
     </style>
 </head>
 <body>
@@ -35,10 +50,14 @@
             <span style="font-size: 11px; color: #b3d4d0; display: block;"><span class="status-dot"></span> Firebase Live</span>
         </div>
     </div>
+    
     <div class="chat-container" id="chat-box"></div>
+    
     <div class="input-area">
         <div class="input-wrapper">
-            <input type="text" id="msg-input" class="input-box" placeholder="Type a message...">
+            <label for="file-input" class="attach-btn"><i class="fas fa-paperclip"></i></label>
+            <input type="file" id="file-input" accept="image/*,video/*,audio/*">
+            <input type="text" id="msg-input" class="input-box" placeholder="Type a message or paste link...">
         </div>
         <button id="btn-send" class="send-btn"><i class="fas fa-paper-plane"></i></button>
     </div>
@@ -54,20 +73,19 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+        const storage = firebase.storage();
 
         let myUserId = localStorage.getItem('user_chat_uuid') || 'User-' + Math.floor(1000 + Math.random() * 9000);
         localStorage.setItem('user_chat_uuid', myUserId);
 
-        // Render Ticks based on Status
         function getTickHTML(status, isSent) {
             if (!isSent) return ''; 
             if (status === 'sent') return '<i class="fas fa-check tick-icon tick-gray"></i>';
             if (status === 'delivered') return '<i class="fas fa-check-double tick-icon tick-gray"></i>';
             if (status === 'seen') return '<i class="fas fa-check-double tick-icon tick-blue"></i>';
-            return '<i class="fas fa-clock tick-gray"></i>';
+            return '';
         }
 
-        // Format Time (HH:MM AM/PM)
         function formatTime(timestamp) {
             if(!timestamp) return '';
             const date = new Date(timestamp);
@@ -80,19 +98,24 @@
             return hours + ':' + minutes + ' ' + ampm;
         }
 
-        // Real-time listener for messages
+        // URL detector helper
+        function linkify(text) {
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            return text.replace(urlRegex, function(url) {
+                return '<a class="chat-link" href="' + url + '" target="_blank">' + url + '</a>';
+            });
+        }
+
         db.collection("messages").where("room_id", "==", myUserId).onSnapshot((snapshot) => {
             const box = document.getElementById('chat-box');
             box.innerHTML = '';
             
-            // Sort by absolute creation timestamp
             let sortedDocs = snapshot.docs.sort((a, b) => a.data().time_now - b.data().time_now);
             
             sortedDocs.forEach((doc) => {
                 const m = doc.data();
                 const isSentByMe = m.sender === myUserId;
                 
-                // If message received from admin and it's not marked as seen yet, update status to seen
                 if (!isSentByMe && m.status !== 'seen') {
                     db.collection("messages").doc(doc.id).update({ status: 'seen' });
                 }
@@ -100,11 +123,22 @@
                 const d = document.createElement('div');
                 d.classList.add('message', isSentByMe ? 'sent' : 'received');
                 
+                let contentHTML = '';
+                if (m.type === 'image') {
+                    contentHTML = `<img src="${m.file_url}" class="chat-media" onclick="window.open('${m.file_url}')">`;
+                } else if (m.type === 'video') {
+                    contentHTML = `<video src="${m.file_url}" class="chat-media" controls></video>`;
+                } else if (m.type === 'audio') {
+                    contentHTML = `<audio src="${m.file_url}" controls style="max-width:100%; height:32px; margin-bottom:4px;"></audio>`;
+                } else {
+                    contentHTML = `<div>${linkify(m.message_text)}</div>`;
+                }
+                
                 const timeStr = formatTime(m.time_now);
                 const tickHTML = getTickHTML(m.status, isSentByMe);
 
                 d.innerHTML = `
-                    <div>${m.message_text}</div>
+                    ${contentHTML}
                     <div class="msg-meta">
                         <span>${timeStr}</span>
                         ${tickHTML}
@@ -127,9 +161,48 @@
                 receiver: 'admin',
                 room_id: myUserId,
                 time_now: Date.now(),
-                status: 'sent' // Initial state: single gray tick
+                type: 'text',
+                status: 'sent'
             });
         }
+
+        // Handle Media File Uploads (Image, Video, Voice/Audio)
+        document.getElementById('file-input').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            let fileType = 'text';
+            if (file.type.startsWith('image/')) fileType = 'image';
+            else if (file.type.startsWith('video/')) fileType = 'video';
+            else if (file.type.startsWith('audio/')) fileType = 'audio';
+
+            const storageRef = storage.ref('chat_files/' + Date.now() + '_' + file.name);
+            
+            // Upload animation hint
+            document.getElementById('msg-input').placeholder = "Uploading file...";
+            
+            try {
+                const uploadTask = await storageRef.put(file);
+                const downloadURL = await uploadTask.ref.getDownloadURL();
+                
+                await db.collection("messages").add({
+                    message_text: `Sent a ${fileType}`,
+                    file_url: downloadURL,
+                    sender: myUserId,
+                    receiver: 'admin',
+                    room_id: myUserId,
+                    time_now: Date.now(),
+                    type: fileType,
+                    status: 'sent'
+                });
+            } catch (err) {
+                alert("Upload failed, check Firebase Storage settings.");
+            }
+            
+            document.getElementById('msg-input').placeholder = "Type a message...";
+            e.target.value = ''; // clear input
+        });
+
         document.getElementById('btn-send').addEventListener('click', sendMessage);
         document.getElementById('msg-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') sendMessage(); });
     </script>
