@@ -1,6 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+<head> 
+    <div id="debug-log" style="position:fixed; top:60px; left:0; right:0; background:rgba(0,0,0,0.8); color:#00ff00; font-family:monospace; font-size:11px; max-height:120px; overflow-y:auto; z-index:9999; padding:5px; pointer-events:none;">Console Logs Will Appear Here...</div>
+
+<script>
+    (function(){
+        const logBox = document.getElementById('debug-log');
+        function appendLog(type, args) {
+            if(!logBox) return;
+            const msg = Array.from(args).map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' ');
+            logBox.innerHTML += `<br>[${type}] ${msg}`;
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+        console.log = function() { appendLog('LOG', arguments); };
+        console.error = function() { appendLog('ERROR', arguments); };
+        window.onerror = function(m, u, l) { appendLog('CRASH', [m, 'at line:', l]); };
+    })();
+</script>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Live Support Chat</title>
