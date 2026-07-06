@@ -8,39 +8,35 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; background: #f0f2f5; }
-        .sidebar { width: 300px; background: white; border-right: 1px solid #e9edef; display: flex; flex-direction: column; }
-        .sidebar-header { background: #075e54; color: white; padding: 15px; font-weight: bold; }
+        body { font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; background: #f0f2f5; color: black; }
+        .sidebar { width: 150px; background: white; border-right: 1px solid #e9edef; display: flex; flex-direction: column; }
+        .sidebar-header { background: #075e54; color: white; padding: 12px 10px; font-weight: bold; font-size: 14px; }
         .user-list { flex: 1; overflow-y: auto; }
-        .user-item { padding: 15px; border-bottom: 1px solid #f0f2f5; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 600; }
-        .user-item.active { background: #e9edef; }
+        .user-item { padding: 12px 10px; border-bottom: 1px solid #f0f2f5; cursor: pointer; font-weight: 600; font-size: 13px; color: black; }
         .main-chat { flex: 1; display: flex; flex-direction: column; background: #ece5dd; }
-        .chat-header { background: #075e54; color: white; padding: 15px; }
-        .chat-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
-        .msg { max-width: 70%; padding: 10px; border-radius: 8px; font-size: 15px; }
+        .chat-header { background: #075e54; color: white; padding: 12px; font-size: 15px; }
+        .chat-box { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+        .msg { max-width: 75%; padding: 8px 12px; border-radius: 8px; font-size: 14px; color: black; }
         .msg.sent { background: #d9fdd3; align-self: flex-end; }
         .msg.received { background: white; align-self: flex-start; }
-        .input-area { background: #f0f2f5; padding: 15px; display: flex; gap: 10px; }
-        .input-box { flex: 1; padding: 12px; border-radius: 20px; border: 1px solid #ccc; outline: none; }
-        .send-btn { background: #128c7e; color: white; border: none; padding: 0 25px; border-radius: 20px; cursor: pointer; font-weight: bold; }
+        .input-area { background: #f0f2f5; padding: 10px; display: flex; gap: 8px; }
+        .input-box { flex: 1; padding: 10px; border-radius: 20px; border: 1px solid #ccc; outline: none; font-size: 14px; color: black; }
+        .send-btn { background: #128c7e; color: white; border: none; padding: 0 15px; border-radius: 20px; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
-
     <div class="sidebar">
-        <div class="sidebar-header">Active Support Chats</div>
+        <div class="sidebar-header">Active Chats</div>
         <div class="user-list" id="users-container"></div>
     </div>
-
     <div class="main-chat">
-        <div class="chat-header"><h4 id="active-user-title">Select a Chat</h4></div>
+        <div class="chat-header"><h4 id="active-user-title">Select Chat</h4></div>
         <div class="chat-box" id="admin-chat-box"></div>
         <div class="input-area">
-            <input type="text" id="admin-msg-input" class="input-box" placeholder="Type a reply...">
+            <input type="text" id="admin-msg-input" class="input-box" placeholder="Reply...">
             <button id="admin-send-btn" class="send-btn">Send</button>
         </div>
     </div>
-
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyDe8zFsomI7Qn1PfuJb_FyWOLe1SdqEZHM",
@@ -50,7 +46,6 @@
             messagingSenderId: "826330591993",
             appId: "1:826330591993:web:51865cddf32ba8b5312028"
         };
-
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         let selectedRoomId = null;
@@ -61,12 +56,11 @@
             const rooms = [];
             snapshot.forEach(doc => rooms.push(doc.data().room_id));
             const uniqueRooms = [...new Set(rooms)].filter(Boolean);
-            
             container.innerHTML = '';
             uniqueRooms.forEach(room => {
                 const div = document.createElement('div');
                 div.classList.add('user-item');
-                if(room === selectedRoomId) div.classList.add('active');
+                if(room === selectedRoomId) div.style.background = "#e9edef";
                 div.innerText = room;
                 div.onclick = () => loadActiveRoom(room);
                 container.appendChild(div);
@@ -76,24 +70,20 @@
         function loadActiveRoom(room) {
             selectedRoomId = room;
             document.getElementById('active-user-title').innerText = room;
-            
             if(unsubscribeMessages) unsubscribeMessages();
-
-            unsubscribeMessages = db.collection("messages")
-                .where("room_id", "==", room)
-                .orderBy("timestamp", "asc")
-                .onSnapshot((snapshot) => {
-                    const box = document.getElementById('admin-chat-box');
-                    box.innerHTML = '';
-                    snapshot.forEach(doc => {
-                        const m = doc.data();
-                        const d = document.createElement('div');
-                        d.classList.add('msg', m.sender === 'admin' ? 'sent' : 'received');
-                        d.innerText = m.message_text;
-                        box.appendChild(d);
-                    });
-                    box.scrollTop = box.scrollHeight;
+            unsubscribeMessages = db.collection("messages").where("room_id", "==", room).onSnapshot((snapshot) => {
+                const box = document.getElementById('admin-chat-box');
+                box.innerHTML = '';
+                let sortedDocs = snapshot.docs.sort((a, b) => a.data().time_now - b.data().time_now);
+                sortedDocs.forEach(doc => {
+                    const m = doc.data();
+                    const d = document.createElement('div');
+                    d.classList.add('msg', m.sender === 'admin' ? 'sent' : 'received');
+                    d.innerText = m.message_text;
+                    box.appendChild(d);
                 });
+                box.scrollTop = box.scrollHeight;
+            });
         }
 
         async function sendAdminMessage() {
@@ -102,16 +92,14 @@
             const val = inp.value.trim();
             if(!val) return;
             inp.value = '';
-
             await db.collection("messages").add({
                 message_text: val,
                 sender: 'admin',
                 receiver: selectedRoomId,
                 room_id: selectedRoomId,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                time_now: Date.now()
             });
         }
-
         document.getElementById('admin-send-btn').addEventListener('click', sendAdminMessage);
         document.getElementById('admin-msg-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') sendAdminMessage(); });
     </script>
