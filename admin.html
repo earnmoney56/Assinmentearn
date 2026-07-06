@@ -4,25 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; background: #f0f2f5; }
         .sidebar { width: 300px; background: white; border-right: 1px solid #e9edef; display: flex; flex-direction: column; }
-        .sidebar-header { background: #075e54; color: white; padding: 15px; font-weight: bold; font-size: 16px; }
+        .sidebar-header { background: #075e54; color: white; padding: 15px; font-weight: bold; }
         .user-list { flex: 1; overflow-y: auto; }
-        .user-item { padding: 15px; border-bottom: 1px solid #f0f2f5; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: #111b21; }
-        .user-item:hover, .user-item.active { background: #f0f2f5; }
-        .status-dot { width: 10px; height: 10px; background: #2ecc71; border-radius: 50%; }
+        .user-item { padding: 15px; border-bottom: 1px solid #f0f2f5; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 600; }
+        .user-item.active { background: #e9edef; }
         .main-chat { flex: 1; display: flex; flex-direction: column; background: #ece5dd; }
-        .chat-header { background: #075e54; color: white; padding: 15px; display: flex; flex-direction: column; gap: 2px; }
+        .chat-header { background: #075e54; color: white; padding: 15px; }
         .chat-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
-        .msg { max-width: 70%; padding: 10px; border-radius: 8px; font-size: 15px; word-break: break-word; box-shadow: 0 1px 1px rgba(0,0,0,0.06); }
-        .msg.sent { background: #d9fdd3; align-self: flex-end; border-top-right-radius: 0; }
-        .msg.received { background: white; align-self: flex-start; border-top-left-radius: 0; }
-        .input-area { background: #f0f2f5; padding: 15px; display: flex; gap: 10px; align-items: center; }
-        .input-box { flex: 1; padding: 12px; border-radius: 20px; border: 1px solid #ccc; outline: none; font-size: 15px; }
-        .send-btn { background: #128c7e; color: white; border: none; padding: 12px 30px; border-radius: 20px; cursor: pointer; font-weight: bold; }
+        .msg { max-width: 70%; padding: 10px; border-radius: 8px; font-size: 15px; }
+        .msg.sent { background: #d9fdd3; align-self: flex-end; }
+        .msg.received { background: white; align-start: flex-start; }
+        .input-area { background: #f0f2f5; padding: 15px; display: flex; gap: 10px; }
+        .input-box { flex: 1; padding: 12px; border-radius: 20px; border: 1px solid #ccc; outline: none; }
+        .send-btn { background: #128c7e; color: white; border: none; padding: 0 25px; border-radius: 20px; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -33,10 +33,7 @@
     </div>
 
     <div class="main-chat">
-        <div class="chat-header">
-            <h4 id="active-user-title">Select a Chat</h4>
-            <small style="color: #b3d4d0;">Live Connected Sync</small>
-        </div>
+        <div class="chat-header"><h4 id="active-user-title">Select a Chat</h4></div>
         <div class="chat-box" id="admin-chat-box"></div>
         <div class="input-area">
             <input type="text" id="admin-msg-input" class="input-box" placeholder="Type a reply...">
@@ -45,57 +42,59 @@
     </div>
 
     <script>
-        const SUPABASE_URL = "https://nkwllaxgrmmlrqacbaro.supabase.co";
-        const SUPABASE_KEY = "sb_publishable_ZTqBnJInrVgfpegOJfS6KQ_wwzYSQf0";
-        const dbClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const firebaseConfig = {
+            apiKey: "AIzaSyDe8zFsomI7Qn1PfuJb_FyWOLe1SdqEZHM",
+            authDomain: "wattsapp-27aa4.firebaseapp.com",
+            projectId: "wattsapp-27aa4",
+            storageBucket: "wattsapp-27aa4.appspot.com",
+            messagingSenderId: "826330591993",
+            appId: "1:826330591993:web:51865cddf32ba8b5312028"
+        };
 
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
         let selectedRoomId = null;
-        let lastMessagesLength = 0;
-        let knownRoomsJson = "";
+        let unsubscribeMessages = null;
 
-        async function syncData() {
-            // 1. Inbox list updates fetch karein
-            let { data: allMessages } = await dbClient.from('messages').select('room_id').order('inserted_at', { ascending: false });
-            if (allMessages) {
-                const uniqueRooms = [...new Set(allMessages.map(m => m.room_id))].filter(Boolean);
-                const currentJson = JSON.stringify(uniqueRooms);
-                
-                if (currentJson !== knownRoomsJson) {
-                    knownRoomsJson = currentJson;
-                    const container = document.getElementById('users-container');
-                    container.innerHTML = '';
-                    uniqueRooms.forEach(room => {
-                        const div = document.createElement('div');
-                        div.classList.add('user-item');
-                        if(room === selectedRoomId) div.classList.add('active');
-                        div.innerHTML = `<span>${room}</span> <span class="status-dot"></span>`;
-                        div.onclick = () => {
-                            selectedRoomId = room;
-                            document.getElementById('active-user-title').innerText = room;
-                            lastMessagesLength = 0; 
-                            syncData();
-                        };
-                        container.appendChild(div);
-                    });
-                }
-            }
+        // Dynamic Active Rooms Listener
+        db.collection("messages").onSnapshot((snapshot) => {
+            const container = document.getElementById('users-container');
+            const rooms = [];
+            snapshot.forEach(doc => rooms.push(doc.data().room_id));
+            const uniqueRooms = [...new Set(rooms)].filter(Boolean);
+            
+            container.innerHTML = '';
+            uniqueRooms.forEach(room => {
+                const div = document.createElement('div');
+                div.classList.add('user-item');
+                if(room === selectedRoomId) div.classList.add('active');
+                div.innerText = room;
+                div.onclick = () => loadActiveRoom(room);
+                container.appendChild(div);
+            });
+        });
 
-            // 2. Active Chat ke andar ke messages track karein
-            if (selectedRoomId) {
-                let { data: items } = await dbClient.from('messages').select('*').eq('room_id', selectedRoomId).order('inserted_at', { ascending: true });
-                if (items && items.length !== lastMessagesLength) {
-                    lastMessagesLength = items.length;
+        function loadActiveRoom(room) {
+            selectedRoomId = room;
+            document.getElementById('active-user-title').innerText = room;
+            
+            if(unsubscribeMessages) unsubscribeMessages();
+
+            unsubscribeMessages = db.collection("messages")
+                .where("room_id", "==", room)
+                .orderBy("timestamp", "asc")
+                .onSnapshot((snapshot) => {
                     const box = document.getElementById('admin-chat-box');
                     box.innerHTML = '';
-                    items.forEach(m => {
+                    snapshot.forEach(doc => {
+                        const m = doc.data();
                         const d = document.createElement('div');
                         d.classList.add('msg', m.sender === 'admin' ? 'sent' : 'received');
                         d.innerText = m.message_text;
                         box.appendChild(d);
                     });
                     box.scrollTop = box.scrollHeight;
-                }
-            }
+                });
         }
 
         async function sendAdminMessage() {
@@ -105,23 +104,17 @@
             if(!val) return;
             inp.value = '';
 
-            await dbClient.from('messages').insert([{
+            await db.collection("messages").add({
                 message_text: val,
                 sender: 'admin',
                 receiver: selectedRoomId,
                 room_id: selectedRoomId,
-                type: 'text'
-            }]);
-            syncData();
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
         }
 
         document.getElementById('admin-send-btn').addEventListener('click', sendAdminMessage);
         document.getElementById('admin-msg-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') sendAdminMessage(); });
-        
-        window.addEventListener('DOMContentLoaded', () => {
-            syncData();
-            setInterval(syncData, 2000); // Admin background loop
-        });
     </script>
 </body>
 </html>
