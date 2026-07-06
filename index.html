@@ -48,24 +48,27 @@
         const SUPABASE_KEY = "sb_publishable_ZTqBnJInrVgfpegOJfS6KQ_wwzYSQf0";
         const dbClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let myUserId = localStorage.getItem('user_chat_uuid') || 'customer-' + Math.random().toString(36).substring(2, 15);
-        localStorage.setItem('user_chat_uuid', myUserId);
+        let myUserId = localStorage.getItem('user_chat_uuid');
+        if(!myUserId) {
+            myUserId = 'User-' + Math.floor(1000 + Math.random() * 9000);
+            localStorage.setItem('user_chat_uuid', myUserId);
+        }
         const currentRoomId = myUserId;
 
         async function loadMessages() {
             const box = document.getElementById('chat-box');
-            try {
-                let { data: items, error } = await dbClient.from('messages').select('*').eq('room_id', currentRoomId).order('inserted_at', { ascending: true });
-                if (!error && items) {
-                    box.innerHTML = '';
-                    items.forEach(m => renderMsg(m));
-                }
-            } catch(e) { console.error(e); }
+            let { data: items } = await dbClient.from('messages').select('*').eq('room_id', currentRoomId).order('inserted_at', { ascending: true });
+            if (items) {
+                box.innerHTML = '';
+                items.forEach(m => renderMsg(m));
+            }
         }
 
         function renderMsg(msg) {
             const box = document.getElementById('chat-box');
             if(!box || !msg.message_text) return;
+            
+            // Duplicate checks se bachne ke liye
             if (msg.id && document.getElementById(`m-${msg.id}`)) return;
             
             const d = document.createElement('div');
@@ -88,33 +91,31 @@
             if(!val) return;
             inp.value = '';
 
-            const tempId = 'temp-' + Date.now();
-            renderMsg({ id: tempId, message_text: val, sender: myUserId, inserted_at: new Date() });
+            // Pehle local screen par dikha dein taake delay na lage
+            renderMsg({ message_text: val, sender: myUserId, inserted_at: new Date() });
 
-            try {
-                await dbClient.from('messages').insert([{ 
-                    message_text: val, 
-                    sender: myUserId, 
-                    receiver: 'admin', 
-                    room_id: currentRoomId, 
-                    type: 'text'
-                }]);
-            } catch(e) { console.log(e); }
+            await dbClient.from('messages').insert([{ 
+                message_text: val, 
+                sender: myUserId, 
+                receiver: 'admin', 
+                room_id: currentRoomId, 
+                type: 'text'
+            }]);
         }
 
-        // --- Presence & Status System ---
-        const userStatusChannel = dbClient.channel('presence-room', { config: { presence: { key: myUserId } } });
+        // Presence (Online/Offline Tracking)
+        const trackChannel = dbClient.channel('presence-global', { config: { presence: { key: myUserId } } });
         
-        userStatusChannel
+        trackChannel
         .on('presence', { event: 'sync' }, () => {
-            const state = userStatusChannel.presenceState();
+            const state = trackChannel.presenceState();
             if (state['admin']) {
                 document.getElementById('admin-status').innerHTML = '<span class="status-dot"></span> Online';
             } else {
                 document.getElementById('admin-status').innerHTML = '<span class="status-dot offline"></span> Offline';
             }
         })
-        .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+        .on('presence', { event: 'leave' }, ({ key }) => {
             if (key === 'admin') {
                 const now = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                 document.getElementById('admin-status').innerHTML = `<span class="status-dot offline"></span> Last seen at ${now}`;
@@ -122,22 +123,22 @@
         })
         .subscribe(async (status) => {
             if (status === 'SUBSCRIBED') {
-                await userStatusChannel.track({ online_at: new Date().toISOString() });
+                await trackChannel.track({ online_at: new Date().toISOString() });
             }
         });
 
+        // Realtime Messages Table updates
+        dbClient.channel('custom-insert-channel')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+            if(payload.new.room_id === currentRoomId) {
+                renderMsg(payload.new);
+            }
+        })
+        .subscribe();
+
         document.getElementById('btn-send').addEventListener('click', sendMessage);
         document.getElementById('msg-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') sendMessage(); });
-
-        window.addEventListener('DOMContentLoaded', () => {
-            loadMessages();
-            dbClient.channel('chat-messages')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-                if(payload.new.room_id === currentRoomId) {
-                    renderMsg(payload.new);
-                }
-            }).subscribe();
-        });
+        window.addEventListener('DOMContentLoaded', loadMessages);
     </script>
 </body>
 </html>
