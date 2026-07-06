@@ -55,7 +55,6 @@
         let myUserId = localStorage.getItem('user_chat_uuid') || 'User-' + Math.floor(1000 + Math.random() * 9000);
         localStorage.setItem('user_chat_uuid', myUserId);
 
-        // Realtime Messages Fetching
         db.collection("messages")
           .where("room_id", "==", myUserId)
           .orderBy("timestamp", "asc")
