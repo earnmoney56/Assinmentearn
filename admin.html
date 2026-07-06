@@ -11,7 +11,7 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; background: #f0f2f5; color: black; overflow: hidden; }
         
-        /* Fixed Sidebar Layout */
+        /* Sidebar Layout */
         .sidebar { width: 160px; background: white; border-right: 1px solid #e9edef; display: flex; flex-direction: column; flex-shrink: 0; }
         .sidebar-header { background: #075e54; color: white; padding: 12px 10px; font-weight: bold; font-size: 14px; height: 50px; display: flex; align-items: center; }
         .user-list { flex: 1; overflow-y: auto; }
@@ -30,7 +30,7 @@
         .msg.sent { background: #d9fdd3; align-self: flex-end; }
         .msg.received { background: white; align-self: flex-start; }
         
-        /* Media Fixes */
+        /* Media Content Box Fix */
         .chat-media { max-width: 100%; width: 180px; height: auto; border-radius: 6px; margin-bottom: 4px; display: block; object-fit: cover; cursor: pointer; }
         .chat-link { color: #0275d8; text-decoration: underline; word-break: break-all; }
         
@@ -101,7 +101,7 @@
             });
         }
 
-        // Stream all active rooms and auto-deliver
+        // FIXED: Infinite loop logic removed. This fetches rooms safely.
         db.collection("messages").onSnapshot((snapshot) => {
             const container = document.getElementById('users-container');
             const rooms = [];
@@ -110,9 +110,6 @@
                 const data = doc.data();
                 if(data.room_id) {
                     rooms.push(data.room_id);
-                }
-                if (data.sender !== 'admin' && data.status === 'sent') {
-                    db.collection("messages").doc(doc.id).update({ status: 'delivered' });
                 }
             });
 
@@ -143,6 +140,7 @@
                     const m = doc.data();
                     const isSentByAdmin = m.sender === 'admin';
 
+                    // Update status safely inside active room view only
                     if (!isSentByAdmin && m.status !== 'seen') {
                         db.collection("messages").doc(doc.id).update({ status: 'seen' });
                     }
@@ -150,7 +148,6 @@
                     const d = document.createElement('div');
                     d.classList.add('msg', isSentByAdmin ? 'sent' : 'received');
                     
-                    // Render Image/Video/Audio Content Safely
                     let contentHTML = '';
                     if (m.type === 'image' && m.file_url) {
                         contentHTML = `<img src="${m.file_url}" class="chat-media" onclick="window.open('${m.file_url}', '_blank')">`;
