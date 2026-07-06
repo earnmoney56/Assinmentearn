@@ -3,46 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin WhatsApp Support Desk</title>
+    <title>Admin Support Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; background: #f0f2f5; }
-        .sidebar { width: 30%; background: white; border-right: 1px solid #e9edef; display: flex; flex-direction: column; }
-        .sidebar-header { background: #f0f2f5; padding: 15px; font-weight: bold; font-size: 18px; border-bottom: 1px solid #e9edef; }
+        .sidebar { width: 300px; background: white; border-right: 1px solid #e9edef; display: flex; flex-direction: column; }
+        .sidebar-header { background: #075e54; color: white; padding: 15px; font-weight: bold; }
         .user-list { flex: 1; overflow-y: auto; }
-        .user-item { padding: 15px; border-bottom: 1px solid #f0f2f5; cursor: pointer; display: flex; align-items: center; gap: 10px; }
-        .user-item:hover, .user-item.active { background: #ebebeb; }
-        .main-chat { width: 70%; display: flex; flex-direction: column; background: #ece5dd; position: relative; }
-        .chat-header { background: #f0f2f5; padding: 15px; font-weight: 600; }
-        .chat-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
-        .message { max-width: 65%; padding: 8px 14px; border-radius: 10px; font-size: 15px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
-        .message.sent { background: #d9fdd3; align-self: flex-end; }
-        .message.received { background: white; align-self: flex-start; }
-        .message img, .message video { max-width: 100%; border-radius: 8px; margin-top: 5px; display: block; max-height: 180px; }
-        .message audio { max-width: 100%; margin-top: 5px; display: block; }
-        .input-area { background: #f0f2f5; padding: 10px; display: flex; align-items: center; gap: 10px; }
-        .input-box { flex: 1; border: none; padding: 10px 15px; border-radius: 20px; outline: none; font-size: 15px; }
-        .btn { background: #128c7e; color: white; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-        #file-input { display: none; }
+        .user-item { padding: 15px; border-bottom: 1px solid #f0f2f5; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .user-item:hover, .user-item.active { background: #f0f2f5; }
+        .status-dot { width: 10px; height: 10px; background: #2ecc71; border-radius: 50%; }
+        .status-dot.offline { background: #95a5a6; }
+        
+        .main-chat { flex: 1; display: flex; flex-direction: column; background: #ece5dd; }
+        .chat-header { background: #075e54; color: white; padding: 15px; display: flex; align-items: center; gap: 10px; }
+        .chat-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .msg { max-width: 70%; padding: 10px; border-radius: 8px; font-size: 15px; }
+        .msg.sent { background: #d9fdd3; align-self: flex-end; }
+        .msg.received { background: white; align-self: flex-start; }
+        
+        .input-area { background: #f0f2f5; padding: 15px; display: flex; gap: 10px; }
+        .input-box { flex: 1; padding: 10px; border-radius: 20px; border: 1px solid #ccc; outline: none; }
+        .send-btn { background: #128c7e; color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; }
     </style>
 </head>
 <body>
 
     <div class="sidebar">
-        <div class="sidebar-header"><i class="fab fa-whatsapp" style="color: #25d366;"></i> Active Inboxes</div>
-        <div class="user-list" id="users-box"></div>
+        <div class="sidebar-header">Active Chats</div>
+        <div class="user-list" id="users-container"></div>
     </div>
 
     <div class="main-chat">
-        <div class="chat-header" id="active-user-title">Select a customer to chat</div>
-        <div class="chat-container" id="chat-box"></div>
+        <div class="chat-header">
+            <div>
+                <h4 id="active-user-title">Select a chat</h4>
+                <small id="user-status-text"></small>
+            </div>
+        </div>
+        <div class="chat-box" id="admin-chat-box"></div>
         <div class="input-area">
-            <label for="file-input" class="btn" style="background:#54656f;"><i class="fas fa-paperclip"></i></label>
-            <input type="file" id="file-input" accept="image/*,video/*">
-            <input type="text" id="msg-input" class="input-box" placeholder="Type a reply...">
-            <button id="btn-send" class="btn"><i class="fas fa-paper-plane"></i></button>
+            <input type="text" id="admin-msg-input" class="input-box" placeholder="Type a reply...">
+            <button id="admin-send-btn" class="send-btn">Send</button>
         </div>
     </div>
 
@@ -52,101 +56,114 @@
         const dbClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let selectedRoomId = null;
+        let onlineUsers = {};
 
-        async function loadActiveUsers() {
-            try {
-                // Get list of unique customers/rooms
-                let { data: items } = await dbClient.from('messages').select('room_id').not('room_id', 'is', null);
-                const uniqueRooms = [...new Set(items.map(i => i.room_id))];
-                
-                const list = document.getElementById('users-box');
-                list.innerHTML = '';
+        async function loadInboxes() {
+            let { data: messages } = await dbClient.from('messages').select('room_id').order('inserted_at', { ascending: false });
+            if (messages) {
+                const uniqueRooms = [...new Set(messages.map(m => m.room_id))];
+                const container = document.getElementById('users-container');
+                container.innerHTML = '';
                 uniqueRooms.forEach(room => {
+                    if(!room) return;
                     const div = document.createElement('div');
                     div.classList.add('user-item');
                     if(room === selectedRoomId) div.classList.add('active');
-                    div.innerHTML = `<i class="fas fa-user-circle" style="font-size:24px; color:#54656f;"></i> <span>${room}</span>`;
-                    div.onclick = () => selectUser(room);
-                    list.appendChild(div);
+                    
+                    const isOnline = onlineUsers[room];
+                    div.innerHTML = `<span>${room}</span> <span class="status-dot ${isOnline ? '' : 'offline'}"></span>`;
+                    
+                    div.onclick = () => {
+                        selectedRoomId = room;
+                        document.getElementById('active-user-title').innerText = room;
+                        updateUserStatusUI();
+                        loadAdminMessages();
+                        loadInboxes();
+                    };
+                    container.appendChild(div);
                 });
-            } catch(e) {}
-        }
-
-        async function selectUser(roomId) {
-            selectedRoomId = roomId;
-            document.getElementById('active-user-title').innerText = "Chatting with: " + roomId;
-            loadMessages();
-        }
-
-        async function loadMessages() {
-            if(!selectedRoomId) return;
-            const box = document.getElementById('chat-box');
-            try {
-                let { data: items } = await dbClient.from('messages').select('*').eq('room_id', selectedRoomId).order('inserted_at', { ascending: true });
-                box.innerHTML = '';
-                if(items) items.forEach(m => renderMsg(m));
-            } catch(e) {}
-        }
-
-        function renderMsg(msg) {
-            const box = document.getElementById('chat-box');
-            if(!box || document.getElementById(`m-${msg.id}`)) return;
-            const d = document.createElement('div');
-            d.id = `m-${msg.id}`;
-            d.classList.add('message', msg.sender === 'admin' ? 'sent' : 'received');
-            
-            let html = `<div>${msg.message_text || ''}</div>`;
-            if(msg.media_url) {
-                if(msg.type === 'image') html += `<img src="${msg.media_url}">`;
-                else if(msg.type === 'video') html += `<video src="${msg.media_url}" controls></video>`;
-                else if(msg.type === 'voice') html += `<audio src="${msg.media_url}" controls></audio>`;
             }
-            d.innerHTML = html;
-            box.appendChild(d);
-            box.scrollTop = box.scrollHeight;
         }
 
-        async function uploadToSupabase(file, ext, folder) {
-            const fileName = `${folder}/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
-            const { data, error } = await dbClient.storage.from('chat-media').upload(fileName, file);
-            if (error) return null;
-            return dbClient.storage.from('chat-media').getPublicUrl(fileName).data.publicUrl;
+        async function loadAdminMessages() {
+            if(!selectedRoomId) return;
+            let { data: items } = await dbClient.from('messages').select('*').eq('room_id', selectedRoomId).order('inserted_at', { ascending: true });
+            const box = document.getElementById('admin-chat-box');
+            box.innerHTML = '';
+            if(items) {
+                items.forEach(m => {
+                    const d = document.createElement('div');
+                    d.classList.add('msg', m.sender === 'admin' ? 'sent' : 'received');
+                    d.innerText = m.message_text;
+                    box.appendChild(d);
+                });
+                box.scrollTop = box.scrollHeight;
+            }
         }
 
         async function sendAdminMessage() {
             if(!selectedRoomId) return;
-            const inp = document.getElementById('msg-input');
+            const inp = document.getElementById('admin-msg-input');
             const val = inp.value.trim();
             if(!val) return;
             inp.value = '';
 
-            await dbClient.from('messages').insert([{ message_text: val, sender: 'admin', receiver: selectedRoomId, room_id: selectedRoomId, type: 'text', media_url: null }]);
+            await dbClient.from('messages').insert([{
+                message_text: val,
+                sender: 'admin',
+                receiver: selectedRoomId,
+                room_id: selectedRoomId,
+                type: 'text'
+            }]);
+            loadAdminMessages();
         }
 
-        document.getElementById('file-input').addEventListener('change', async (e) => {
+        function updateUserStatusUI() {
             if(!selectedRoomId) return;
-            const file = e.target.files[0];
-            if(!file) return;
-            let type = file.type.startsWith('video/') ? 'video' : 'image';
-            const ext = file.name.split('.').pop();
-            const publicUrl = await uploadToSupabase(file, ext, type);
-            if(publicUrl) {
-                await dbClient.from('messages').insert([{ message_text: `Admin sent a ${type}`, sender: 'admin', receiver: selectedRoomId, room_id: selectedRoomId, type: type, media_url: publicUrl }]);
+            const statusText = document.getElementById('user-status-text');
+            if (onlineUsers[selectedRoomId]) {
+                statusText.innerText = "Online";
+            } else {
+                statusText.innerText = "Offline / Last seen recently";
+            }
+        }
+
+        // --- Presence tracking ---
+        const adminStatusChannel = dbClient.channel('presence-room', { config: { presence: { key: 'admin' } } });
+        
+        adminStatusChannel
+        .on('presence', { event: 'sync' }, () => {
+            onlineUsers = adminStatusChannel.presenceState();
+            loadInboxes();
+            updateUserStatusUI();
+        })
+        .on('presence', { event: 'leave' }, ({ key }) => {
+            delete onlineUsers[key];
+            loadInboxes();
+            if(key === selectedRoomId) {
+                const now = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                document.getElementById('user-status-text').innerText = `Last seen at ${now}`;
+            }
+        })
+        .subscribe(async (status) => {
+            if (status === 'SUBSCRIBED') {
+                await adminStatusChannel.track({ online_at: new Date().toISOString() });
             }
         });
 
-        document.getElementById('btn-send').onclick = sendAdminMessage;
-        document.getElementById('msg-input').onkeypress = (e) => { if(e.key === 'Enter') sendAdminMessage(); };
+        document.getElementById('admin-send-btn').addEventListener('click', sendAdminMessage);
+        document.getElementById('admin-msg-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') sendAdminMessage(); });
 
-        window.onload = () => {
-            loadActiveUsers();
-            dbClient.channel('admin-sync').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, p => {
-                loadActiveUsers();
-                if(selectedRoomId && p.new.room_id === selectedRoomId) {
-                    renderMsg(p.new);
+        window.addEventListener('DOMContentLoaded', () => {
+            loadInboxes();
+            dbClient.channel('admin-listen')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+                loadInboxes();
+                if(payload.new.room_id === selectedRoomId) {
+                    loadAdminMessages();
                 }
             }).subscribe();
-        };
+        });
     </script>
 </body>
 </html>
