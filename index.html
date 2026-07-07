@@ -36,9 +36,20 @@
         .attach-btn { color: #54656f; font-size: 18px; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; }
         .send-btn { background: var(--wa-light); color: white; width: 40px; height: 40px; border-radius: 50%; border: none; display: flex; justify-content: center; align-items: center; font-size: 16px; cursor: pointer; flex-shrink: 0; }
         #file-input { display: none; }
+
+        /* Image Preview Popup Modal CSS */
+        .img-modal { display: none; position: fixed; z-index: 9999; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.9); align-items: center; justify-content: center; }
+        .modal-content { max-width: 90%; max-height: 85%; border-radius: 8px; }
+        .close-modal { position: absolute; top: 20px; right: 25px; color: white; font-size: 35px; cursor: pointer; }
     </style>
 </head>
 <body>
+
+    <div id="imageModal" class="img-modal">
+        <span class="close-modal" onclick="closeImagePreview()">&times;</span>
+        <img class="modal-content" id="modalImg">
+    </div>
+
     <div class="wa-header">
         <i class="fas fa-user-circle" style="font-size: 32px;"></i>
         <div>
@@ -119,7 +130,7 @@
                 
                 let contentHTML = '';
                 if (m.type === 'image') {
-                    contentHTML = `<img src="${m.file_url}" class="chat-media" onclick="window.open('${m.file_url}', '_blank')">`;
+                    contentHTML = `<img src="${m.file_url}" class="chat-media" onclick="openImagePreview('${m.file_url}')">`;
                 } else {
                     contentHTML = `<div>${linkify(m.message_text)}</div>`;
                 }
@@ -156,7 +167,6 @@
             });
         }
 
-        // Direct Secure Base64 Local Database Upload Engine for Users (100% Stable)
         document.getElementById('file-input').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -167,7 +177,6 @@
             const reader = new FileReader();
             reader.onloadend = async function() {
                 const base64String = reader.result;
-                
                 try {
                     await db.collection("messages").add({
                         message_text: "Sent an image",
@@ -184,10 +193,18 @@
                 }
                 inputField.placeholder = "Type a message...";
             };
-            
             reader.readAsDataURL(file);
             e.target.value = ''; 
         });
+
+        // Image Preview View Control Logic
+        function openImagePreview(src) {
+            document.getElementById("modalImg").src = src;
+            document.getElementById("imageModal").style.display = "flex";
+        }
+        function closeImagePreview() {
+            document.getElementById("imageModal").style.display = "none";
+        }
 
         document.getElementById('btn-send').addEventListener('click', sendMessage);
         document.getElementById('msg-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') sendMessage(); });
