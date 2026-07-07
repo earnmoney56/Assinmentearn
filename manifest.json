@@ -1,21 +1,16 @@
 {
-  "short_name": "Official Web",
-  "name": "Official Web Support",
+  "name": "Live Support Chat",
+  "short_name": "Support",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#075e54",
+  "theme_color": "#075e54",
+  "orientation": "portrait",
   "icons": [
     {
-      "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/WhatsApp_Icon.svg/512px-WhatsApp_Icon.svg.png",
-      "type": "image/png",
-      "sizes": "192x192"
-    },
-    {
-      "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/WhatsApp_Icon.svg/512px-WhatsApp_Icon.svg.png",
-      "type": "image/png",
-      "sizes": "512x512"
+      "src": "https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=256&auto=format&fit=crop",
+      "sizes": "256x256",
+      "type": "image/png"
     }
-  ],
-  "start_url": "./index.html?launcher=true",
-  "background_color": "#25D366",
-  "theme_color": "#075e54",
-  "display": "standalone",
-  "orientation": "portrait"
+  ]
 }
