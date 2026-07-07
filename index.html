@@ -12,8 +12,13 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body, html { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; height: 100vh; height: 100dvh; width: 100vw; overflow: hidden; }
         
-        .wa-header { position: fixed; top: 0; left: 0; right: 0; background: var(--wa-green); color: white; padding: 10px 15px; display: flex; align-items: center; gap: 12px; font-size: 16px; height: 60px; z-index: 1000; }
-        .wa-header .status-dot { width: 10px; height: 10px; background: #2ecc71; border-radius: 50%; display: inline-block; }
+        /* Premium WhatsApp Business Branded Header */
+        .wa-header { position: fixed; top: 0; left: 0; right: 0; background: var(--wa-green); color: white; padding: 10px 15px; display: flex; align-items: center; gap: 12px; font-size: 16px; height: 60px; z-index: 1000; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+        .wa-avatar-img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid rgba(255,255,255,0.3); }
+        .header-info { display: flex; flex-direction: column; }
+        .brand-row { display: flex; align-items: center; gap: 5px; }
+        .verified-badge { color: #34b7f1; font-size: 14px; }
+        .status-dot { width: 8px; height: 8px; background: #2ecc71; border-radius: 50%; display: inline-block; margin-right: 4px; }
         
         .chat-container { position: absolute; top: 60px; bottom: 60px; left: 0; right: 0; background-color: var(--bg-color); overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
         
@@ -37,7 +42,6 @@
         .send-btn { background: var(--wa-light); color: white; width: 40px; height: 40px; border-radius: 50%; border: none; display: flex; justify-content: center; align-items: center; font-size: 16px; cursor: pointer; flex-shrink: 0; }
         #file-input { display: none; }
 
-        /* Image Preview Popup Modal CSS */
         .img-modal { display: none; position: fixed; z-index: 9999; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.9); align-items: center; justify-content: center; }
         .modal-content { max-width: 90%; max-height: 85%; border-radius: 8px; }
         .close-modal { position: absolute; top: 20px; right: 25px; color: white; font-size: 35px; cursor: pointer; }
@@ -51,10 +55,13 @@
     </div>
 
     <div class="wa-header">
-        <i class="fas fa-user-circle" style="font-size: 32px;"></i>
-        <div>
-            <span style="font-weight: 600;">Support Team (Admin)</span>
-            <span style="font-size: 11px; color: #b3d4d0; display: block;"><span class="status-dot"></span> Firebase Live</span>
+        <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&auto=format&fit=crop&q=80" class="wa-avatar-img" alt="Official Profile">
+        <div class="header-info">
+            <div class="brand-row">
+                <span style="font-weight: 600;">Official Web</span>
+                <i class="fas fa-check-circle verified-badge" title="Verified Business Account"></i>
+            </div>
+            <span style="font-size: 11px; color: #b3d4d0; display: block;"><span class="status-dot"></span> Verified Support</span>
         </div>
     </div>
     
@@ -83,6 +90,26 @@
 
         let myUserId = localStorage.getItem('user_chat_uuid') || 'User-' + Math.floor(1000 + Math.random() * 9000);
         localStorage.setItem('user_chat_uuid', myUserId);
+
+        // Real-time Presence Pulse Logic (Updates Firestore if user leaves or joins)
+        function updateUserPresence(status) {
+            db.collection("user_presence").doc(myUserId).set({
+                status: status,
+                last_seen: Date.now()
+            }, { merge: true });
+        }
+
+        // Keep status online while looking at screen
+        updateUserPresence('online');
+        window.addEventListener('online', () => updateUserPresence('online'));
+        window.addEventListener('offline', () => updateUserPresence('offline'));
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                updateUserPresence('online');
+            } else {
+                updateUserPresence('offline');
+            }
+        });
 
         function getTickHTML(status, isSent) {
             if (!isSent) return ''; 
@@ -165,6 +192,7 @@
                 type: 'text',
                 status: 'sent'
             });
+            updateUserPresence('online');
         }
 
         document.getElementById('file-input').addEventListener('change', function(e) {
@@ -197,7 +225,6 @@
             e.target.value = ''; 
         });
 
-        // Image Preview View Control Logic
         function openImagePreview(src) {
             document.getElementById("modalImg").src = src;
             document.getElementById("imageModal").style.display = "flex";
