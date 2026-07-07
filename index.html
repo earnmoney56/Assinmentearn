@@ -12,7 +12,6 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body, html { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; height: 100vh; height: 100dvh; width: 100vw; overflow: hidden; }
         
-        /* Premium WhatsApp Business Branded Header */
         .wa-header { position: fixed; top: 0; left: 0; right: 0; background: var(--wa-green); color: white; padding: 10px 15px; display: flex; align-items: center; gap: 12px; font-size: 16px; height: 60px; z-index: 1000; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
         .wa-avatar-img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid rgba(255,255,255,0.3); }
         .header-info { display: flex; flex-direction: column; }
@@ -34,11 +33,20 @@
         .chat-media { max-width: 100%; border-radius: 8px; margin-bottom: 4px; display: block; max-height: 200px; object-fit: cover; cursor: pointer; }
         .chat-link { color: #0275d8; text-decoration: underline; word-break: break-all; }
         
+        /* Premium WhatsApp Style Audio Player Box */
+        .audio-player-box { display: flex; align-items: center; gap: 10px; min-width: 200px; padding: 5px 0; }
+        .audio-play-btn { background: none; border: none; color: var(--wa-light); font-size: 20px; cursor: pointer; outline: none; }
+        .audio-timeline { flex: 1; height: 4px; background: #b8d4ca; border-radius: 2px; position: relative; }
+        .audio-progress { width: 0%; height: 100%; background: var(--wa-light); border-radius: 2px; }
+        .audio-duration { font-size: 11px; color: #555; font-weight: bold; }
+        .mic-icon-active { color: #e74c3c !important; animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0.4; } }
+
         .input-area { position: fixed; bottom: 0; left: 0; right: 0; background: #f0f2f5; padding: 10px 12px; display: flex; align-items: center; gap: 8px; border-top: 1px solid #e9edef; height: 60px; z-index: 1000; }
         .input-wrapper { flex: 1; background: white; border-radius: 25px; display: flex; align-items: center; padding: 0 12px; border: 1px solid #ccc; height: 40px; gap: 8px; }
         .input-box { flex: 1; background: transparent; border: none; outline: none; font-size: 15px; height: 100%; color: black; }
         
-        .attach-btn { color: #54656f; font-size: 18px; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; }
+        .attach-btn, .mic-btn { color: #54656f; font-size: 18px; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; background: none; border: none; outline: none; }
         .send-btn { background: var(--wa-light); color: white; width: 40px; height: 40px; border-radius: 50%; border: none; display: flex; justify-content: center; align-items: center; font-size: 16px; cursor: pointer; flex-shrink: 0; }
         #file-input { display: none; }
 
@@ -72,6 +80,7 @@
             <label for="file-input" class="attach-btn"><i class="fas fa-paperclip"></i></label>
             <input type="file" id="file-input" accept="image/*">
             <input type="text" id="msg-input" class="input-box" placeholder="Type a message...">
+            <button id="user-mic-btn" class="mic-btn"><i class="fas fa-microphone"></i></button>
         </div>
         <button id="btn-send" class="send-btn"><i class="fas fa-paper-plane"></i></button>
     </div>
@@ -91,25 +100,14 @@
         let myUserId = localStorage.getItem('user_chat_uuid') || 'User-' + Math.floor(1000 + Math.random() * 9000);
         localStorage.setItem('user_chat_uuid', myUserId);
 
-        // Real-time Presence Pulse Logic (Updates Firestore if user leaves or joins)
+        // Presence Heartbeat
         function updateUserPresence(status) {
-            db.collection("user_presence").doc(myUserId).set({
-                status: status,
-                last_seen: Date.now()
-            }, { merge: true });
+            db.collection("user_presence").doc(myUserId).set({ status: status, last_seen: Date.now() }, { merge: true });
         }
-
-        // Keep status online while looking at screen
         updateUserPresence('online');
         window.addEventListener('online', () => updateUserPresence('online'));
         window.addEventListener('offline', () => updateUserPresence('offline'));
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') {
-                updateUserPresence('online');
-            } else {
-                updateUserPresence('offline');
-            }
-        });
+        document.addEventListener('visibilitychange', () => { updateUserPresence(document.visibilityState === 'visible' ? 'online' : 'offline'); });
 
         function getTickHTML(status, isSent) {
             if (!isSent) return ''; 
@@ -122,26 +120,48 @@
         function formatTime(timestamp) {
             if(!timestamp) return '';
             const date = new Date(timestamp);
-            let hours = date.getHours();
-            let minutes = date.getMinutes();
+            let hours = date.getHours(), minutes = date.getMinutes();
             const ampm = hours >= 12 ? 'PM' : 'AM';
-            hours = hours % 12;
-            hours = hours ? hours : 12;
+            hours = hours % 12 || 12;
             minutes = minutes < 10 ? '0' + minutes : minutes;
             return hours + ':' + minutes + ' ' + ampm;
         }
 
         function linkify(text) {
-            const urlRegex = /(https?:\/\/[^\s]+)/g;
-            return text.replace(urlRegex, function(url) {
-                return '<a class="chat-link" href="' + url + '" target="_blank">' + url + '</a>';
-            });
+            return text.replace(/(https?:\/\/[^\s]+)/g, url => `<a class="chat-link" href="${url}" target="_blank">${url}</a>`);
+        }
+
+        // Handle Audio Player Play/Pause Interactions Locally
+        function toggleAudio(btn, audioSrc, progressBarId) {
+            let activeAudio = window[`audio_${progressBarId}`];
+            const pBar = document.getElementById(progressBarId);
+            const icon = btn.querySelector('i');
+
+            if (!activeAudio) {
+                activeAudio = new Audio(audioSrc);
+                window[`audio_${progressBarId}`] = activeAudio;
+                activeAudio.addEventListener('timeupdate', () => {
+                    let percent = (activeAudio.currentTime / activeAudio.duration) * 100;
+                    pBar.style.width = percent + '%';
+                });
+                activeAudio.addEventListener('ended', () => {
+                    icon.className = 'fas fa-play';
+                    pBar.style.width = '0%';
+                });
+            }
+
+            if (activeAudio.paused) {
+                activeAudio.play();
+                icon.className = 'fas fa-pause';
+            } else {
+                activeAudio.pause();
+                icon.className = 'fas fa-play';
+            }
         }
 
         db.collection("messages").where("room_id", "==", myUserId).onSnapshot((snapshot) => {
             const box = document.getElementById('chat-box');
             box.innerHTML = '';
-            
             let sortedDocs = snapshot.docs.sort((a, b) => a.data().time_now - b.data().time_now);
             
             sortedDocs.forEach((doc) => {
@@ -158,6 +178,15 @@
                 let contentHTML = '';
                 if (m.type === 'image') {
                     contentHTML = `<img src="${m.file_url}" class="chat-media" onclick="openImagePreview('${m.file_url}')">`;
+                } else if (m.type === 'audio') {
+                    const uniqueId = 'prog_' + doc.id;
+                    contentHTML = `
+                        <div class="audio-player-box">
+                            <button class="audio-play-btn" onclick="toggleAudio(this, '${m.file_url}', '${uniqueId}')"><i class="fas fa-play"></i></button>
+                            <div class="audio-timeline"><div class="audio-progress" id="${uniqueId}"></div></div>
+                            <span class="audio-duration">${m.duration || '0:00'}</span>
+                        </div>
+                    `;
                 } else {
                     contentHTML = `<div>${linkify(m.message_text)}</div>`;
                 }
@@ -165,13 +194,7 @@
                 const timeStr = formatTime(m.time_now);
                 const tickHTML = getTickHTML(m.status, isSentByMe);
 
-                d.innerHTML = `
-                    ${contentHTML}
-                    <div class="msg-meta">
-                        <span>${timeStr}</span>
-                        ${tickHTML}
-                    </div>
-                `;
+                d.innerHTML = `${contentHTML}<div class="msg-meta"><span>${timeStr}</span>${tickHTML}</div>`;
                 box.appendChild(d);
             });
             box.scrollTop = box.scrollHeight;
@@ -182,57 +205,91 @@
             const val = inp.value.trim();
             if(!val) return;
             inp.value = '';
-
-            await db.collection("messages").add({
-                message_text: val,
-                sender: myUserId,
-                receiver: 'admin',
-                room_id: myUserId,
-                time_now: Date.now(),
-                type: 'text',
-                status: 'sent'
-            });
+            await db.collection("messages").add({ message_text: val, sender: myUserId, receiver: 'admin', room_id: myUserId, time_now: Date.now(), type: 'text', status: 'sent' });
             updateUserPresence('online');
         }
 
         document.getElementById('file-input').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
-
             const inputField = document.getElementById('msg-input');
             inputField.placeholder = "Sending image...";
-
             const reader = new FileReader();
             reader.onloadend = async function() {
-                const base64String = reader.result;
                 try {
-                    await db.collection("messages").add({
-                        message_text: "Sent an image",
-                        file_url: base64String,
-                        sender: myUserId,
-                        receiver: 'admin',
-                        room_id: myUserId,
-                        time_now: Date.now(),
-                        type: 'image',
-                        status: 'sent'
-                    });
-                } catch (err) {
-                    alert("Database write error: " + err.message);
-                }
+                    await db.collection("messages").add({ message_text: "Sent an image", file_url: reader.result, sender: myUserId, receiver: 'admin', room_id: myUserId, time_now: Date.now(), type: 'image', status: 'sent' });
+                } catch (err) { alert(err.message); }
                 inputField.placeholder = "Type a message...";
             };
             reader.readAsDataURL(file);
             e.target.value = ''; 
         });
 
-        function openImagePreview(src) {
-            document.getElementById("modalImg").src = src;
-            document.getElementById("imageModal").style.display = "flex";
-        }
-        function closeImagePreview() {
-            document.getElementById("imageModal").style.display = "none";
-        }
+        // Advanced Voice Recording Engine
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let isRecording = false;
+        let recordStartTime = 0;
 
+        document.getElementById('user-mic-btn').addEventListener('click', async function() {
+            const micBtn = document.getElementById('user-mic-btn');
+            const txtInput = document.getElementById('msg-input');
+            
+            if (!isRecording) {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    alert("Microphone access not supported on this device/browser.");
+                    return;
+                }
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+                    recordStartTime = Date.now();
+
+                    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+                    
+                    mediaRecorder.onstop = async () => {
+                        const durationSec = Math.round((Date.now() - recordStartTime) / 1000);
+                        const mins = Math.floor(durationSec / 60);
+                        const secs = durationSec % 60;
+                        const finalDurationStr = mins + ":" + (secs < 10 ? '0' + secs : secs);
+
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
+                        const reader = new FileReader();
+                        reader.onloadend = async function() {
+                            await db.collection("messages").add({
+                                message_text: "🎤 Voice Note",
+                                file_url: reader.result,
+                                sender: myUserId,
+                                receiver: 'admin',
+                                room_id: myUserId,
+                                time_now: Date.now(),
+                                type: 'audio',
+                                duration: finalDurationStr,
+                                status: 'sent'
+                            });
+                        };
+                        reader.readAsDataURL(audioBlob);
+                        stream.getTracks().forEach(track => track.stop());
+                    };
+
+                    mediaRecorder.start();
+                    isRecording = true;
+                    micBtn.querySelector('i').className = "fas fa-stop mic-icon-active";
+                    txtInput.placeholder = "Recording voice note...";
+                    txtInput.disabled = true;
+                } catch (err) { alert("Mic Error: " + err.message); }
+            } else {
+                mediaRecorder.stop();
+                isRecording = false;
+                micBtn.querySelector('i').className = "fas fa-microphone";
+                txtInput.placeholder = "Type a message...";
+                txtInput.disabled = false;
+            }
+        });
+
+        function openImagePreview(src) { document.getElementById("modalImg").src = src; document.getElementById("imageModal").style.display = "flex"; }
+        function closeImagePreview() { document.getElementById("imageModal").style.display = "none"; }
         document.getElementById('btn-send').addEventListener('click', sendMessage);
         document.getElementById('msg-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') sendMessage(); });
     </script>
