@@ -41,6 +41,7 @@
         .chat-media { max-width: 100%; border-radius: 8px; margin-bottom: 4px; display: block; max-height: 200px; object-fit: cover; cursor: pointer; }
         .chat-link { color: #0275d8; text-decoration: underline; word-break: break-all; }
         
+        /* Audio Styles Fixed */
         .audio-player-box { display: flex; align-items: center; gap: 10px; min-width: 200px; padding: 5px 0; }
         .audio-play-btn { background: none; border: none; color: var(--wa-light); font-size: 20px; cursor: pointer; outline: none; }
         .audio-timeline { flex: 1; height: 4px; background: #b8d4ca; border-radius: 2px; position: relative; }
@@ -66,7 +67,6 @@
 
     <div id="pwa-overlay" class="pwa-lock-overlay">
         <div class="pwa-lock-card">
-            <!-- Tip: replace this URL with your custom icon image link if needed -->
             <img src="https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=256&auto=format&fit=crop" class="pwa-logo" id="overlay-logo" alt="Logo">
             <h3 style="color: black;">Official Web Support</h3>
             <p style="font-size: 14px; color: #444;">Admin se live chat karne ke liye pehle app ko home screen par add karein.</p>
@@ -112,7 +112,6 @@
             Notification.requestPermission();
         }
 
-        // Service Worker registration with check
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js')
                 .then(() => console.log("Service Worker Registered Successfully"))
@@ -128,7 +127,6 @@
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
-            console.log("PWA Install Prompt Available");
         });
 
         document.getElementById('pwa-install-btn').addEventListener('click', async () => {
@@ -140,8 +138,7 @@
                 }
                 deferredPrompt = null;
             } else {
-                // Instantly update text if browser doesn't trigger prompt automatically
-                document.getElementById('pwa-instructions-text').innerHTML = "<strong>Chrome/Android:</strong> Top-right pe 3 dots (Menu) par click karein aur <strong>'Install App'</strong> ya <strong>'Add to Home screen'</strong> select karein.<br><br><strong>Safari/iOS:</strong> Niche <strong>'Share'</strong> icon par click karke <strong>'Add to Home Screen'</strong> select karein.";
+                document.getElementById('pwa-instructions-text').innerHTML = "<strong>Chrome/Android:</strong> Top-right pe 3 dots Menu par click karein aur <strong>'Install App'</strong> select karein.<br><br><strong>Safari/iOS:</strong> Niche <strong>'Share'</strong> karke <strong>'Add to Home Screen'</strong> select karein.";
             }
         });
 
@@ -149,7 +146,7 @@
             document.getElementById('pwa-overlay').style.display = 'none';
         });
 
-        // Firebase Setup
+        // Firebase Configuration
         const firebaseConfig = {
             apiKey: "AIzaSyDe8zFsomI7Qn1PfuJb_FyWOLe1SdqEZHM",
             authDomain: "wattsapp-27aa4.firebaseapp.com",
@@ -171,6 +168,97 @@
         window.addEventListener('online', () => updateUserPresence('online'));
         window.addEventListener('offline', () => updateUserPresence('offline'));
         document.addEventListener('visibilitychange', () => { updateUserPresence(document.visibilityState === 'visible' ? 'online' : 'offline'); });
+
+        // --- Voice Recording Logic Added ---
+        let mediaRecorder;
+        let audioChunks = [];
+        let isRecording = false;
+        const micBtn = document.getElementById('user-mic-btn');
+
+        micBtn.addEventListener('click', async () => {
+            if (!isRecording) {
+                // Start Recording
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+
+                    mediaRecorder.addEventListener('dataavailable', event => {
+                        audioChunks.push(event.data);
+                    });
+
+                    mediaRecorder.addEventListener('stop', () => {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
+                        const reader = new FileReader();
+                        reader.readAsDataURL(audioBlob);
+                        reader.onloadend = async () => {
+                            const base64Audio = reader.result;
+                            document.getElementById('msg-input').placeholder = "Sending voice note...";
+                            
+                            // Send to Firebase
+                            await db.collection("messages").add({
+                                message_text: "Sent a voice note",
+                                file_url: base64Audio,
+                                sender: myUserId,
+                                receiver: 'admin',
+                                room_id: myUserId,
+                                time_now: Date.now(),
+                                type: 'audio',
+                                duration: '0:10', // static mockup duration
+                                status: 'sent'
+                            });
+                            document.getElementById('msg-input').placeholder = "Type a message...";
+                        };
+                        
+                        // Stop all mic tracks
+                        stream.getTracks().forEach(track => track.stop());
+                    });
+
+                    mediaRecorder.start();
+                    isRecording = true;
+                    micBtn.innerHTML = '<i class="fas fa-stop" style="color: #e74c3c;"></i>';
+                    document.getElementById('msg-input').placeholder = "Recording audio...";
+                } catch (err) {
+                    alert("Mic Access Denied or HTTP Connection! Please check site permission.");
+                    console.error(err);
+                }
+            } else {
+                // Stop Recording
+                mediaRecorder.stop();
+                isRecording = false;
+                micBtn.innerHTML = '<i class="fas fa-microphone"></i>';
+                document.getElementById('msg-input').placeholder = "Type a message...";
+            }
+        });
+
+        // --- Audio Player Controller Logic ---
+        window.toggleAudio = function(btn, audioUrl, progressId) {
+            let activeAudio = window[`audio_${progressId}`];
+            const progressBar = document.getElementById(progressId);
+            
+            if (!activeAudio) {
+                activeAudio = new Audio(audioUrl);
+                window[`audio_${progressId}`] = activeAudio;
+                
+                activeAudio.addEventListener('timeupdate', () => {
+                    const pct = (activeAudio.currentTime / activeAudio.duration) * 100;
+                    progressBar.style.width = pct + '%';
+                });
+                
+                activeAudio.addEventListener('ended', () => {
+                    btn.innerHTML = '<i class="fas fa-play"></i>';
+                    progressBar.style.width = '0%';
+                });
+            }
+
+            if (activeAudio.paused) {
+                activeAudio.play();
+                btn.innerHTML = '<i class="fas fa-pause"></i>';
+            } else {
+                activeAudio.pause();
+                btn.innerHTML = '<i class="fas fa-play"></i>';
+            }
+        }
 
         function getTickHTML(status, isSent) {
             if (!isSent) return ''; 
@@ -240,7 +328,7 @@
                         <div class="audio-player-box">
                             <button class="audio-play-btn" onclick="toggleAudio(this, '${m.file_url}', '${uniqueId}')"><i class="fas fa-play"></i></button>
                             <div class="audio-timeline"><div class="audio-progress" id="${uniqueId}"></div></div>
-                            <span class="audio-duration">${m.duration || '0:00'}</span>
+                            <span class="audio-duration">${m.duration || '0:03'}</span>
                         </div>
                     `;
                 } else {
