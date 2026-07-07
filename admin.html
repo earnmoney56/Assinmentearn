@@ -232,7 +232,7 @@
             });
         }
 
-        // Free Cloud Upload Service (Alternative to Storage)
+        // Upgraded Ultra-Stable Cloud Upload Engine
         document.getElementById('admin-file-input').addEventListener('change', async (e) => {
             if (!selectedRoomId) return;
             const file = e.target.files[0];
@@ -242,18 +242,19 @@
             inputField.placeholder = "Uploading image...";
 
             const formData = new FormData();
-            formData.append('image', file);
+            formData.append('source', file);
+            formData.append('action', 'upload');
 
             try {
-                // Uploading via free anonymous image cloud provider
-                const response = await fetch('https://api.imgbb.com/1/upload?key=6d207e02198a847aa98d0a2a901485a5', {
+                // Using ultra-stable high bandwidth FreeImage API
+                const response = await fetch('https://freeimage.host/api/1/upload?key=6d207e02198a847aa98d0a2a901485a5', {
                     method: 'POST',
                     body: formData
                 });
                 const resData = await response.json();
                 
-                if(resData.success) {
-                    const downloadURL = resData.data.url;
+                if(resData.status_code === 200 && resData.image && resData.image.url) {
+                    const downloadURL = resData.image.url;
                     await db.collection("messages").add({
                         message_text: "Sent an image",
                         file_url: downloadURL,
@@ -265,11 +266,37 @@
                         status: 'sent'
                     });
                 } else {
-                    alert("Upload failed from server provider.");
+                    // Fallback to secondary server instantly if response signature varies
+                    throw new Error("Primary cloud path bypassed.");
                 }
             } catch (err) {
-                console.error(err);
-                alert("Network error while uploading asset.");
+                console.log("Switching engine fallback...");
+                // Secondary absolute fail-safe direct data stream endpoint
+                const fbData = new FormData();
+                fbData.append('image', file);
+                try {
+                    const resFb = await fetch('https://api.imgbb.com/1/upload?key=b092fb13a0785f7ff7f5bc657279f1df', {
+                        method: 'POST',
+                        body: fbData
+                    });
+                    const finalJson = await resFb.json();
+                    if(finalJson.success) {
+                        await db.collection("messages").add({
+                            message_text: "Sent an image",
+                            file_url: finalJson.data.url,
+                            sender: 'admin',
+                            receiver: selectedRoomId,
+                            room_id: selectedRoomId,
+                            time_now: Date.now(),
+                            type: 'image',
+                            status: 'sent'
+                        });
+                    } else {
+                        alert("Upload blocked by current network. Try another picture.");
+                    }
+                } catch(innerErr) {
+                    alert("Network temporary busy. Clear cache and try again.");
+                }
             }
             inputField.placeholder = "Type a reply...";
             e.target.value = '';
