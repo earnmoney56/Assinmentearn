@@ -66,7 +66,8 @@
 
     <div id="pwa-overlay" class="pwa-lock-overlay">
         <div class="pwa-lock-card">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/WhatsApp_Icon.svg/512px-WhatsApp_Icon.svg.png" class="pwa-logo" alt="Logo">
+            <!-- Tip: replace this URL with your custom icon image link if needed -->
+            <img src="https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=256&auto=format&fit=crop" class="pwa-logo" id="overlay-logo" alt="Logo">
             <h3 style="color: black;">Official Web Support</h3>
             <p style="font-size: 14px; color: #444;">Admin se live chat karne ke liye pehle app ko home screen par add karein.</p>
             <button id="pwa-install-btn" class="pwa-btn">
@@ -82,7 +83,7 @@
     </div>
 
     <div class="wa-header">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/WhatsApp_Icon.svg/512px-WhatsApp_Icon.svg.png" class="wa-avatar-img" alt="Official Profile">
+        <img src="https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=256&auto=format&fit=crop" class="wa-avatar-img" id="header-logo" alt="Official Profile">
         <div class="header-info">
             <div class="brand-row">
                 <span style="font-weight: 600;">Official Web</span>
@@ -105,16 +106,17 @@
     </div>
 
     <script>
-        // Notification Sound Setup
         const notificationSound = new Audio('https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg');
 
-        // Request Browser Notification Permission
         if ('Notification' in window && Notification.permission !== 'granted') {
             Notification.requestPermission();
         }
 
+        // Service Worker registration with check
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js').then(() => console.log("Service Worker Registered"));
+            navigator.serviceWorker.register('sw.js')
+                .then(() => console.log("Service Worker Registered Successfully"))
+                .catch(err => console.log("Service Worker registration failed: ", err));
         }
 
         const isPWA = window.matchMedia('(display-mode: standalone)').matches || window.location.search.includes('launcher=true');
@@ -126,7 +128,7 @@
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
-            document.getElementById('pwa-install-btn').style.display = 'flex';
+            console.log("PWA Install Prompt Available");
         });
 
         document.getElementById('pwa-install-btn').addEventListener('click', async () => {
@@ -138,7 +140,8 @@
                 }
                 deferredPrompt = null;
             } else {
-                document.getElementById('pwa-instructions-text').innerHTML = "<strong style='color: #e74c3c;'>iOS User:</strong> Browser ke <strong>'Share'</strong> icon par click karein aur phir <strong>'Add to Home Screen'</strong> select karein.";
+                // Instantly update text if browser doesn't trigger prompt automatically
+                document.getElementById('pwa-instructions-text').innerHTML = "<strong>Chrome/Android:</strong> Top-right pe 3 dots (Menu) par click karein aur <strong>'Install App'</strong> ya <strong>'Add to Home screen'</strong> select karein.<br><br><strong>Safari/iOS:</strong> Niche <strong>'Share'</strong> icon par click karke <strong>'Add to Home Screen'</strong> select karein.";
             }
         });
 
@@ -146,7 +149,7 @@
             document.getElementById('pwa-overlay').style.display = 'none';
         });
 
-        // Firebase Initialisation
+        // Firebase Setup
         const firebaseConfig = {
             apiKey: "AIzaSyDe8zFsomI7Qn1PfuJb_FyWOLe1SdqEZHM",
             authDomain: "wattsapp-27aa4.firebaseapp.com",
@@ -192,21 +195,15 @@
         }
 
         function triggerIncomingNotification(msgText) {
-            // Play notification ringtone sound
-            notificationSound.play().catch(e => console.log("Audio play blocked by interaction logic."));
-
-            // Push native system notification if tab is backgrounded
+            notificationSound.play().catch(e => console.log("Audio play blocked"));
             if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
                 const options = {
                     body: msgText,
-                    icon: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/WhatsApp_Icon.svg/512px-WhatsApp_Icon.svg.png',
+                    icon: 'https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=256&auto=format&fit=crop',
                     vibrate: [200, 100, 200]
                 };
                 const notification = new Notification("Official Support Team", options);
-                notification.onclick = function() {
-                    window.focus();
-                    notification.close();
-                };
+                notification.onclick = function() { window.focus(); notification.close(); };
             }
         }
 
