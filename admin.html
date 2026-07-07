@@ -29,7 +29,11 @@
         .label-select.none { border-left: 4px solid #bdc3c7; background: #f2f4f4; color: #7f8c8d; }
 
         .main-chat { flex: 1; display: flex; flex-direction: column; background: #ece5dd; height: 100%; overflow: hidden; position: relative; }
-        .chat-header { background: #075e54; color: white; padding: 12px; font-size: 13px; font-weight: bold; flex-shrink: 0; }
+        
+        /* Updated Admin Header with presence trackers */
+        .chat-header { background: #075e54; color: white; padding: 10px 12px; font-size: 13px; font-weight: bold; flex-shrink: 0; display: flex; flex-direction: column; gap: 2px; }
+        .admin-status-text { font-size: 10px; color: #b3d4d0; font-weight: normal; }
+
         .chat-box { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
         
         .msg { max-width: 85%; padding: 6px 10px 20px 10px; border-radius: 8px; font-size: 13px; color: black; position: relative; display: inline-block; box-shadow: 0 1px 1px rgba(0,0,0,0.08); min-width: 80px; }
@@ -52,7 +56,6 @@
         .send-btn { background: #128c7e; color: white; border: none; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
         #admin-file-input { display: none; }
 
-        /* Image Preview Modal Box CSS */
         .img-modal { display: none; position: fixed; z-index: 9999; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.9); align-items: center; justify-content: center; }
         .modal-content { max-width: 90%; max-height: 85%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
         .close-modal { position: absolute; top: 20px; right: 25px; color: white; font-size: 35px; font-weight: bold; cursor: pointer; }
@@ -72,7 +75,10 @@
         </div>
         
         <div class="main-chat">
-            <div class="chat-header"><span id="active-user-title">Select Chat</span></div>
+            <div class="chat-header">
+                <span id="active-user-title">Select Chat</span>
+                <span id="active-user-status" class="admin-status-text"></span>
+            </div>
             <div class="chat-box" id="admin-chat-box"></div>
             
             <div class="input-area">
@@ -100,6 +106,7 @@
         
         let selectedRoomId = null;
         let unsubscribeMessages = null;
+        let unsubscribePresence = null;
         let roomMapping = {}; 
         let userLabels = {}; 
 
@@ -227,6 +234,22 @@
             renderUserList();
             
             if(unsubscribeMessages) unsubscribeMessages();
+            if(unsubscribePresence) unsubscribePresence();
+
+            // Real-time listener for current user's Online/Offline status
+            unsubscribePresence = db.collection("user_presence").doc(room).onSnapshot((doc) => {
+                const statusEl = document.getElementById('active-user-status');
+                if (doc.exists) {
+                    const pData = doc.data();
+                    if (pData.status === 'online') {
+                        statusEl.innerHTML = `<span style="color: #2ecc71; font-weight: bold;">● Online</span>`;
+                    } else {
+                        statusEl.innerText = "last seen today at " + formatTime(pData.last_seen);
+                    }
+                } else {
+                    statusEl.innerText = "offline";
+                }
+            });
             
             unsubscribeMessages = db.collection("messages").where("room_id", "==", room).onSnapshot((snapshot) => {
                 const box = document.getElementById('admin-chat-box');
@@ -317,7 +340,6 @@
             e.target.value = '';
         });
 
-        // Modal Box Functions
         function openImagePreview(src) {
             document.getElementById("modalImg").src = src;
             document.getElementById("imageModal").style.display = "flex";
