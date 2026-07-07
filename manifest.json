@@ -3,18 +3,18 @@
   "name": "Official Web Support",
   "icons": [
     {
-      "src": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=192&auto=format&fit=crop&q=80",
+      "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/WhatsApp_Icon.svg/512px-WhatsApp_Icon.svg.png",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=512&auto=format&fit=crop&q=80",
+      "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/WhatsApp_Icon.svg/512px-WhatsApp_Icon.svg.png",
       "type": "image/png",
       "sizes": "512x512"
     }
   ],
   "start_url": "./index.html?launcher=true",
-  "background_color": "#075e54",
+  "background_color": "#25D366",
   "theme_color": "#075e54",
   "display": "standalone",
   "orientation": "portrait"
