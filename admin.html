@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Admin Multi-Chat Dashboard</title>
+    <title>Admin Dashboard - Labels & Fixed Input</title>
     
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
@@ -12,55 +12,62 @@
     <style>
         :root { --wa-green: #075e54; --wa-light: #128c7e; --bg-color: #ece5dd; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body, html { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; height: 100vh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; }
+        body, html { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; height: 100vh; height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; }
         
-        /* Main Top Header */
-        .wa-header { background: var(--wa-green); color: white; padding: 10px 15px; display: flex; align-items: center; gap: 12px; height: 60px; box-shadow: 0 1px 3px rgba(0,0,0,0.15); width: 100%; z-index: 10; }
+        /* Top Navigation Header Bar */
+        .wa-header { background: var(--wa-green); color: white; padding: 10px 15px; display: flex; align-items: center; gap: 12px; height: 60px; min-height: 60px; box-shadow: 0 1px 3px rgba(0,0,0,0.15); width: 100%; z-index: 10; }
         .wa-avatar-img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
         .verified-badge { color: #34b7f1; font-size: 14px; }
 
-        /* Dashboard Master Layout split */
-        .dashboard-body { display: flex; flex: 1; width: 100vw; height: calc(100vh - 60px); position: relative; }
+        /* Multi-column Master Work Surface block */
+        .dashboard-body { display: flex; flex: 1; width: 100vw; height: calc(100vh - 60px); position: relative; overflow: hidden; }
         
-        /* Left Sidebar Users List */
-        .sidebar { width: 30%; max-width: 350px; min-width: 260px; background: white; border-right: 1px solid #e9edef; overflow-y: auto; display: flex; flex-direction: column; }
-        .sidebar-title { padding: 12px 15px; font-size: 13px; font-weight: bold; color: var(--wa-light); border-bottom: 1px solid #f0f2f5; text-transform: uppercase; letter-spacing: 0.5px; }
+        /* Left Navigation Scroll Tray */
+        .sidebar { width: 32%; max-width: 360px; min-width: 250px; background: white; border-right: 1px solid #e9edef; overflow-y: auto; display: flex; flex-direction: column; }
+        .sidebar-title { padding: 12px 15px; font-size: 12px; font-weight: bold; color: var(--wa-light); border-bottom: 1px solid #f0f2f5; text-transform: uppercase; letter-spacing: 0.5px; }
         
-        .chat-row { display: flex; align-items: center; gap: 12px; padding: 12px 15px; border-bottom: 1px solid #f0f2f5; cursor: pointer; transition: 0.2s; }
+        .chat-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid #f0f2f5; cursor: pointer; transition: 0.2s; position: relative; }
         .chat-row:hover { background: #f0f2f5; }
         .chat-row.active { background: #e9edef; }
-        .row-avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #e1f3ff; color: #0275d8; font-size: 18px; }
+        .row-avatar { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #e1f3ff; color: #0275d8; font-size: 16px; flex-shrink: 0; }
         .row-avatar.group-avatar { background: #e1fbd4; color: var(--wa-green); }
-        .row-details { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-        .row-name { font-weight: 600; font-size: 14px; color: black; }
-        .row-subtitle { font-size: 12px; color: #667781; }
+        .row-details { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+        .row-name { font-weight: 600; font-size: 14px; color: black; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        /* Dropdown Label Selector Styles */
+        .label-picker { width: 100%; max-width: 140px; font-size: 11px; padding: 3px; border-radius: 4px; border: 1px solid #ccc; background: white; outline: none; margin-top: 2px; font-weight: 500; cursor: pointer; }
+        .label-picker.pending { background: #fff3cd; color: #856404; border-color: #ffeeba; }
+        .label-picker.paid { background: #d4edda; color: #155724; border-color: #c3e6cb; }
+        .label-picker.cancelled { background: #f8d7da; color: #721c24; border-color: #f5c6cb; }
 
-        /* Right Side Chat Window */
-        .chat-window { flex: 1; background: var(--bg-color); display: flex; flex-direction: column; position: relative; }
-        .placeholder-view { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #667781; gap: 10px; font-size: 16px; background: #f8f9fa; }
+        /* Right Selected Dialog Window Core block */
+        .chat-window { flex: 1; background: var(--bg-color); display: flex; flex-direction: column; height: 100%; position: relative; overflow: hidden; }
+        .placeholder-view { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #667781; gap: 10px; font-size: 15px; background: #f8f9fa; text-align: center; padding: 20px; }
         
-        .window-header { background: #f0f2f5; padding: 10px 20px; display: flex; align-items: center; gap: 12px; height: 50px; border-bottom: 1px solid #e9edef; font-weight: 600; }
-        .chat-container { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+        .window-header { background: #f0f2f5; padding: 10px 15px; display: flex; align-items: center; gap: 12px; height: 50px; min-height: 50px; border-bottom: 1px solid #e9edef; font-weight: 600; font-size: 15px; z-index: 5; }
         
-        /* Messages Styling */
+        /* Scrollable Message Box Content Panel */
+        .chat-container { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; background-color: var(--bg-color); padding-bottom: 20px; }
+        
+        /* Message Bubbles Styling */
         .message { max-width: 75%; padding: 8px 12px 24px 12px; border-radius: 10px; font-size: 15px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.08); word-break: break-word; color: black; display: inline-block; min-width: 90px; }
         .message.sent { background: #d9fdd3; align-self: flex-end; border-top-right-radius: 0; }
         .message.received { background: white; align-self: flex-start; border-top-left-radius: 0; }
         .msg-meta { position: absolute; bottom: 3px; right: 8px; font-size: 10px; color: #727272; display: flex; align-items: center; gap: 4px; }
         
-        .chat-media { max-width: 100%; border-radius: 8px; margin-bottom: 4px; display: block; max-height: 200px; object-fit: cover; }
-        .chat-video { max-width: 100%; border-radius: 8px; margin-bottom: 4px; display: block; max-height: 200px; }
+        .chat-media { max-width: 100%; border-radius: 8px; margin-bottom: 4px; display: block; max-height: 180px; object-fit: cover; }
+        .chat-video { max-width: 100%; border-radius: 8px; margin-bottom: 4px; display: block; max-height: 180px; }
         .chat-link { color: #0275d8; text-decoration: underline; word-break: break-all; }
 
-        /* Audio Controls */
-        .audio-player-box { display: flex; align-items: center; gap: 10px; min-width: 200px; padding: 5px 0; }
-        .audio-play-btn { background: none; border: none; color: var(--wa-light); font-size: 20px; cursor: pointer; }
+        /* Media Controls */
+        .audio-player-box { display: flex; align-items: center; gap: 10px; min-width: 180px; padding: 4px 0; }
+        .audio-play-btn { background: none; border: none; color: var(--wa-light); font-size: 18px; cursor: pointer; }
         .audio-timeline { flex: 1; height: 4px; background: #b8d4ca; border-radius: 2px; position: relative; }
         .audio-progress { width: 0%; height: 100%; background: var(--wa-light); border-radius: 2px; }
         .audio-duration { font-size: 11px; color: #555; }
 
-        /* Bottom Input Control Bar */
-        .input-area { background: #f0f2f5; padding: 10px 12px; display: flex; align-items: center; gap: 8px; border-top: 1px solid #e9edef; height: 60px; }
+        /* FIXED BOTTOM INPUT BAR CONTAINER FIX */
+        .input-area { background: #f0f2f5; padding: 8px 12px; display: flex; align-items: center; gap: 8px; border-top: 1px solid #e9edef; height: 60px; min-height: 60px; width: 100%; position: relative; z-index: 10; margin-top: auto; }
         .input-wrapper { flex: 1; background: white; border-radius: 25px; display: flex; align-items: center; padding: 0 12px; border: 1px solid #ccc; height: 40px; gap: 8px; }
         .input-box { flex: 1; background: transparent; border: none; outline: none; font-size: 15px; height: 100%; color: black; }
         
@@ -78,7 +85,7 @@
     <div class="wa-header">
         <img src="https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=256&auto=format&fit=crop" class="wa-avatar-img" alt="Admin App Logo">
         <div>
-            <div style="font-weight: 600; display: flex; align-items: center; gap: 5px;">
+            <div style="font-weight: 600; display: flex; align-items: center; gap: 5px; font-size: 15px;">
                 <span>Official Live Support Panel (Admin)</span>
                 <i class="fas fa-check-circle verified-badge"></i>
             </div>
@@ -88,26 +95,25 @@
     <div class="dashboard-body">
         
         <div class="sidebar">
-            <div class="sidebar-title">Rooms & Broadcast Channel</div>
+            <div class="sidebar-title">Channels & Broadcasting</div>
             
-            <div class="chat-row" id="room-global-group" onclick="selectActiveRoom('group', 'Official Updates Group')">
-                <div class="row-avatar group-avatar">
-                    <i class="fas fa-users"></i>
-                </div>
+            <div class="chat-row" id="room-global-group" onclick="selectActiveRoom('group', '📢 Official Updates Group', 'group')">
+                <div class="row-avatar group-avatar"><i class="fas fa-users"></i></div>
                 <div class="row-details">
                     <div class="row-name" style="color: var(--wa-green); font-weight: 700;">📢 Official Updates Group</div>
                     <div class="row-subtitle">Broadcast to all users...</div>
                 </div>
             </div>
 
-            <div class="sidebar-title" style="border-top: 5px solid #f0f2f5;">User Direct Messages</div>
+            <div class="sidebar-title" style="border-top: 5px solid #f0f2f5;">Customer Channels</div>
             <div id="users-list-container"></div>
         </div>
 
         <div class="chat-window" id="active-chat-window">
+            
             <div class="placeholder-view" id="blank-placeholder">
-                <i class="fab fa-whatsapp" style="font-size: 50px; color: #cbd5e1;"></i>
-                <p>Select a private room or the broadcast group to view or send messages.</p>
+                <i class="fab fa-whatsapp" style="font-size: 45px; color: #cbd5e1;"></i>
+                <p style="font-size: 14px;">Select any chat room or broadcast group to start messaging.</p>
             </div>
 
             <div class="window-header" id="chat-header-node" style="display: none;">
@@ -135,7 +141,7 @@
     </div>
 
     <script>
-        // Firebase Config credentials
+        // Firebase initialization core config settings 
         const firebaseConfig = {
             apiKey: "AIzaSyDe8zFsomI7Qn1PfuJb_FyWOLe1SdqEZHM",
             authDomain: "wattsapp-27aa4.firebaseapp.com",
@@ -147,68 +153,87 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // Admin flag configurations context
-        localStorage.setItem('chat_is_admin', 'true'); 
-        const adminId = 'admin';
-
-        let activeTargetId = null; // tracking active chat ID or 'group'
-        let currentRoomType = null; // tracking 'personal' or 'group'
+        let activeTargetId = null;
+        let currentRoomType = null;
         let activeSnapshotListener = null;
 
-        // Fetch user listing dynamic stream from Firebase presence
+        // Tracks mapping relations for translating internal tokens to serial format "User X"
+        let userNamesMapping = {};
+        let totalUsersCount = 0;
+
+        // Realtime sync pipeline for rendering Left side customer records with labels dropdowns
         db.collection("user_presence").onSnapshot(snapshot => {
             const container = document.getElementById('users-list-container');
             container.innerHTML = '';
             
+            let IndexTracker = 1;
             snapshot.docs.forEach(doc => {
                 const userId = doc.id;
                 const statusData = doc.data();
-                if(userId === 'admin') return; // skip self
+                if(userId === 'admin') return; // skip admin identity track
                 
+                // Keep naming maps uniform and steady across sessions
+                if(!userNamesMapping[userId]) {
+                    userNamesMapping[userId] = `User ${IndexTracker}`;
+                }
+                const visibleFriendlyName = userNamesMapping[userId];
+                IndexTracker++;
+
+                // Read saved label status state values or fallback safely
+                const selectedLabel = statusData.label || 'none';
+
                 const div = document.createElement('div');
                 div.classList.add('chat-row');
                 div.id = `room-${userId}`;
                 if(activeTargetId === userId) div.classList.add('active');
                 
-                div.onclick = () => selectActiveRoom(userId, `Private Chat: ${userId}`, 'personal');
-
+                // Setup layout interface
                 div.innerHTML = `
-                    <div class="row-avatar"><i class="fas fa-user"></i></div>
+                    <div class="row-avatar" onclick="selectActiveRoom('${userId}', 'Private Chat: ${visibleFriendlyName}', 'personal')"><i class="fas fa-user"></i></div>
                     <div class="row-details">
-                        <div class="row-name">${userId}</div>
-                        <div class="row-subtitle">${statusData.status === 'online' ? '🟢 Online' : '⚪ Offline'}</div>
+                        <div class="row-name" onclick="selectActiveRoom('${userId}', 'Private Chat: ${visibleFriendlyName}', 'personal')">${visibleFriendlyName}</div>
+                        <select class="label-picker ${selectedLabel}" onchange="updateUserLabel('${userId}', this.value)">
+                            <option value="none" ${selectedLabel==='none'?'selected':''}>No Label</option>
+                            <option value="pending" ${selectedLabel==='pending'?'selected':''}>⏳ Pending Payment</option>
+                            <option value="paid" ${selectedLabel==='paid'?'selected':''}>✅ Paid</option>
+                            <option value="cancelled" ${selectedLabel==='cancelled'?'selected':''}>❌ Cancelled</option>
+                        </select>
                     </div>
                 `;
                 container.appendChild(div);
             });
         });
 
-        // Click Room Handler 
+        // Trigger function to commit custom labels adjustments back to Firestore presence node
+        window.updateUserLabel = async function(userId, selectedValue) {
+            try {
+                await db.collection("user_presence").doc(userId).set({
+                    label: selectedValue
+                }, { merge: true });
+            } catch(e) { console.error("Error setting label parameter: ", e); }
+        };
+
+        // Click handler workspace routing transitions
         window.selectActiveRoom = function(targetId, displayName, type = 'group') {
             activeTargetId = targetId;
             currentRoomType = type;
 
-            // Manage active active highlighted colors
             document.querySelectorAll('.chat-row').forEach(r => r.classList.remove('active'));
             const targetRow = document.getElementById(`room-${targetId}`);
             if(targetRow) targetRow.classList.add('active');
 
-            // Toggle visibility nodes structure
             document.getElementById('blank-placeholder').style.display = 'none';
             document.getElementById('chat-header-node').style.display = 'flex';
             document.getElementById('chat-box').style.display = 'flex';
             document.getElementById('chat-input-node').style.display = 'flex';
             document.getElementById('target-room-title').innerText = displayName;
 
-            // Clear previous dynamic room snapshot loops
             if(activeSnapshotListener) activeSnapshotListener();
 
             if (currentRoomType === 'group') {
-                // Stream Broadcast channel data
                 activeSnapshotListener = db.collection("group_messages").orderBy("time_now", "asc")
                     .onSnapshot(snap => renderMessages(snap.docs, true));
             } else {
-                // Stream Personal chat room node records
                 activeSnapshotListener = db.collection("messages").where("room_id", "==", targetId)
                     .onSnapshot(snap => {
                         let sorted = snap.docs.sort((a, b) => a.data().time_now - b.data().time_now);
@@ -217,14 +242,13 @@
             }
         };
 
-        // UI Renderer Matrix
+        // Dynamic messages block engine renderer
         function renderMessages(docs, isGroupContext) {
             const box = document.getElementById('chat-box');
             box.innerHTML = '';
 
             docs.forEach(doc => {
                 const m = doc.data();
-                // Admin replies or group transmissions sent out align right
                 const isSentByMe = m.sender === 'admin';
 
                 const d = document.createElement('div');
@@ -241,7 +265,7 @@
                         <div class="audio-player-box">
                             <button class="audio-play-btn" onclick="toggleAudio(this, '${m.file_url}', '${uniqueId}')"><i class="fas fa-play"></i></button>
                             <div class="audio-timeline"><div class="audio-progress" id="${uniqueId}"></div></div>
-                            <span class="audio-duration">${m.duration || '0:03'}</span>
+                            <span class="audio-duration">${m.duration || '0:04'}</span>
                         </div>
                     `;
                 } else {
@@ -255,7 +279,7 @@
             box.scrollTop = box.scrollHeight;
         }
 
-        // Outbound Transmitter Transmission core logic
+        // Send Button click action processing
         async function sendAdminMessage() {
             const inp = document.getElementById('msg-input');
             const val = inp.value.trim();
@@ -263,19 +287,17 @@
             inp.value = '';
 
             if (currentRoomType === 'group') {
-                // Group broadcast collection upload pipeline
                 await db.collection("group_messages").add({
                     message_text: val, sender: 'admin', time_now: Date.now(), type: 'text'
                 });
             } else {
-                // Private user room feedback upload pipeline
                 await db.collection("messages").add({
                     message_text: val, sender: 'admin', receiver: activeTargetId, room_id: activeTargetId, time_now: Date.now(), type: 'text', status: 'sent'
                 });
             }
         }
 
-        // Base64 Multi File Uploader Media Parser
+        // File Uploader Parser Base64 Pipeline
         document.getElementById('file-input').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file || !activeTargetId) return;
@@ -310,7 +332,7 @@
             e.target.value = '';
         });
 
-        // Mic Dictation Engine Interface
+        // Audio mic recording controls
         let mediaRecorder;
         let audioChunks = [];
         let isRecording = false;
@@ -336,7 +358,7 @@
                                 sender: 'admin',
                                 time_now: Date.now(),
                                 type: 'audio',
-                                duration: '0:05'
+                                duration: '0:04'
                             };
                             if (currentRoomType === 'personal') {
                                 payload.receiver = activeTargetId; payload.room_id = activeTargetId; payload.status = 'sent';
@@ -349,7 +371,7 @@
                     mediaRecorder.start();
                     isRecording = true;
                     micBtn.innerHTML = '<i class="fas fa-stop" style="color:#e74c3c;"></i>';
-                } catch (err) { alert("Mic activation failed. Allow permission."); }
+                } catch (err) { alert("Mic device activation error."); }
             } else if (isRecording) {
                 mediaRecorder.stop();
                 isRecording = false;
@@ -357,7 +379,7 @@
             }
         });
 
-        // Timeline Audio Player Player Track Engine
+        // Timeline Audio Player Module
         window.toggleAudio = function(btn, audioUrl, progressId) {
             let activeAudio = window[`audio_${progressId}`];
             const progressBar = document.getElementById(progressId);
