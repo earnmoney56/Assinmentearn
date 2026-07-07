@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Live Support Chat</title>
+    <title>Live Support & Announcements</title>
     <link rel="manifest" href="manifest.json">
     
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
@@ -18,8 +18,8 @@
         .pwa-lock-card { background: #f9f9f9; padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 340px; display: flex; flex-direction: column; align-items: center; gap: 15px; }
         .pwa-logo { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; }
         .pwa-btn { background: #25D366; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 25px; cursor: pointer; width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 3px 6px rgba(0,0,0,0.2); }
-        .pwa-instruction { font-size: 13px; color: #666; margin-top: 5px; line-height: 1.4; }
-
+        
+        /* Fixed Headers & Tabs Layout */
         .wa-header { position: fixed; top: 0; left: 0; right: 0; background: var(--wa-green); color: white; padding: 10px 15px; display: flex; align-items: center; gap: 12px; font-size: 16px; height: 60px; z-index: 1000; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
         .wa-avatar-img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
         .header-info { display: flex; flex-direction: column; }
@@ -27,7 +27,15 @@
         .verified-badge { color: #34b7f1; font-size: 14px; }
         .status-dot { width: 8px; height: 8px; background: #2ecc71; border-radius: 50%; display: inline-block; margin-right: 4px; }
         
-        .chat-container { position: absolute; top: 60px; bottom: 60px; left: 0; right: 0; background-color: var(--bg-color); overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+        /* Navigation Tabs Style */
+        .tabs-container { position: fixed; top: 60px; left: 0; right: 0; height: 45px; background: var(--wa-green); display: table; width: 100%; z-index: 1000; border-top: 1px solid rgba(255,255,255,0.1); }
+        .tab-item { display: table-cell; width: 50%; text-align: center; vertical-align: middle; color: #b3d4d0; font-weight: 600; font-size: 14px; cursor: pointer; text-transform: uppercase; position: relative; }
+        .tab-item.active { color: white; }
+        .tab-item.active::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: white; }
+        .badge-count { background: #25D366; color: white; border-radius: 50%; padding: 2px 6px; font-size: 10px; margin-left: 5px; font-weight: bold; }
+
+        /* Chat Layout Adjustments */
+        .chat-container { position: absolute; top: 105px; bottom: 60px; left: 0; right: 0; background-color: var(--bg-color); overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
         
         .message { max-width: 75%; padding: 8px 12px 24px 12px; border-radius: 10px; font-size: 15px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.08); word-break: break-word; color: black; display: inline-block; min-width: 90px; }
         .message.sent { background: #d9fdd3; align-self: flex-end; border-top-right-radius: 0; }
@@ -39,20 +47,21 @@
         .tick-gray { color: #8696a0; }
         
         .chat-media { max-width: 100%; border-radius: 8px; margin-bottom: 4px; display: block; max-height: 200px; object-fit: cover; cursor: pointer; }
-        .chat-link { color: #0275d8; text-decoration: underline; word-break: break-all; }
+        .chat-video { max-width: 100%; border-radius: 8px; margin-bottom: 4px; display: block; max-height: 220px; }
+        .chat-link { color: #0275d8; text-decoration: underline; word-break: break-all; font-weight: 500; }
         
-        /* Audio Styles Fixed */
         .audio-player-box { display: flex; align-items: center; gap: 10px; min-width: 200px; padding: 5px 0; }
         .audio-play-btn { background: none; border: none; color: var(--wa-light); font-size: 20px; cursor: pointer; outline: none; }
         .audio-timeline { flex: 1; height: 4px; background: #b8d4ca; border-radius: 2px; position: relative; }
         .audio-progress { width: 0%; height: 100%; background: var(--wa-light); border-radius: 2px; }
         .audio-duration { font-size: 11px; color: #555; font-weight: bold; }
-        .mic-icon-active { color: #e74c3c !important; animation: blink 1s infinite; }
-        @keyframes blink { 50% { opacity: 0.4; } }
 
+        /* Input Area styles and disabled warning for group */
         .input-area { position: fixed; bottom: 0; left: 0; right: 0; background: #f0f2f5; padding: 10px 12px; display: flex; align-items: center; gap: 8px; border-top: 1px solid #e9edef; height: 60px; z-index: 1000; }
         .input-wrapper { flex: 1; background: white; border-radius: 25px; display: flex; align-items: center; padding: 0 12px; border: 1px solid #ccc; height: 40px; gap: 8px; }
         .input-box { flex: 1; background: transparent; border: none; outline: none; font-size: 15px; height: 100%; color: black; }
+        
+        .group-lock-msg { flex: 1; text-align: center; color: #667781; font-size: 14px; font-style: italic; background: #e1f3ff; padding: 8px; border-radius: 8px; border: 1px solid #bcdbf7; display: none; }
         
         .attach-btn, .mic-btn { color: #54656f; font-size: 18px; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; background: none; border: none; outline: none; }
         .send-btn { background: var(--wa-light); color: white; width: 40px; height: 40px; border-radius: 50%; border: none; display: flex; justify-content: center; align-items: center; font-size: 16px; cursor: pointer; flex-shrink: 0; }
@@ -83,22 +92,35 @@
     </div>
 
     <div class="wa-header">
-        <img src="https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=256&auto=format&fit=crop" class="wa-avatar-img" id="header-logo" alt="Official Profile">
+        <img src="https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=256&auto=format&fit=crop" class="wa-avatar-img" id="header-logo" alt="Profile">
         <div class="header-info">
             <div class="brand-row">
-                <span style="font-weight: 600;">Official Web</span>
-                <i class="fas fa-check-circle verified-badge" title="Verified Business Account"></i>
+                <span id="header-title" style="font-weight: 600;">Official Web</span>
+                <i class="fas fa-check-circle verified-badge" title="Verified Account"></i>
             </div>
-            <span style="font-size: 11px; color: #b3d4d0; display: block;"><span class="status-dot"></span> Verified Support</span>
+            <span id="header-status" style="font-size: 11px; color: #b3d4d0; display: block;"><span class="status-dot"></span> Verified Support</span>
+        </div>
+    </div>
+
+    <div class="tabs-container">
+        <div class="tab-item active" id="tab-personal" onclick="switchTab('personal')">
+            <i class="fas fa-user"></i> Support
+        </div>
+        <div class="tab-item" id="tab-group" onclick="switchTab('group')">
+            <i class="fas fa-users"></i> Updates Group <span class="badge-count" id="group-badge" style="display:none;">New</span>
         </div>
     </div>
     
     <div class="chat-container" id="chat-box"></div>
     
     <div class="input-area">
-        <div class="input-wrapper">
+        <div class="group-lock-msg" id="group-lock-banner">
+            <i class="fas fa-lock"></i> Only Admin can send messages to this group.
+        </div>
+
+        <div class="input-wrapper" id="input-controls-wrapper">
             <label for="file-input" class="attach-btn"><i class="fas fa-paperclip"></i></label>
-            <input type="file" id="file-input" accept="image/*">
+            <input type="file" id="file-input" accept="image/*,video/*">
             <input type="text" id="msg-input" class="input-box" placeholder="Type a message...">
             <button id="user-mic-btn" class="mic-btn"><i class="fas fa-microphone"></i></button>
         </div>
@@ -113,40 +135,27 @@
         }
 
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js')
-                .then(() => console.log("Service Worker Registered Successfully"))
-                .catch(err => console.log("Service Worker registration failed: ", err));
+            navigator.serviceWorker.register('sw.js').catch(err => console.log(err));
         }
 
         const isPWA = window.matchMedia('(display-mode: standalone)').matches || window.location.search.includes('launcher=true');
-        if (isPWA) {
-            document.getElementById('pwa-overlay').style.display = 'none';
-        }
+        if (isPWA) { document.getElementById('pwa-overlay').style.display = 'none'; }
 
         let deferredPrompt;
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-        });
+        window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; });
 
         document.getElementById('pwa-install-btn').addEventListener('click', async () => {
             if (deferredPrompt) {
                 deferredPrompt.prompt();
                 const { outcome } = await deferredPrompt.userChoice;
-                if (outcome === 'accepted') {
-                    document.getElementById('pwa-overlay').style.display = 'none';
-                }
+                if (outcome === 'accepted') document.getElementById('pwa-overlay').style.display = 'none';
                 deferredPrompt = null;
             } else {
-                document.getElementById('pwa-instructions-text').innerHTML = "<strong>Chrome/Android:</strong> Top-right pe 3 dots Menu par click karein aur <strong>'Install App'</strong> select karein.<br><br><strong>Safari/iOS:</strong> Niche <strong>'Share'</strong> karke <strong>'Add to Home Screen'</strong> select karein.";
+                document.getElementById('pwa-instructions-text').innerHTML = "Click Top Menu 3-dots and select 'Install app' or 'Add to Home Screen'.";
             }
         });
 
-        window.addEventListener('appinstalled', () => {
-            document.getElementById('pwa-overlay').style.display = 'none';
-        });
-
-        // Firebase Configuration
+        // Firebase Initialization
         const firebaseConfig = {
             apiKey: "AIzaSyDe8zFsomI7Qn1PfuJb_FyWOLe1SdqEZHM",
             authDomain: "wattsapp-27aa4.firebaseapp.com",
@@ -158,18 +167,198 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
+        // Detect Roles (Change 'admin' to true in localStorage for testing Admin UI privileges)
+        let isAdmin = localStorage.getItem('chat_is_admin') === 'true'; 
         let myUserId = localStorage.getItem('user_chat_uuid') || 'User-' + Math.floor(1000 + Math.random() * 9000);
         localStorage.setItem('user_chat_uuid', myUserId);
+
+        let currentTab = 'personal'; // default tab mode
+        let personalUnsubscribe = null;
+        let groupUnsubscribe = null;
+        let initialLoadPersonal = true;
+        let initialLoadGroup = true;
 
         function updateUserPresence(status) {
             db.collection("user_presence").doc(myUserId).set({ status: status, last_seen: Date.now() }, { merge: true });
         }
         updateUserPresence('online');
-        window.addEventListener('online', () => updateUserPresence('online'));
-        window.addEventListener('offline', () => updateUserPresence('offline'));
-        document.addEventListener('visibilitychange', () => { updateUserPresence(document.visibilityState === 'visible' ? 'online' : 'offline'); });
 
-        // --- Voice Recording Logic Added ---
+        // Tab Management Function
+        window.switchTab = function(tabName) {
+            currentTab = tabName;
+            document.getElementById('tab-personal').classList.toggle('active', tabName === 'personal');
+            document.getElementById('tab-group').classList.toggle('active', tabName === 'group');
+            
+            const titleEl = document.getElementById('header-title');
+            const statusEl = document.getElementById('header-status');
+            const lockBanner = document.getElementById('group-lock-banner');
+            const inputWrapper = document.getElementById('input-controls-wrapper');
+            const sendBtn = document.getElementById('btn-send');
+
+            if (tabName === 'group') {
+                titleEl.innerText = "Official Updates Group";
+                statusEl.innerHTML = "<i class='fas fa-bullhorn'></i> Announcements Channel";
+                document.getElementById('group-badge').style.display = 'none';
+
+                // If user is not admin, disable input area completely
+                if (!isAdmin) {
+                    lockBanner.style.display = 'block';
+                    inputWrapper.style.display = 'none';
+                    sendBtn.style.display = 'none';
+                } else {
+                    lockBanner.style.display = 'none';
+                    inputWrapper.style.display = 'flex';
+                    sendBtn.style.display = 'flex';
+                }
+                loadGroupMessages();
+            } else {
+                titleEl.innerText = "Official Web Support";
+                statusEl.innerHTML = "<span class='status-dot'></span> Verified Support";
+                
+                lockBanner.style.display = 'none';
+                inputWrapper.style.display = 'flex';
+                sendBtn.style.display = 'flex';
+                loadPersonalMessages();
+            }
+        };
+
+        // Render Functions
+        function renderMessages(docs, isGroupContext) {
+            const box = document.getElementById('chat-box');
+            box.innerHTML = '';
+            
+            docs.forEach((doc) => {
+                const m = doc.data();
+                // Admin messages or self messages are aligned right
+                const isSentByMe = m.sender === myUserId || (isGroupContext && m.sender === 'admin' && isAdmin);
+
+                const d = document.createElement('div');
+                d.classList.add('message', isSentByMe ? 'sent' : 'received');
+                
+                let contentHTML = '';
+                if (m.type === 'image') {
+                    contentHTML = `<img src="${m.file_url}" class="chat-media" onclick="openImagePreview('${m.file_url}')">`;
+                } else if (m.type === 'video') {
+                    contentHTML = `<video src="${m.file_url}" controls class="chat-video"></video>`;
+                } else if (m.type === 'audio') {
+                    const uniqueId = 'prog_' + doc.id;
+                    contentHTML = `
+                        <div class="audio-player-box">
+                            <button class="audio-play-btn" onclick="toggleAudio(this, '${m.file_url}', '${uniqueId}')"><i class="fas fa-play"></i></button>
+                            <div class="audio-timeline"><div class="audio-progress" id="${uniqueId}"></div></div>
+                            <span class="audio-duration">${m.duration || '0:05'}</span>
+                        </div>
+                    `;
+                } else {
+                    contentHTML = `<div>${linkify(m.message_text)}</div>`;
+                }
+                
+                const timeStr = formatTime(m.time_now);
+                const tickHTML = isGroupContext ? '' : getTickHTML(m.status, isSentByMe);
+
+                d.innerHTML = `${contentHTML}<div class="msg-meta"><span>${timeStr}</span>${tickHTML}</div>`;
+                box.appendChild(d);
+            });
+            box.scrollTop = box.scrollHeight;
+        }
+
+        // Load Personal Tab Database Listener
+        function loadPersonalMessages() {
+            if(groupUnsubscribe) groupUnsubscribe();
+            
+            let roomId = isAdmin ? 'AdminRoomMock' : myUserId; // Modify based on your Admin Routing structure
+            personalUnsubscribe = db.collection("messages").where("room_id", "==", roomId)
+                .onSnapshot((snapshot) => {
+                    if (currentTab !== 'personal') return;
+                    let sorted = snapshot.docs.sort((a, b) => a.data().time_now - b.data().time_now);
+                    
+                    // Update unseen ticks logic
+                    if (!isAdmin && !initialLoadPersonal) {
+                        snapshot.docs.forEach(doc => {
+                            if (doc.data().sender === 'admin' && doc.data().status !== 'seen') {
+                                db.collection("messages").doc(doc.id).update({ status: 'seen' });
+                            }
+                        });
+                    }
+                    renderMessages(sorted, false);
+                    initialLoadPersonal = false;
+                });
+        }
+
+        // Load Global Updates Group Tab Database Listener
+        function loadGroupMessages() {
+            if(personalUnsubscribe) personalUnsubscribe();
+            
+            groupUnsubscribe = db.collection("group_messages").orderBy("time_now", "asc")
+                .onSnapshot((snapshot) => {
+                    if (currentTab === 'group') {
+                        renderMessages(snapshot.docs, true);
+                    } else {
+                        // Notify group update when on personal chat tab
+                        if (!initialLoadGroup && !isAdmin) {
+                            document.getElementById('group-badge').style.display = 'inline-block';
+                            triggerIncomingNotification("Group Update: New announcement posted!");
+                        }
+                    }
+                    initialLoadGroup = false;
+                });
+        }
+
+        // Send Message Handler
+        async function sendMessage() {
+            const inp = document.getElementById('msg-input');
+            const val = inp.value.trim();
+            if(!val) return;
+            inp.value = '';
+
+            if (currentTab === 'group') {
+                if(!isAdmin) return; // Prevent spoof
+                await db.collection("group_messages").add({
+                    message_text: val, sender: 'admin', time_now: Date.now(), type: 'text'
+                });
+            } else {
+                await db.collection("messages").add({
+                    message_text: val, sender: myUserId, receiver: 'admin', room_id: myUserId, time_now: Date.now(), type: 'text', status: 'sent'
+                });
+            }
+        }
+
+        // Base64 File Uploader (Supports Image & Video)
+        document.getElementById('file-input').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const isVideo = file.type.startsWith('video/');
+            const inputField = document.getElementById('msg-input');
+            inputField.placeholder = isVideo ? "Sending video..." : "Sending image...";
+            
+            const reader = new FileReader();
+            reader.onloadend = async function() {
+                try {
+                    let targetCollection = currentTab === 'group' ? "group_messages" : "messages";
+                    let payload = {
+                        message_text: isVideo ? "Sent a video" : "Sent an image",
+                        file_url: reader.result,
+                        sender: currentTab === 'group' ? 'admin' : myUserId,
+                        time_now: Date.now(),
+                        type: isVideo ? 'video' : 'image'
+                    };
+                    
+                    if(currentTab === 'personal') {
+                        payload.receiver = 'admin';
+                        payload.room_id = myUserId;
+                        payload.status = 'sent';
+                    }
+                    
+                    await db.collection(targetCollection).add(payload);
+                } catch (err) { alert(err.message); }
+                inputField.placeholder = "Type a message...";
+            };
+            reader.readAsDataURL(file);
+            e.target.value = ''; 
+        });
+
+        // Media Voice Recorder Setup
         let mediaRecorder;
         let audioChunks = [];
         let isRecording = false;
@@ -177,88 +366,60 @@
 
         micBtn.addEventListener('click', async () => {
             if (!isRecording) {
-                // Start Recording
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                     mediaRecorder = new MediaRecorder(stream);
                     audioChunks = [];
-
-                    mediaRecorder.addEventListener('dataavailable', event => {
-                        audioChunks.push(event.data);
-                    });
+                    mediaRecorder.addEventListener('dataavailable', e => audioChunks.push(e.data));
 
                     mediaRecorder.addEventListener('stop', () => {
                         const audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
                         const reader = new FileReader();
                         reader.readAsDataURL(audioBlob);
                         reader.onloadend = async () => {
-                            const base64Audio = reader.result;
-                            document.getElementById('msg-input').placeholder = "Sending voice note...";
-                            
-                            // Send to Firebase
-                            await db.collection("messages").add({
+                            let targetCollection = currentTab === 'group' ? "group_messages" : "messages";
+                            let payload = {
                                 message_text: "Sent a voice note",
-                                file_url: base64Audio,
-                                sender: myUserId,
-                                receiver: 'admin',
-                                room_id: myUserId,
+                                file_url: reader.result,
+                                sender: currentTab === 'group' ? 'admin' : myUserId,
                                 time_now: Date.now(),
                                 type: 'audio',
-                                duration: '0:10', // static mockup duration
-                                status: 'sent'
-                            });
-                            document.getElementById('msg-input').placeholder = "Type a message...";
+                                duration: '0:08'
+                            };
+                            if (currentTab === 'personal') {
+                                payload.receiver = 'admin'; payload.room_id = myUserId; payload.status = 'sent';
+                            }
+                            await db.collection(targetCollection).add(payload);
                         };
-                        
-                        // Stop all mic tracks
-                        stream.getTracks().forEach(track => track.stop());
+                        stream.getTracks().forEach(t => t.stop());
                     });
 
                     mediaRecorder.start();
                     isRecording = true;
-                    micBtn.innerHTML = '<i class="fas fa-stop" style="color: #e74c3c;"></i>';
-                    document.getElementById('msg-input').placeholder = "Recording audio...";
-                } catch (err) {
-                    alert("Mic Access Denied or HTTP Connection! Please check site permission.");
-                    console.error(err);
-                }
+                    micBtn.innerHTML = '<i class="fas fa-stop" style="color:#e74c3c;"></i>';
+                } catch (err) { alert("Mic integration failed. Please allow explicit microphone permissions."); }
             } else {
-                // Stop Recording
                 mediaRecorder.stop();
                 isRecording = false;
                 micBtn.innerHTML = '<i class="fas fa-microphone"></i>';
-                document.getElementById('msg-input').placeholder = "Type a message...";
             }
         });
 
-        // --- Audio Player Controller Logic ---
+        // Audio Track Controller
         window.toggleAudio = function(btn, audioUrl, progressId) {
             let activeAudio = window[`audio_${progressId}`];
             const progressBar = document.getElementById(progressId);
-            
             if (!activeAudio) {
                 activeAudio = new Audio(audioUrl);
                 window[`audio_${progressId}`] = activeAudio;
-                
                 activeAudio.addEventListener('timeupdate', () => {
-                    const pct = (activeAudio.currentTime / activeAudio.duration) * 100;
-                    progressBar.style.width = pct + '%';
+                    progressBar.style.width = ((activeAudio.currentTime / activeAudio.duration) * 100) + '%';
                 });
-                
-                activeAudio.addEventListener('ended', () => {
-                    btn.innerHTML = '<i class="fas fa-play"></i>';
-                    progressBar.style.width = '0%';
-                });
+                activeAudio.addEventListener('ended', () => { btn.innerHTML = '<i class="fas fa-play"></i>'; progressBar.style.width = '0%'; });
             }
-
-            if (activeAudio.paused) {
-                activeAudio.play();
-                btn.innerHTML = '<i class="fas fa-pause"></i>';
-            } else {
-                activeAudio.pause();
-                btn.innerHTML = '<i class="fas fa-play"></i>';
-            }
-        }
+            if (activeAudio.paused) { activeAudio.play(); btn.innerHTML = '<i class="fas fa-pause"></i>'; }
+            else { activeAudio.pause(); btn.innerHTML = '<i class="fas fa-play"></i>'; }
+        };
 
         function getTickHTML(status, isSent) {
             if (!isSent) return ''; 
@@ -283,102 +444,28 @@
         }
 
         function triggerIncomingNotification(msgText) {
-            notificationSound.play().catch(e => console.log("Audio play blocked"));
+            notificationSound.play().catch(e => console.log("Sound muted"));
             if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
-                const options = {
-                    body: msgText,
-                    icon: 'https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=256&auto=format&fit=crop',
-                    vibrate: [200, 100, 200]
-                };
-                const notification = new Notification("Official Support Team", options);
-                notification.onclick = function() { window.focus(); notification.close(); };
+                new Notification("Updates Channel", { body: msgText, icon: 'https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=256&auto=format&fit=crop' });
             }
         }
-
-        let initialLoad = true;
-        db.collection("messages").where("room_id", "==", myUserId).onSnapshot((snapshot) => {
-            const box = document.getElementById('chat-box');
-            box.innerHTML = '';
-            let sortedDocs = snapshot.docs.sort((a, b) => a.data().time_now - b.data().time_now);
-            
-            let hasIncoming = false;
-            let lastMessageText = "New message received";
-
-            sortedDocs.forEach((doc) => {
-                const m = doc.data();
-                const isSentByMe = m.sender === myUserId;
-                
-                if (!isSentByMe && m.status !== 'seen') {
-                    db.collection("messages").doc(doc.id).update({ status: 'seen' });
-                    if (!initialLoad) {
-                        hasIncoming = true;
-                        lastMessageText = m.message_text || "Sent an attachment";
-                    }
-                }
-
-                const d = document.createElement('div');
-                d.classList.add('message', isSentByMe ? 'sent' : 'received');
-                
-                let contentHTML = '';
-                if (m.type === 'image') {
-                    contentHTML = `<img src="${m.file_url}" class="chat-media" onclick="openImagePreview('${m.file_url}')">`;
-                } else if (m.type === 'audio') {
-                    const uniqueId = 'prog_' + doc.id;
-                    contentHTML = `
-                        <div class="audio-player-box">
-                            <button class="audio-play-btn" onclick="toggleAudio(this, '${m.file_url}', '${uniqueId}')"><i class="fas fa-play"></i></button>
-                            <div class="audio-timeline"><div class="audio-progress" id="${uniqueId}"></div></div>
-                            <span class="audio-duration">${m.duration || '0:03'}</span>
-                        </div>
-                    `;
-                } else {
-                    contentHTML = `<div>${linkify(m.message_text)}</div>`;
-                }
-                
-                const timeStr = formatTime(m.time_now);
-                const tickHTML = getTickHTML(m.status, isSentByMe);
-
-                d.innerHTML = `${contentHTML}<div class="msg-meta"><span>${timeStr}</span>${tickHTML}</div>`;
-                box.appendChild(d);
-            });
-            
-            box.scrollTop = box.scrollHeight;
-            
-            if (hasIncoming && !initialLoad) {
-                triggerIncomingNotification(lastMessageText);
-            }
-            initialLoad = false;
-        });
-
-        async function sendMessage() {
-            const inp = document.getElementById('msg-input');
-            const val = inp.value.trim();
-            if(!val) return;
-            inp.value = '';
-            await db.collection("messages").add({ message_text: val, sender: myUserId, receiver: 'admin', room_id: myUserId, time_now: Date.now(), type: 'text', status: 'sent' });
-            updateUserPresence('online');
-        }
-
-        document.getElementById('file-input').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            const inputField = document.getElementById('msg-input');
-            inputField.placeholder = "Sending image...";
-            const reader = new FileReader();
-            reader.onloadend = async function() {
-                try {
-                    await db.collection("messages").add({ message_text: "Sent an image", file_url: reader.result, sender: myUserId, receiver: 'admin', room_id: myUserId, time_now: Date.now(), type: 'image', status: 'sent' });
-                } catch (err) { alert(err.message); }
-                inputField.placeholder = "Type a message...";
-            };
-            reader.readAsDataURL(file);
-            e.target.value = ''; 
-        });
 
         function openImagePreview(src) { document.getElementById("modalImg").src = src; document.getElementById("imageModal").style.display = "flex"; }
         function closeImagePreview() { document.getElementById("imageModal").style.display = "none"; }
+        
         document.getElementById('btn-send').addEventListener('click', sendMessage);
         document.getElementById('msg-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') sendMessage(); });
+
+        // Initialize App Mode Setup
+        loadPersonalMessages();
+        // Also load background updates listener for group badges
+        db.collection("group_messages").orderBy("time_now", "asc").onSnapshot(snap => {
+            if(currentTab !== 'group' && !initialLoadGroup && !isAdmin) {
+                document.getElementById('group-badge').style.display = 'inline-block';
+                triggerIncomingNotification("Group Update: New announcement posted!");
+            }
+            initialLoadGroup = false;
+        });
     </script>
 </body>
 </html>
