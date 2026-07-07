@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Live Support Chat</title>
+    <link rel="manifest" href="manifest.json">
+    
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -12,6 +14,13 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body, html { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; height: 100vh; height: 100dvh; width: 100vw; overflow: hidden; }
         
+        /* Force Lock Overlay Screen if not added to Home Screen */
+        .pwa-lock-overlay { position: fixed; top:0; left:0; width:100vw; height:100vh; background: #ffffff; z-index: 99999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px; text-align: center; }
+        .pwa-lock-card { background: #f9f9f9; padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 340px; display: flex; flex-direction: column; align-items: center; gap: 15px; }
+        .pwa-logo { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid var(--wa-green); }
+        .pwa-btn { background: var(--wa-green); color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 25px; cursor: pointer; width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 3px 6px rgba(0,0,0,0.2); }
+        .pwa-instruction { font-size: 13px; color: #666; margin-top: 5px; line-height: 1.4; }
+
         .wa-header { position: fixed; top: 0; left: 0; right: 0; background: var(--wa-green); color: white; padding: 10px 15px; display: flex; align-items: center; gap: 12px; font-size: 16px; height: 60px; z-index: 1000; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
         .wa-avatar-img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid rgba(255,255,255,0.3); }
         .header-info { display: flex; flex-direction: column; }
@@ -33,7 +42,6 @@
         .chat-media { max-width: 100%; border-radius: 8px; margin-bottom: 4px; display: block; max-height: 200px; object-fit: cover; cursor: pointer; }
         .chat-link { color: #0275d8; text-decoration: underline; word-break: break-all; }
         
-        /* Premium WhatsApp Style Audio Player Box */
         .audio-player-box { display: flex; align-items: center; gap: 10px; min-width: 200px; padding: 5px 0; }
         .audio-play-btn { background: none; border: none; color: var(--wa-light); font-size: 20px; cursor: pointer; outline: none; }
         .audio-timeline { flex: 1; height: 4px; background: #b8d4ca; border-radius: 2px; position: relative; }
@@ -56,6 +64,18 @@
     </style>
 </head>
 <body>
+
+    <div id="pwa-overlay" class="pwa-lock-overlay">
+        <div class="pwa-lock-card">
+            <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&auto=format&fit=crop&q=80" class="pwa-logo" alt="Logo">
+            <h3 style="color: black;">Official Web Support</h3>
+            <p style="font-size: 14px; color: #444;">Admin se live chat karne ke liye pehle app ko home screen par add karein.</p>
+            <button id="pwa-install-btn" class="pwa-btn">
+                <i class="fas fa-plus-circle"></i> Add To Home Screen
+            </button>
+            <p class="pwa-instruction" id="pwa-instructions-text">Neeche diye gaye button par click karke application ko screen par set karein.</p>
+        </div>
+    </div>
 
     <div id="imageModal" class="img-modal">
         <span class="close-modal" onclick="closeImagePreview()">&times;</span>
@@ -86,6 +106,47 @@
     </div>
 
     <script>
+        // Register PWA Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').then(() => console.log("Service Worker Registered"));
+        }
+
+        // Check if application is running as Installed App (Home Screen Launcher)
+        const isPWA = window.matchMedia('(display-mode: standalone)').matches || window.location.search.includes('launcher=true');
+        
+        if (isPWA) {
+            // Unlock Chat Immediately if opened from Home Screen
+            document.getElementById('pwa-overlay').style.display = 'none';
+        }
+
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            // Show custom button interaction
+            document.getElementById('pwa-install-btn').style.display = 'flex';
+        });
+
+        document.getElementById('pwa-install-btn').addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    document.getElementById('pwa-overlay').style.display = 'none';
+                }
+                deferredPrompt = null;
+            } else {
+                // Fallback instructions for iOS/Safari inside TikTok browser
+                document.getElementById('pwa-instructions-text').innerHTML = "<strong style='color: #e74c3c;'>iOS User:</strong> Browser ke <strong>'Share'</strong> icon par click karein aur phir <strong>'Add to Home Screen'</strong> select karein.";
+            }
+        });
+
+        // App installation complete event listener
+        window.addEventListener('appinstalled', () => {
+            document.getElementById('pwa-overlay').style.display = 'none';
+        });
+
+        // Firebase Initialisation
         const firebaseConfig = {
             apiKey: "AIzaSyDe8zFsomI7Qn1PfuJb_FyWOLe1SdqEZHM",
             authDomain: "wattsapp-27aa4.firebaseapp.com",
@@ -100,7 +161,6 @@
         let myUserId = localStorage.getItem('user_chat_uuid') || 'User-' + Math.floor(1000 + Math.random() * 9000);
         localStorage.setItem('user_chat_uuid', myUserId);
 
-        // Presence Heartbeat
         function updateUserPresence(status) {
             db.collection("user_presence").doc(myUserId).set({ status: status, last_seen: Date.now() }, { merge: true });
         }
@@ -131,7 +191,6 @@
             return text.replace(/(https?:\/\/[^\s]+)/g, url => `<a class="chat-link" href="${url}" target="_blank">${url}</a>`);
         }
 
-        // Handle Audio Player Play/Pause Interactions Locally
         function toggleAudio(btn, audioSrc, progressBarId) {
             let activeAudio = window[`audio_${progressBarId}`];
             const pBar = document.getElementById(progressBarId);
@@ -225,7 +284,6 @@
             e.target.value = ''; 
         });
 
-        // Advanced Voice Recording Engine
         let mediaRecorder = null;
         let audioChunks = [];
         let isRecording = false;
@@ -237,7 +295,7 @@
             
             if (!isRecording) {
                 if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                    alert("Microphone access not supported on this device/browser.");
+                    alert("Microphone access not supported.");
                     return;
                 }
                 try {
