@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Admin Dashboard</title>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
@@ -10,21 +10,26 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; background: #f0f2f5; color: black; overflow: hidden; }
+        body, html { font-family: 'Segoe UI', sans-serif; height: 100%; width: 100%; background: #f0f2f5; color: black; overflow: hidden; }
         
-        .sidebar { width: 180px; background: white; border-right: 1px solid #e9edef; display: flex; flex-direction: column; flex-shrink: 0; }
-        .sidebar-header { background: #075e54; color: white; padding: 14px 10px; font-weight: bold; font-size: 14px; }
+        /* Main Layout Grid Setup for Mobile Screens */
+        .dashboard-container { display: flex; height: 100vh; width: 100vw; overflow: hidden; }
+        
+        .sidebar { width: 140px; background: white; border-right: 1px solid #e9edef; display: flex; flex-direction: column; flex-shrink: 0; }
+        .sidebar-header { background: #075e54; color: white; padding: 12px 8px; font-weight: bold; font-size: 13px; text-align: center; }
         .user-list { flex: 1; overflow-y: auto; }
-        .user-item { padding: 12px 10px; border-bottom: 1px solid #f0f2f5; cursor: pointer; font-weight: 600; font-size: 13px; color: black; word-break: break-all; }
+        .user-item { padding: 12px 8px; border-bottom: 1px solid #f0f2f5; cursor: pointer; font-weight: 600; font-size: 12px; color: black; word-break: break-all; }
         
-        /* Layout Height Fix for Main Chat Screen */
-        .main-chat { flex: 1; display: flex; flex-direction: column; background: #ece5dd; height: 100vh; position: relative; }
-        .chat-header { background: #075e54; color: white; padding: 14px; font-size: 15px; flex-shrink: 0; }
+        /* Chat Main Section Structure Fix */
+        .main-chat { flex: 1; display: grid; grid-template-rows: 50px 1fr 70px; background: #ece5dd; height: 100%; overflow: hidden; position: relative; }
         
-        /* Ensuring Chat Box leaves exact space for Input Bar */
-        .chat-box { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; padding-bottom: 20px; }
+        .chat-header { background: #075e54; color: white; display: flex; align-items: center; padding: 0 15px; font-size: 14px; font-weight: bold; }
         
-        .msg { max-width: 75%; padding: 8px 12px 24px 12px; border-radius: 8px; font-size: 14px; color: black; position: relative; display: inline-block; box-shadow: 0 1px 2px rgba(0,0,0,0.08); min-width: 90px; }
+        /* Chat Body Scroll Control */
+        .chat-box { overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; height: 100%; }
+        
+        /* Time & Ticks Overflow Layout Styling */
+        .msg { max-width: 80%; padding: 8px 12px 22px 12px; border-radius: 8px; font-size: 14px; color: black; position: relative; display: inline-block; box-shadow: 0 1px 2px rgba(0,0,0,0.08); min-width: 95px; align-self: flex-start; }
         .msg.sent { background: #d9fdd3; align-self: flex-end; }
         .msg.received { background: white; align-self: flex-start; }
         
@@ -33,33 +38,42 @@
         .tick-blue { color: #34b7f1; }
         .tick-gray { color: #8696a0; }
         
-        .chat-media { max-width: 100%; border-radius: 6px; margin-bottom: 4px; display: block; max-height: 180px; object-fit: cover; }
+        .chat-media { max-width: 100%; border-radius: 6px; margin-bottom: 4px; display: block; max-height: 150px; object-fit: cover; }
         .chat-link { color: #0275d8; text-decoration: underline; word-break: break-all; }
         
-        /* Standard Input Chat Area Fix */
-        .input-area { background: #f0f2f5; padding: 12px; display: flex; gap: 10px; align-items: center; border-top: 1px solid #e9edef; flex-shrink: 0; width: 100%; }
-        .input-box { flex: 1; padding: 12px; border-radius: 24px; border: 1px solid #ccc; outline: none; font-size: 14px; color: black; background: white; }
-        .attach-btn { color: #54656f; font-size: 20px; cursor: pointer; padding: 4px; display: flex; align-items: center; }
-        .send-btn { background: #128c7e; color: white; border: none; padding: 0 20px; border-radius: 24px; cursor: pointer; font-weight: bold; height: 42px; display: flex; align-items: center; justify-content: center; }
+        /* Guaranteed Visible Chat Input Bar */
+        .input-area { background: #f0f2f5; padding: 10px 12px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #e9edef; width: 100%; height: 100%; z-index: 999; }
+        .input-wrapper { flex: 1; background: white; border-radius: 20px; display: flex; align-items: center; padding: 0 10px; border: 1px solid #ccc; height: 40px; gap: 6px; }
+        .input-box { flex: 1; background: transparent; border: none; outline: none; font-size: 14px; color: black; height: 100%; }
+        
+        .attach-btn { color: #54656f; font-size: 18px; cursor: pointer; padding: 2px; display: flex; align-items: center; }
+        .send-btn { background: #128c7e; color: white; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
         #admin-file-input { display: none; }
     </style>
 </head>
 <body>
-    <div class="sidebar">
-        <div class="sidebar-header">Active Chats</div>
-        <div class="user-list" id="users-container"></div>
-    </div>
-    <div class="main-chat">
-        <div class="chat-header"><h4 id="active-user-title">Select Chat</h4></div>
-        <div class="chat-box" id="admin-chat-box"></div>
+
+    <div class="dashboard-container">
+        <div class="sidebar">
+            <div class="sidebar-header">Active Chats</div>
+            <div class="user-list" id="users-container"></div>
+        </div>
         
-        <div class="input-area">
-            <label for="admin-file-input" class="attach-btn"><i class="fas fa-paperclip"></i></label>
-            <input type="file" id="admin-file-input" accept="image/*,video/*,audio/*">
-            <input type="text" id="admin-msg-input" class="input-box" placeholder="Reply or paste link...">
-            <button id="admin-send-btn" class="send-btn">Send</button>
+        <div class="main-chat">
+            <div class="chat-header"><span id="active-user-title">Select Chat</span></div>
+            <div class="chat-box" id="admin-chat-box"></div>
+            
+            <div class="input-area">
+                <div class="input-wrapper">
+                    <label for="admin-file-input" class="attach-btn"><i class="fas fa-paperclip"></i></label>
+                    <input type="file" id="admin-file-input" accept="image/*,video/*,audio/*">
+                    <input type="text" id="admin-msg-input" class="input-box" placeholder="Type a reply...">
+                </div>
+                <button id="admin-send-btn" class="send-btn"><i class="fas fa-paper-plane"></i></button>
+            </div>
         </div>
     </div>
+
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyDe8zFsomI7Qn1PfuJb_FyWOLe1SdqEZHM",
@@ -154,7 +168,7 @@
                     } else if (m.type === 'video') {
                         contentHTML = `<video src="${m.file_url}" class="chat-media" controls></video>`;
                     } else if (m.type === 'audio') {
-                        contentHTML = `<audio src="${m.file_url}" controls style="max-width:100%; height:32px; margin-bottom:4px;"></audio>`;
+                        contentHTML = `<audio src="${m.file_url}" controls style="max-width:100%; height:30px; margin-bottom:4px;"></audio>`;
                     } else {
                         contentHTML = `<div>${linkify(m.message_text)}</div>`;
                     }
@@ -204,7 +218,7 @@
             else if (file.type.startsWith('audio/')) fileType = 'audio';
 
             const storageRef = storage.ref('chat_files/' + Date.now() + '_' + file.name);
-            document.getElementById('admin-msg-input').placeholder = "Uploading file...";
+            document.getElementById('admin-msg-input').placeholder = "Uploading...";
 
             try {
                 const uploadTask = await storageRef.put(file);
@@ -221,9 +235,9 @@
                     status: 'sent'
                 });
             } catch (err) {
-                alert("Upload error. Please check Firebase Storage rules configuration.");
+                alert("Upload failed. Configure Firebase Storage tab rules.");
             }
-            document.getElementById('admin-msg-input').placeholder = "Reply...";
+            document.getElementById('admin-msg-input').placeholder = "Type a reply...";
             e.target.value = '';
         });
 
