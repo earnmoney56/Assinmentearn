@@ -14,15 +14,14 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body, html { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; height: 100vh; height: 100dvh; width: 100vw; overflow: hidden; }
         
-        /* Force Lock Overlay Screen if not added to Home Screen */
         .pwa-lock-overlay { position: fixed; top:0; left:0; width:100vw; height:100vh; background: #ffffff; z-index: 99999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px; text-align: center; }
         .pwa-lock-card { background: #f9f9f9; padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 340px; display: flex; flex-direction: column; align-items: center; gap: 15px; }
-        .pwa-logo { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid var(--wa-green); }
-        .pwa-btn { background: var(--wa-green); color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 25px; cursor: pointer; width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 3px 6px rgba(0,0,0,0.2); }
+        .pwa-logo { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; }
+        .pwa-btn { background: #25D366; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 25px; cursor: pointer; width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 3px 6px rgba(0,0,0,0.2); }
         .pwa-instruction { font-size: 13px; color: #666; margin-top: 5px; line-height: 1.4; }
 
         .wa-header { position: fixed; top: 0; left: 0; right: 0; background: var(--wa-green); color: white; padding: 10px 15px; display: flex; align-items: center; gap: 12px; font-size: 16px; height: 60px; z-index: 1000; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
-        .wa-avatar-img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid rgba(255,255,255,0.3); }
+        .wa-avatar-img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
         .header-info { display: flex; flex-direction: column; }
         .brand-row { display: flex; align-items: center; gap: 5px; }
         .verified-badge { color: #34b7f1; font-size: 14px; }
@@ -67,11 +66,11 @@
 
     <div id="pwa-overlay" class="pwa-lock-overlay">
         <div class="pwa-lock-card">
-            <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&auto=format&fit=crop&q=80" class="pwa-logo" alt="Logo">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/WhatsApp_Icon.svg/512px-WhatsApp_Icon.svg.png" class="pwa-logo" alt="Logo">
             <h3 style="color: black;">Official Web Support</h3>
             <p style="font-size: 14px; color: #444;">Admin se live chat karne ke liye pehle app ko home screen par add karein.</p>
             <button id="pwa-install-btn" class="pwa-btn">
-                <i class="fas fa-plus-circle"></i> Add To Home Screen
+                <i class="fab fa-whatsapp"></i> Add To Home Screen
             </button>
             <p class="pwa-instruction" id="pwa-instructions-text">Neeche diye gaye button par click karke application ko screen par set karein.</p>
         </div>
@@ -83,7 +82,7 @@
     </div>
 
     <div class="wa-header">
-        <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&auto=format&fit=crop&q=80" class="wa-avatar-img" alt="Official Profile">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/WhatsApp_Icon.svg/512px-WhatsApp_Icon.svg.png" class="wa-avatar-img" alt="Official Profile">
         <div class="header-info">
             <div class="brand-row">
                 <span style="font-weight: 600;">Official Web</span>
@@ -106,16 +105,20 @@
     </div>
 
     <script>
-        // Register PWA Service Worker
+        // Notification Sound Setup
+        const notificationSound = new Audio('https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg');
+
+        // Request Browser Notification Permission
+        if ('Notification' in window && Notification.permission !== 'granted') {
+            Notification.requestPermission();
+        }
+
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js').then(() => console.log("Service Worker Registered"));
         }
 
-        // Check if application is running as Installed App (Home Screen Launcher)
         const isPWA = window.matchMedia('(display-mode: standalone)').matches || window.location.search.includes('launcher=true');
-        
         if (isPWA) {
-            // Unlock Chat Immediately if opened from Home Screen
             document.getElementById('pwa-overlay').style.display = 'none';
         }
 
@@ -123,7 +126,6 @@
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
-            // Show custom button interaction
             document.getElementById('pwa-install-btn').style.display = 'flex';
         });
 
@@ -136,12 +138,10 @@
                 }
                 deferredPrompt = null;
             } else {
-                // Fallback instructions for iOS/Safari inside TikTok browser
                 document.getElementById('pwa-instructions-text').innerHTML = "<strong style='color: #e74c3c;'>iOS User:</strong> Browser ke <strong>'Share'</strong> icon par click karein aur phir <strong>'Add to Home Screen'</strong> select karein.";
             }
         });
 
-        // App installation complete event listener
         window.addEventListener('appinstalled', () => {
             document.getElementById('pwa-overlay').style.display = 'none';
         });
@@ -191,44 +191,44 @@
             return text.replace(/(https?:\/\/[^\s]+)/g, url => `<a class="chat-link" href="${url}" target="_blank">${url}</a>`);
         }
 
-        function toggleAudio(btn, audioSrc, progressBarId) {
-            let activeAudio = window[`audio_${progressBarId}`];
-            const pBar = document.getElementById(progressBarId);
-            const icon = btn.querySelector('i');
+        function triggerIncomingNotification(msgText) {
+            // Play notification ringtone sound
+            notificationSound.play().catch(e => console.log("Audio play blocked by interaction logic."));
 
-            if (!activeAudio) {
-                activeAudio = new Audio(audioSrc);
-                window[`audio_${progressBarId}`] = activeAudio;
-                activeAudio.addEventListener('timeupdate', () => {
-                    let percent = (activeAudio.currentTime / activeAudio.duration) * 100;
-                    pBar.style.width = percent + '%';
-                });
-                activeAudio.addEventListener('ended', () => {
-                    icon.className = 'fas fa-play';
-                    pBar.style.width = '0%';
-                });
-            }
-
-            if (activeAudio.paused) {
-                activeAudio.play();
-                icon.className = 'fas fa-pause';
-            } else {
-                activeAudio.pause();
-                icon.className = 'fas fa-play';
+            // Push native system notification if tab is backgrounded
+            if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
+                const options = {
+                    body: msgText,
+                    icon: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/WhatsApp_Icon.svg/512px-WhatsApp_Icon.svg.png',
+                    vibrate: [200, 100, 200]
+                };
+                const notification = new Notification("Official Support Team", options);
+                notification.onclick = function() {
+                    window.focus();
+                    notification.close();
+                };
             }
         }
 
+        let initialLoad = true;
         db.collection("messages").where("room_id", "==", myUserId).onSnapshot((snapshot) => {
             const box = document.getElementById('chat-box');
             box.innerHTML = '';
             let sortedDocs = snapshot.docs.sort((a, b) => a.data().time_now - b.data().time_now);
             
+            let hasIncoming = false;
+            let lastMessageText = "New message received";
+
             sortedDocs.forEach((doc) => {
                 const m = doc.data();
                 const isSentByMe = m.sender === myUserId;
                 
                 if (!isSentByMe && m.status !== 'seen') {
                     db.collection("messages").doc(doc.id).update({ status: 'seen' });
+                    if (!initialLoad) {
+                        hasIncoming = true;
+                        lastMessageText = m.message_text || "Sent an attachment";
+                    }
                 }
 
                 const d = document.createElement('div');
@@ -256,7 +256,13 @@
                 d.innerHTML = `${contentHTML}<div class="msg-meta"><span>${timeStr}</span>${tickHTML}</div>`;
                 box.appendChild(d);
             });
+            
             box.scrollTop = box.scrollHeight;
+            
+            if (hasIncoming && !initialLoad) {
+                triggerIncomingNotification(lastMessageText);
+            }
+            initialLoad = false;
         });
 
         async function sendMessage() {
@@ -282,68 +288,6 @@
             };
             reader.readAsDataURL(file);
             e.target.value = ''; 
-        });
-
-        let mediaRecorder = null;
-        let audioChunks = [];
-        let isRecording = false;
-        let recordStartTime = 0;
-
-        document.getElementById('user-mic-btn').addEventListener('click', async function() {
-            const micBtn = document.getElementById('user-mic-btn');
-            const txtInput = document.getElementById('msg-input');
-            
-            if (!isRecording) {
-                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                    alert("Microphone access not supported.");
-                    return;
-                }
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    mediaRecorder = new MediaRecorder(stream);
-                    audioChunks = [];
-                    recordStartTime = Date.now();
-
-                    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
-                    
-                    mediaRecorder.onstop = async () => {
-                        const durationSec = Math.round((Date.now() - recordStartTime) / 1000);
-                        const mins = Math.floor(durationSec / 60);
-                        const secs = durationSec % 60;
-                        const finalDurationStr = mins + ":" + (secs < 10 ? '0' + secs : secs);
-
-                        const audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
-                        const reader = new FileReader();
-                        reader.onloadend = async function() {
-                            await db.collection("messages").add({
-                                message_text: "🎤 Voice Note",
-                                file_url: reader.result,
-                                sender: myUserId,
-                                receiver: 'admin',
-                                room_id: myUserId,
-                                time_now: Date.now(),
-                                type: 'audio',
-                                duration: finalDurationStr,
-                                status: 'sent'
-                            });
-                        };
-                        reader.readAsDataURL(audioBlob);
-                        stream.getTracks().forEach(track => track.stop());
-                    };
-
-                    mediaRecorder.start();
-                    isRecording = true;
-                    micBtn.querySelector('i').className = "fas fa-stop mic-icon-active";
-                    txtInput.placeholder = "Recording voice note...";
-                    txtInput.disabled = true;
-                } catch (err) { alert("Mic Error: " + err.message); }
-            } else {
-                mediaRecorder.stop();
-                isRecording = false;
-                micBtn.querySelector('i').className = "fas fa-microphone";
-                txtInput.placeholder = "Type a message...";
-                txtInput.disabled = false;
-            }
         });
 
         function openImagePreview(src) { document.getElementById("modalImg").src = src; document.getElementById("imageModal").style.display = "flex"; }
