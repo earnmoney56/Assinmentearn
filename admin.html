@@ -3,102 +3,139 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Admin Dashboard</title>
+    <title>Admin Multi-Chat Dashboard</title>
+    
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
     <style>
+        :root { --wa-green: #075e54; --wa-light: #128c7e; --bg-color: #ece5dd; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body, html { font-family: 'Segoe UI', sans-serif; height: 100vh; height: 100dvh; width: 100vw; background: #f0f2f5; color: black; overflow: hidden; }
+        body, html { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; height: 100vh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; }
         
-        .dashboard-container { display: flex; height: 100%; width: 100%; overflow: hidden; }
-        .sidebar { width: 160px; background: white; border-right: 1px solid #e9edef; display: flex; flex-direction: column; flex-shrink: 0; }
-        .sidebar-header { background: #075e54; color: white; padding: 12px 4px; font-weight: bold; font-size: 11px; text-align: center; }
-        .user-list { flex: 1; overflow-y: auto; }
-        
-        .user-item { padding: 10px 6px; border-bottom: 1px solid #f0f2f5; cursor: pointer; font-weight: 600; font-size: 11px; color: black; word-break: break-all; display: flex; flex-direction: column; gap: 4px; position: relative; }
-        .user-row { display: flex; align-items: center; justify-content: space-between; width: 100%; }
-        .user-name-text { flex: 1; text-align: left; padding-right: 4px; overflow: hidden; text-overflow: ellipsis; }
-        
-        .noti-badge { background: #25d366; color: white; font-size: 9px; font-weight: bold; border-radius: 50%; min-width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; padding: 2px; flex-shrink: 0; }
-        
-        .label-select { width: 100%; font-size: 10px; padding: 2px 4px; border-radius: 4px; border: 1px solid #ccc; background: white; font-weight: normal; outline: none; cursor: pointer; }
-        .label-select.pending { border-left: 4px solid #e67e22; background: #fdf2e9; color: #d35400; font-weight: bold; }
-        .label-select.paid { border-left: 4px solid #2ecc71; background: #eafaf1; color: #27ae60; font-weight: bold; }
-        .label-select.none { border-left: 4px solid #bdc3c7; background: #f2f4f4; color: #7f8c8d; }
+        /* Main Top Header */
+        .wa-header { background: var(--wa-green); color: white; padding: 10px 15px; display: flex; align-items: center; gap: 12px; height: 60px; box-shadow: 0 1px 3px rgba(0,0,0,0.15); width: 100%; z-index: 10; }
+        .wa-avatar-img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+        .verified-badge { color: #34b7f1; font-size: 14px; }
 
-        .main-chat { flex: 1; display: flex; flex-direction: column; background: #ece5dd; height: 100%; overflow: hidden; position: relative; }
-        .chat-header { background: #075e54; color: white; padding: 10px 12px; font-size: 13px; font-weight: bold; flex-shrink: 0; display: flex; flex-direction: column; gap: 2px; }
-        .admin-status-text { font-size: 10px; color: #b3d4d0; font-weight: normal; }
+        /* Dashboard Master Layout split */
+        .dashboard-body { display: flex; flex: 1; width: 100vw; height: calc(100vh - 60px); position: relative; }
+        
+        /* Left Sidebar Users List */
+        .sidebar { width: 30%; max-width: 350px; min-width: 260px; background: white; border-right: 1px solid #e9edef; overflow-y: auto; display: flex; flex-direction: column; }
+        .sidebar-title { padding: 12px 15px; font-size: 13px; font-weight: bold; color: var(--wa-light); border-bottom: 1px solid #f0f2f5; text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        .chat-row { display: flex; align-items: center; gap: 12px; padding: 12px 15px; border-bottom: 1px solid #f0f2f5; cursor: pointer; transition: 0.2s; }
+        .chat-row:hover { background: #f0f2f5; }
+        .chat-row.active { background: #e9edef; }
+        .row-avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #e1f3ff; color: #0275d8; font-size: 18px; }
+        .row-avatar.group-avatar { background: #e1fbd4; color: var(--wa-green); }
+        .row-details { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+        .row-name { font-weight: 600; font-size: 14px; color: black; }
+        .row-subtitle { font-size: 12px; color: #667781; }
 
-        .chat-box { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+        /* Right Side Chat Window */
+        .chat-window { flex: 1; background: var(--bg-color); display: flex; flex-direction: column; position: relative; }
+        .placeholder-view { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #667781; gap: 10px; font-size: 16px; background: #f8f9fa; }
         
-        .msg { max-width: 85%; padding: 6px 10px 20px 10px; border-radius: 8px; font-size: 13px; color: black; position: relative; display: inline-block; box-shadow: 0 1px 1px rgba(0,0,0,0.08); min-width: 80px; }
-        .msg.sent { background: #d9fdd3; align-self: flex-end; }
-        .msg.received { background: white; align-self: flex-start; }
+        .window-header { background: #f0f2f5; padding: 10px 20px; display: flex; align-items: center; gap: 12px; height: 50px; border-bottom: 1px solid #e9edef; font-weight: 600; }
+        .chat-container { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
         
-        .msg-meta { position: absolute; bottom: 2px; right: 6px; font-size: 8px; color: #727272; display: flex; align-items: center; gap: 2px; white-space: nowrap; }
-        .tick-icon { font-size: 9px; }
-        .tick-blue { color: #34b7f1; }
-        .tick-gray { color: #8696a0; }
+        /* Messages Styling */
+        .message { max-width: 75%; padding: 8px 12px 24px 12px; border-radius: 10px; font-size: 15px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.08); word-break: break-word; color: black; display: inline-block; min-width: 90px; }
+        .message.sent { background: #d9fdd3; align-self: flex-end; border-top-right-radius: 0; }
+        .message.received { background: white; align-self: flex-start; border-top-left-radius: 0; }
+        .msg-meta { position: absolute; bottom: 3px; right: 8px; font-size: 10px; color: #727272; display: flex; align-items: center; gap: 4px; }
         
-        .chat-media { max-width: 100%; border-radius: 6px; margin-bottom: 2px; display: block; max-height: 130px; object-fit: cover; cursor: pointer; }
+        .chat-media { max-width: 100%; border-radius: 8px; margin-bottom: 4px; display: block; max-height: 200px; object-fit: cover; }
+        .chat-video { max-width: 100%; border-radius: 8px; margin-bottom: 4px; display: block; max-height: 200px; }
         .chat-link { color: #0275d8; text-decoration: underline; word-break: break-all; }
-        
-        /* Premium WhatsApp Style Audio Player Box */
-        .audio-player-box { display: flex; align-items: center; gap: 8px; min-width: 180px; padding: 4px 0; }
-        .audio-play-btn { background: none; border: none; color: #128c7e; font-size: 18px; cursor: pointer; outline: none; }
+
+        /* Audio Controls */
+        .audio-player-box { display: flex; align-items: center; gap: 10px; min-width: 200px; padding: 5px 0; }
+        .audio-play-btn { background: none; border: none; color: var(--wa-light); font-size: 20px; cursor: pointer; }
         .audio-timeline { flex: 1; height: 4px; background: #b8d4ca; border-radius: 2px; position: relative; }
-        .audio-progress { width: 0%; height: 100%; background: #128c7e; border-radius: 2px; }
-        .audio-duration { font-size: 10px; color: #555; font-weight: bold; }
-        .mic-icon-active { color: #e74c3c !important; animation: blink 1s infinite; }
+        .audio-progress { width: 0%; height: 100%; background: var(--wa-light); border-radius: 2px; }
+        .audio-duration { font-size: 11px; color: #555; }
 
-        .input-area { background: #f0f2f5; padding: 8px; display: flex; gap: 6px; align-items: center; border-top: 1px solid #e9edef; flex-shrink: 0; width: 100%; }
-        .input-wrapper { flex: 1; background: white; border-radius: 20px; display: flex; align-items: center; padding: 0 8px; border: 1px solid #ccc; height: 36px; gap: 6px; }
-        .input-box { flex: 1; background: transparent; border: none; outline: none; font-size: 13px; color: black; height: 100%; }
+        /* Bottom Input Control Bar */
+        .input-area { background: #f0f2f5; padding: 10px 12px; display: flex; align-items: center; gap: 8px; border-top: 1px solid #e9edef; height: 60px; }
+        .input-wrapper { flex: 1; background: white; border-radius: 25px; display: flex; align-items: center; padding: 0 12px; border: 1px solid #ccc; height: 40px; gap: 8px; }
+        .input-box { flex: 1; background: transparent; border: none; outline: none; font-size: 15px; height: 100%; color: black; }
         
-        .attach-btn, .mic-btn { color: #54656f; font-size: 16px; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; background: none; border: none; outline: none; }
-        .send-btn { background: #128c7e; color: white; border: none; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
-        #admin-file-input { display: none; }
-
+        .attach-btn, .mic-btn { color: #54656f; font-size: 18px; cursor: pointer; padding: 4px; background: none; border: none; display: flex; align-items: center; }
+        .send-btn { background: var(--wa-light); color: white; width: 40px; height: 40px; border-radius: 50%; border: none; display: flex; justify-content: center; align-items: center; font-size: 16px; cursor: pointer; flex-shrink: 0; }
+        #file-input { display: none; }
+        
         .img-modal { display: none; position: fixed; z-index: 9999; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.9); align-items: center; justify-content: center; }
-        .modal-content { max-width: 90%; max-height: 85%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
-        .close-modal { position: absolute; top: 20px; right: 25px; color: white; font-size: 35px; font-weight: bold; cursor: pointer; }
+        .modal-content { max-width: 90%; max-height: 85%; border-radius: 8px; }
+        .close-modal { position: absolute; top: 20px; right: 25px; color: white; font-size: 35px; cursor: pointer; }
     </style>
 </head>
 <body>
+
+    <div class="wa-header">
+        <img src="https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=256&auto=format&fit=crop" class="wa-avatar-img" alt="Admin App Logo">
+        <div>
+            <div style="font-weight: 600; display: flex; align-items: center; gap: 5px;">
+                <span>Official Live Support Panel (Admin)</span>
+                <i class="fas fa-check-circle verified-badge"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-body">
+        
+        <div class="sidebar">
+            <div class="sidebar-title">Rooms & Broadcast Channel</div>
+            
+            <div class="chat-row" id="room-global-group" onclick="selectActiveRoom('group', 'Official Updates Group')">
+                <div class="row-avatar group-avatar">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="row-details">
+                    <div class="row-name" style="color: var(--wa-green); font-weight: 700;">📢 Official Updates Group</div>
+                    <div class="row-subtitle">Broadcast to all users...</div>
+                </div>
+            </div>
+
+            <div class="sidebar-title" style="border-top: 5px solid #f0f2f5;">User Direct Messages</div>
+            <div id="users-list-container"></div>
+        </div>
+
+        <div class="chat-window" id="active-chat-window">
+            <div class="placeholder-view" id="blank-placeholder">
+                <i class="fab fa-whatsapp" style="font-size: 50px; color: #cbd5e1;"></i>
+                <p>Select a private room or the broadcast group to view or send messages.</p>
+            </div>
+
+            <div class="window-header" id="chat-header-node" style="display: none;">
+                <span id="target-room-title">Select Chat</span>
+            </div>
+
+            <div class="chat-container" id="chat-box" style="display: none;"></div>
+
+            <div class="input-area" id="chat-input-node" style="display: none;">
+                <div class="input-wrapper">
+                    <label for="file-input" class="attach-btn"><i class="fas fa-paperclip"></i></label>
+                    <input type="file" id="file-input" accept="image/*,video/*">
+                    <input type="text" id="msg-input" class="input-box" placeholder="Type a message...">
+                    <button id="admin-mic-btn" class="mic-btn"><i class="fas fa-microphone"></i></button>
+                </div>
+                <button id="btn-send" class="send-btn"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+
+    </div>
 
     <div id="imageModal" class="img-modal">
         <span class="close-modal" onclick="closeImagePreview()">&times;</span>
         <img class="modal-content" id="modalImg">
     </div>
 
-    <div class="dashboard-container">
-        <div class="sidebar">
-            <div class="sidebar-header">Chats & Status</div>
-            <div class="user-list" id="users-container"></div>
-        </div>
-        
-        <div class="main-chat">
-            <div class="chat-header">
-                <span id="active-user-title">Select Chat</span>
-                <span id="active-user-status" class="admin-status-text"></span>
-            </div>
-            <div class="chat-box" id="admin-chat-box"></div>
-            
-            <div class="input-area">
-                <div class="input-wrapper">
-                    <label for="admin-file-input" class="attach-btn"><i class="fas fa-paperclip"></i></label>
-                    <input type="file" id="admin-file-input" accept="image/*">
-                    <input type="text" id="admin-msg-input" class="input-box" placeholder="Type a reply...">
-                    <button id="admin-mic-btn" class="mic-btn"><i class="fas fa-microphone"></i></button>
-                </div>
-                <button id="admin-send-btn" class="send-btn"><i class="fas fa-paper-plane"></i></button>
-            </div>
-        </div>
-    </div>
-
     <script>
+        // Firebase Config credentials
         const firebaseConfig = {
             apiKey: "AIzaSyDe8zFsomI7Qn1PfuJb_FyWOLe1SdqEZHM",
             authDomain: "wattsapp-27aa4.firebaseapp.com",
@@ -109,20 +146,232 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-        
-        let selectedRoomId = null;
-        let unsubscribeMessages = null;
-        let unsubscribePresence = null;
-        let roomMapping = {}; 
-        let userLabels = {}; 
 
-        function getTickHTML(status, isSent) {
-            if (!isSent) return '';
-            if (status === 'sent') return '<i class="fas fa-check tick-icon tick-gray"></i>';
-            if (status === 'delivered') return '<i class="fas fa-check-double tick-icon tick-gray"></i>';
-            if (status === 'seen') return '<i class="fas fa-check-double tick-icon tick-blue"></i>';
-            return '';
+        // Admin flag configurations context
+        localStorage.setItem('chat_is_admin', 'true'); 
+        const adminId = 'admin';
+
+        let activeTargetId = null; // tracking active chat ID or 'group'
+        let currentRoomType = null; // tracking 'personal' or 'group'
+        let activeSnapshotListener = null;
+
+        // Fetch user listing dynamic stream from Firebase presence
+        db.collection("user_presence").onSnapshot(snapshot => {
+            const container = document.getElementById('users-list-container');
+            container.innerHTML = '';
+            
+            snapshot.docs.forEach(doc => {
+                const userId = doc.id;
+                const statusData = doc.data();
+                if(userId === 'admin') return; // skip self
+                
+                const div = document.createElement('div');
+                div.classList.add('chat-row');
+                div.id = `room-${userId}`;
+                if(activeTargetId === userId) div.classList.add('active');
+                
+                div.onclick = () => selectActiveRoom(userId, `Private Chat: ${userId}`, 'personal');
+
+                div.innerHTML = `
+                    <div class="row-avatar"><i class="fas fa-user"></i></div>
+                    <div class="row-details">
+                        <div class="row-name">${userId}</div>
+                        <div class="row-subtitle">${statusData.status === 'online' ? '🟢 Online' : '⚪ Offline'}</div>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        });
+
+        // Click Room Handler 
+        window.selectActiveRoom = function(targetId, displayName, type = 'group') {
+            activeTargetId = targetId;
+            currentRoomType = type;
+
+            // Manage active active highlighted colors
+            document.querySelectorAll('.chat-row').forEach(r => r.classList.remove('active'));
+            const targetRow = document.getElementById(`room-${targetId}`);
+            if(targetRow) targetRow.classList.add('active');
+
+            // Toggle visibility nodes structure
+            document.getElementById('blank-placeholder').style.display = 'none';
+            document.getElementById('chat-header-node').style.display = 'flex';
+            document.getElementById('chat-box').style.display = 'flex';
+            document.getElementById('chat-input-node').style.display = 'flex';
+            document.getElementById('target-room-title').innerText = displayName;
+
+            // Clear previous dynamic room snapshot loops
+            if(activeSnapshotListener) activeSnapshotListener();
+
+            if (currentRoomType === 'group') {
+                // Stream Broadcast channel data
+                activeSnapshotListener = db.collection("group_messages").orderBy("time_now", "asc")
+                    .onSnapshot(snap => renderMessages(snap.docs, true));
+            } else {
+                // Stream Personal chat room node records
+                activeSnapshotListener = db.collection("messages").where("room_id", "==", targetId)
+                    .onSnapshot(snap => {
+                        let sorted = snap.docs.sort((a, b) => a.data().time_now - b.data().time_now);
+                        renderMessages(sorted, false);
+                    });
+            }
+        };
+
+        // UI Renderer Matrix
+        function renderMessages(docs, isGroupContext) {
+            const box = document.getElementById('chat-box');
+            box.innerHTML = '';
+
+            docs.forEach(doc => {
+                const m = doc.data();
+                // Admin replies or group transmissions sent out align right
+                const isSentByMe = m.sender === 'admin';
+
+                const d = document.createElement('div');
+                d.classList.add('message', isSentByMe ? 'sent' : 'received');
+
+                let contentHTML = '';
+                if (m.type === 'image') {
+                    contentHTML = `<img src="${m.file_url}" class="chat-media" onclick="openImagePreview('${m.file_url}')">`;
+                } else if (m.type === 'video') {
+                    contentHTML = `<video src="${m.file_url}" controls class="chat-video"></video>`;
+                } else if (m.type === 'audio') {
+                    const uniqueId = 'prog_' + doc.id;
+                    contentHTML = `
+                        <div class="audio-player-box">
+                            <button class="audio-play-btn" onclick="toggleAudio(this, '${m.file_url}', '${uniqueId}')"><i class="fas fa-play"></i></button>
+                            <div class="audio-timeline"><div class="audio-progress" id="${uniqueId}"></div></div>
+                            <span class="audio-duration">${m.duration || '0:03'}</span>
+                        </div>
+                    `;
+                } else {
+                    contentHTML = `<div>${linkify(m.message_text)}</div>`;
+                }
+
+                const timeStr = formatTime(m.time_now);
+                d.innerHTML = `${contentHTML}<div class="msg-meta"><span>${timeStr}</span></div>`;
+                box.appendChild(d);
+            });
+            box.scrollTop = box.scrollHeight;
         }
+
+        // Outbound Transmitter Transmission core logic
+        async function sendAdminMessage() {
+            const inp = document.getElementById('msg-input');
+            const val = inp.value.trim();
+            if(!val || !activeTargetId) return;
+            inp.value = '';
+
+            if (currentRoomType === 'group') {
+                // Group broadcast collection upload pipeline
+                await db.collection("group_messages").add({
+                    message_text: val, sender: 'admin', time_now: Date.now(), type: 'text'
+                });
+            } else {
+                // Private user room feedback upload pipeline
+                await db.collection("messages").add({
+                    message_text: val, sender: 'admin', receiver: activeTargetId, room_id: activeTargetId, time_now: Date.now(), type: 'text', status: 'sent'
+                });
+            }
+        }
+
+        // Base64 Multi File Uploader Media Parser
+        document.getElementById('file-input').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file || !activeTargetId) return;
+
+            const isVideo = file.type.startsWith('video/');
+            const inputField = document.getElementById('msg-input');
+            inputField.placeholder = isVideo ? "Uploading video..." : "Uploading image...";
+
+            const reader = new FileReader();
+            reader.onloadend = async function() {
+                try {
+                    let targetCol = currentRoomType === 'group' ? "group_messages" : "messages";
+                    let payload = {
+                        message_text: isVideo ? "Admin sent a video" : "Admin sent an image",
+                        file_url: reader.result,
+                        sender: 'admin',
+                        time_now: Date.now(),
+                        type: isVideo ? 'video' : 'image'
+                    };
+
+                    if (currentRoomType === 'personal') {
+                        payload.receiver = activeTargetId;
+                        payload.room_id = activeTargetId;
+                        payload.status = 'sent';
+                    }
+
+                    await db.collection(targetCol).add(payload);
+                } catch(err) { alert(err.message); }
+                inputField.placeholder = "Type a message...";
+            };
+            reader.readAsDataURL(file);
+            e.target.value = '';
+        });
+
+        // Mic Dictation Engine Interface
+        let mediaRecorder;
+        let audioChunks = [];
+        let isRecording = false;
+        const micBtn = document.getElementById('admin-mic-btn');
+
+        micBtn.addEventListener('click', async () => {
+            if (!isRecording && activeTargetId) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+                    mediaRecorder.addEventListener('dataavailable', e => audioChunks.push(e.data));
+
+                    mediaRecorder.addEventListener('stop', () => {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
+                        const reader = new FileReader();
+                        reader.readAsDataURL(audioBlob);
+                        reader.onloadend = async () => {
+                            let targetCol = currentRoomType === 'group' ? "group_messages" : "messages";
+                            let payload = {
+                                message_text: "Admin sent a voice note",
+                                file_url: reader.result,
+                                sender: 'admin',
+                                time_now: Date.now(),
+                                type: 'audio',
+                                duration: '0:05'
+                            };
+                            if (currentRoomType === 'personal') {
+                                payload.receiver = activeTargetId; payload.room_id = activeTargetId; payload.status = 'sent';
+                            }
+                            await db.collection(targetCol).add(payload);
+                        };
+                        stream.getTracks().forEach(t => t.stop());
+                    });
+
+                    mediaRecorder.start();
+                    isRecording = true;
+                    micBtn.innerHTML = '<i class="fas fa-stop" style="color:#e74c3c;"></i>';
+                } catch (err) { alert("Mic activation failed. Allow permission."); }
+            } else if (isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                micBtn.innerHTML = '<i class="fas fa-microphone"></i>';
+            }
+        });
+
+        // Timeline Audio Player Player Track Engine
+        window.toggleAudio = function(btn, audioUrl, progressId) {
+            let activeAudio = window[`audio_${progressId}`];
+            const progressBar = document.getElementById(progressId);
+            if (!activeAudio) {
+                activeAudio = new Audio(audioUrl);
+                window[`audio_${progressId}`] = activeAudio;
+                activeAudio.addEventListener('timeupdate', () => {
+                    progressBar.style.width = ((activeAudio.currentTime / activeAudio.duration) * 100) + '%';
+                });
+                activeAudio.addEventListener('ended', () => { btn.innerHTML = '<i class="fas fa-play"></i>'; progressBar.style.width = '0%'; });
+            }
+            if (activeAudio.paused) { activeAudio.play(); btn.innerHTML = '<i class="fas fa-pause"></i>'; }
+            else { activeAudio.pause(); btn.innerHTML = '<i class="fas fa-play"></i>'; }
+        };
 
         function formatTime(timestamp) {
             if(!timestamp) return '';
@@ -138,232 +387,11 @@
             return text.replace(/(https?:\/\/[^\s]+)/g, url => `<a class="chat-link" href="${url}" target="_blank">${url}</a>`);
         }
 
-        function toggleAudio(btn, audioSrc, progressBarId) {
-            let activeAudio = window[`audio_${progressBarId}`];
-            const pBar = document.getElementById(progressBarId);
-            const icon = btn.querySelector('i');
-
-            if (!activeAudio) {
-                activeAudio = new Audio(audioSrc);
-                window[`audio_${progressBarId}`] = activeAudio;
-                activeAudio.addEventListener('timeupdate', () => {
-                    let percent = (activeAudio.currentTime / activeAudio.duration) * 100;
-                    pBar.style.width = percent + '%';
-                });
-                activeAudio.addEventListener('ended', () => {
-                    icon.className = 'fas fa-play';
-                    pBar.style.width = '0%';
-                });
-            }
-
-            if (activeAudio.paused) {
-                activeAudio.play();
-                icon.className = 'fas fa-pause';
-            } else {
-                activeAudio.pause();
-                icon.className = 'fas fa-play';
-            }
-        }
-
-        db.collection("user_labels").onSnapshot((labelSnapshot) => {
-            userLabels = {};
-            labelSnapshot.forEach(doc => { userLabels[doc.id] = doc.data().label || 'none'; });
-            renderUserList(); 
-        });
-
-        let globalRoomsData = {};
-        let globalSortedRooms = [];
-
-        db.collection("messages").onSnapshot((snapshot) => {
-            globalRoomsData = {};
-            snapshot.forEach(doc => {
-                const data = doc.data();
-                const rId = data.room_id;
-                if (!rId) return;
-                if (!globalRoomsData[rId]) { globalRoomsData[rId] = { unreadCount: 0, earliestTime: data.time_now || Date.now() }; }
-                if (data.time_now && data.time_now < globalRoomsData[rId].earliestTime) { globalRoomsData[rId].earliestTime = data.time_now; }
-                if (data.sender !== 'admin' && data.status !== 'seen') {
-                    globalRoomsData[rId].unreadCount++;
-                    if (data.status === 'sent') { db.collection("messages").doc(doc.id).update({ status: 'delivered' }); }
-                }
-            });
-            globalSortedRooms = Object.keys(globalRoomsData).sort((a, b) => globalRoomsData[a].earliestTime - globalRoomsData[b].earliestTime);
-            globalSortedRooms.forEach((room, index) => { if (!roomMapping[room]) { roomMapping[room] = `User ${index + 1}`; } });
-            renderUserList();
-        });
-
-        function renderUserList() {
-            const container = document.getElementById('users-container');
-            if(!container) return;
-            container.innerHTML = '';
-            globalSortedRooms.forEach(room => {
-                const friendlyName = roomMapping[room] || room;
-                const currentLabel = userLabels[room] || 'none';
-                const div = document.createElement('div');
-                div.classList.add('user-item');
-                if(room === selectedRoomId) div.style.background = "#e9edef";
-                let unreadBadgeHTML = '';
-                if (globalRoomsData[room] && globalRoomsData[room].unreadCount > 0 && room !== selectedRoomId) {
-                    unreadBadgeHTML = `<span class="noti-badge">${globalRoomsData[room].unreadCount}</span>`;
-                }
-                div.innerHTML = `
-                    <div class="user-row" onclick="loadActiveRoom('${room}')">
-                        <span class="user-name-text">${friendlyName}</span>${unreadBadgeHTML}
-                    </div>
-                    <select class="label-select ${currentLabel}" onchange="updateUserLabel('${room}', this.value)">
-                        <option value="none" ${currentLabel === 'none' ? 'selected' : ''}>No Label</option>
-                        <option value="pending" ${currentLabel === 'pending' ? 'selected' : ''}>⏳ Pending Payment</option>
-                        <option value="paid" ${currentLabel === 'paid' ? 'selected' : ''}>✅ Paid Full</option>
-                    </select>
-                `;
-                container.appendChild(div);
-            });
-        }
-
-        async function updateUserLabel(roomId, newLabel) {
-            try { await db.collection("user_labels").doc(roomId).set({ label: newLabel, updated_at: Date.now() }, { merge: true }); } catch(e) {}
-        }
-
-        function loadActiveRoom(room) {
-            selectedRoomId = room;
-            document.getElementById('active-user-title').innerText = roomMapping[room] || room;
-            renderUserList();
-            if(unsubscribeMessages) unsubscribeMessages();
-            if(unsubscribePresence) unsubscribePresence();
-
-            unsubscribePresence = db.collection("user_presence").doc(room).onSnapshot((doc) => {
-                const statusEl = document.getElementById('active-user-status');
-                if (doc.exists) {
-                    const pData = doc.data();
-                    statusEl.innerHTML = pData.status === 'online' ? `<span style="color: #2ecc71; font-weight: bold;">● Online</span>` : "last seen today at " + formatTime(pData.last_seen);
-                } else { statusEl.innerText = "offline"; }
-            });
-            
-            unsubscribeMessages = db.collection("messages").where("room_id", "==", room).onSnapshot((snapshot) => {
-                const box = document.getElementById('admin-chat-box');
-                box.innerHTML = '';
-                let sortedDocs = snapshot.docs.sort((a, b) => a.data().time_now - b.data().time_now);
-                
-                sortedDocs.forEach(doc => {
-                    const m = doc.data();
-                    const isSentByAdmin = m.sender === 'admin';
-                    if (!isSentByAdmin && m.status !== 'seen') { db.collection("messages").doc(doc.id).update({ status: 'seen' }); }
-                    const d = document.createElement('div');
-                    d.classList.add('msg', isSentByAdmin ? 'sent' : 'received');
-                    
-                    let contentHTML = '';
-                    if (m.type === 'image') {
-                        contentHTML = `<img src="${m.file_url}" class="chat-media" onclick="openImagePreview('${m.file_url}')">`;
-                    } else if (m.type === 'audio') {
-                        const uniqueId = 'prog_' + doc.id;
-                        contentHTML = `
-                            <div class="audio-player-box">
-                                <button class="audio-play-btn" onclick="toggleAudio(this, '${m.file_url}', '${uniqueId}')"><i class="fas fa-play"></i></button>
-                                <div class="audio-timeline"><div class="audio-progress" id="${uniqueId}"></div></div>
-                                <span class="audio-duration">${m.duration || '0:00'}</span>
-                            </div>
-                        `;
-                    } else { contentHTML = `<div>${linkify(m.message_text)}</div>`; }
-                    
-                    d.innerHTML = `${contentHTML}<div class="msg-meta"><span>${formatTime(m.time_now)}</span>${getTickHTML(m.status, isSentByAdmin)}</div>`;
-                    box.appendChild(d);
-                });
-                box.scrollTop = box.scrollHeight;
-            });
-        }
-
-        async function sendAdminMessage() {
-            if(!selectedRoomId) return;
-            const inp = document.getElementById('admin-msg-input');
-            const val = inp.value.trim();
-            if(!val) return;
-            inp.value = '';
-            await db.collection("messages").add({ message_text: val, sender: 'admin', receiver: selectedRoomId, room_id: selectedRoomId, time_now: Date.now(), type: 'text', status: 'sent' });
-        }
-
-        document.getElementById('admin-file-input').addEventListener('change', function(e) {
-            if (!selectedRoomId) return;
-            const file = e.target.files[0];
-            if (!file) return;
-            const inputField = document.getElementById('admin-msg-input');
-            inputField.placeholder = "Sending secure file...";
-            const reader = new FileReader();
-            reader.onloadend = async function() {
-                try {
-                    await db.collection("messages").add({ message_text: "Sent an image", file_url: reader.result, sender: 'admin', receiver: selectedRoomId, room_id: selectedRoomId, time_now: Date.now(), type: 'image', status: 'sent' });
-                } catch (err) { alert(err.message); }
-                inputField.placeholder = "Type a reply...";
-            };
-            reader.readAsDataURL(file);
-            e.target.value = '';
-        });
-
-        // Admin Voice Recording Logic
-        let mediaRecorder = null;
-        let audioChunks = [];
-        let isRecording = false;
-        let recordStartTime = 0;
-
-        document.getElementById('admin-mic-btn').addEventListener('click', async function() {
-            if (!selectedRoomId) return;
-            const micBtn = document.getElementById('admin-mic-btn');
-            const txtInput = document.getElementById('admin-msg-input');
-            
-            if (!isRecording) {
-                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                    alert("Microphone not supported.");
-                    return;
-                }
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    mediaRecorder = new MediaRecorder(stream);
-                    audioChunks = [];
-                    recordStartTime = Date.now();
-
-                    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
-                    mediaRecorder.onstop = async () => {
-                        const durationSec = Math.round((Date.now() - recordStartTime) / 1000);
-                        const mins = Math.floor(durationSec / 60), secs = durationSec % 60;
-                        const finalDurationStr = mins + ":" + (secs < 10 ? '0' + secs : secs);
-
-                        const audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
-                        const reader = new FileReader();
-                        reader.onloadend = async function() {
-                            await db.collection("messages").add({
-                                message_text: "🎤 Voice Note",
-                                file_url: reader.result,
-                                sender: 'admin',
-                                receiver: selectedRoomId,
-                                room_id: selectedRoomId,
-                                time_now: Date.now(),
-                                type: 'audio',
-                                duration: finalDurationStr,
-                                status: 'sent'
-                            });
-                        };
-                        reader.readAsDataURL(audioBlob);
-                        stream.getTracks().forEach(track => track.stop());
-                    };
-
-                    mediaRecorder.start();
-                    isRecording = true;
-                    micBtn.querySelector('i').className = "fas fa-stop mic-icon-active";
-                    txtInput.placeholder = "Recording voice note...";
-                    txtInput.disabled = true;
-                } catch (err) { alert("Mic Error: " + err.message); }
-            } else {
-                mediaRecorder.stop();
-                isRecording = false;
-                micBtn.querySelector('i').className = "fas fa-microphone";
-                txtInput.placeholder = "Type a reply...";
-                txtInput.disabled = false;
-            }
-        });
-
         function openImagePreview(src) { document.getElementById("modalImg").src = src; document.getElementById("imageModal").style.display = "flex"; }
         function closeImagePreview() { document.getElementById("imageModal").style.display = "none"; }
-        document.getElementById('admin-send-btn').addEventListener('click', sendAdminMessage);
-        document.getElementById('admin-msg-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') sendAdminMessage(); });
+
+        document.getElementById('btn-send').addEventListener('click', sendAdminMessage);
+        document.getElementById('msg-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') sendAdminMessage(); });
     </script>
 </body>
 </html>
