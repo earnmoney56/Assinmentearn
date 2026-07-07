@@ -13,15 +13,24 @@
         
         .dashboard-container { display: flex; height: 100%; width: 100%; overflow: hidden; }
         
-        .sidebar { width: 120px; background: white; border-right: 1px solid #e9edef; display: flex; flex-direction: column; flex-shrink: 0; }
+        /* Sidebar adjusted to 160px for dropdown labels */
+        .sidebar { width: 160px; background: white; border-right: 1px solid #e9edef; display: flex; flex-direction: column; flex-shrink: 0; }
         .sidebar-header { background: #075e54; color: white; padding: 12px 4px; font-weight: bold; font-size: 11px; text-align: center; }
         .user-list { flex: 1; overflow-y: auto; }
         
-        .user-item { padding: 12px 6px; border-bottom: 1px solid #f0f2f5; cursor: pointer; font-weight: 600; font-size: 11px; color: black; word-break: break-all; display: flex; align-items: center; justify-content: space-between; position: relative; }
+        /* User layout with label support */
+        .user-item { padding: 10px 6px; border-bottom: 1px solid #f0f2f5; cursor: pointer; font-weight: 600; font-size: 11px; color: black; word-break: break-all; display: flex; flex-direction: column; gap: 4px; position: relative; }
+        .user-row { display: flex; align-items: center; justify-content: space-between; width: 100%; }
         .user-name-text { flex: 1; text-align: left; padding-right: 4px; overflow: hidden; text-overflow: ellipsis; }
         
         .noti-badge { background: #25d366; color: white; font-size: 9px; font-weight: bold; border-radius: 50%; min-width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; padding: 2px; flex-shrink: 0; }
         
+        /* WhatsApp Business Style Dropdown Styling */
+        .label-select { width: 100%; font-size: 10px; padding: 2px 4px; border-radius: 4px; border: 1px solid #ccc; background: white; font-weight: normal; outline: none; cursor: pointer; }
+        .label-select.pending { border-left: 4px solid #e67e22; background: #fdf2e9; color: #d35400; font-weight: bold; }
+        .label-select.paid { border-left: 4px solid #2ecc71; background: #eafaf1; color: #27ae60; font-weight: bold; }
+        .label-select.none { border-left: 4px solid #bdc3c7; background: #f2f4f4; color: #7f8c8d; }
+
         .main-chat { flex: 1; display: flex; flex-direction: column; background: #ece5dd; height: 100%; overflow: hidden; position: relative; }
         .chat-header { background: #075e54; color: white; padding: 12px; font-size: 13px; font-weight: bold; flex-shrink: 0; }
         .chat-box { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
@@ -51,7 +60,7 @@
 
     <div class="dashboard-container">
         <div class="sidebar">
-            <div class="sidebar-header">Chats</div>
+            <div class="sidebar-header">Chats & Status</div>
             <div class="user-list" id="users-container"></div>
         </div>
         
@@ -85,6 +94,7 @@
         let selectedRoomId = null;
         let unsubscribeMessages = null;
         let roomMapping = {}; 
+        let userLabels = {}; // Local state to save active labels
 
         function getTickHTML(status, isSent) {
             if (!isSent) return '';
@@ -113,64 +123,107 @@
             });
         }
 
+        // Fetch User Custom Labels from Firestore Database
+        db.collection("user_labels").onSnapshot((labelSnapshot) => {
+            userLabels = {};
+            labelSnapshot.forEach(doc => {
+                userLabels[doc.id] = doc.data().label || 'none';
+            });
+            renderUserList(); 
+        });
+
+        let globalRoomsData = {};
+        let globalSortedRooms = [];
+
         db.collection("messages").onSnapshot((snapshot) => {
-            const container = document.getElementById('users-container');
-            const roomsData = {};
+            globalRoomsData = {};
 
             snapshot.forEach(doc => {
                 const data = doc.data();
                 const rId = data.room_id;
                 if (!rId) return;
 
-                if (!roomsData[rId]) {
-                    roomsData[rId] = { unreadCount: 0, earliestTime: data.time_now || Date.now() };
+                if (!globalRoomsData[rId]) {
+                    globalRoomsData[rId] = { unreadCount: 0, earliestTime: data.time_now || Date.now() };
                 }
-                if (data.time_now && data.time_now < roomsData[rId].earliestTime) {
-                    roomsData[rId].earliestTime = data.time_now;
+                if (data.time_now && data.time_now < globalRoomsData[rId].earliestTime) {
+                    globalRoomsData[rId].earliestTime = data.time_now;
                 }
                 
                 if (data.sender !== 'admin' && data.status !== 'seen') {
-                    roomsData[rId].unreadCount++;
+                    globalRoomsData[rId].unreadCount++;
                     if (data.status === 'sent') {
                         db.collection("messages").doc(doc.id).update({ status: 'delivered' });
                     }
                 }
             });
 
-            const sortedRooms = Object.keys(roomsData).sort((a, b) => roomsData[a].earliestTime - roomsData[b].earliestTime);
+            globalSortedRooms = Object.keys(globalRoomsData).sort((a, b) => globalRoomsData[a].earliestTime - globalRoomsData[b].earliestTime);
 
-            sortedRooms.forEach((room, index) => {
+            globalSortedRooms.forEach((room, index) => {
                 if (!roomMapping[room]) {
                     roomMapping[room] = `User ${index + 1}`;
                 }
             });
 
+            renderUserList();
+        });
+
+        // Combined logic to render users alongside their specific labels
+        function renderUserList() {
+            const container = document.getElementById('users-container');
+            if(!container) return;
             container.innerHTML = '';
-            sortedRooms.forEach(room => {
+
+            globalSortedRooms.forEach(room => {
                 const friendlyName = roomMapping[room] || room;
+                const currentLabel = userLabels[room] || 'none';
+                
                 const div = document.createElement('div');
                 div.classList.add('user-item');
                 if(room === selectedRoomId) div.style.background = "#e9edef";
                 
                 let unreadBadgeHTML = '';
-                if (roomsData[room].unreadCount > 0 && room !== selectedRoomId) {
-                    unreadBadgeHTML = `<span class="noti-badge">${roomsData[room].unreadCount}</span>`;
+                if (globalRoomsData[room] && globalRoomsData[room].unreadCount > 0 && room !== selectedRoomId) {
+                    unreadBadgeHTML = `<span class="noti-badge">${globalRoomsData[room].unreadCount}</span>`;
                 }
 
+                // Injecting Name, Badge and WhatsApp dropdown selector item
                 div.innerHTML = `
-                    <span class="user-name-text">${friendlyName}</span>
-                    ${unreadBadgeHTML}
+                    <div class="user-row" onclick="loadActiveRoom('${room}')">
+                        <span class="user-name-text">${friendlyName}</span>
+                        ${unreadBadgeHTML}
+                    </div>
+                    <select class="label-select ${currentLabel}" onchange="updateUserLabel('${room}', this.value)">
+                        <option value="none" ${currentLabel === 'none' ? 'selected' : ''}>No Label</option>
+                        <option value="pending" ${currentLabel === 'pending' ? 'selected' : ''}>⏳ Pending Payment</option>
+                        <option value="paid" ${currentLabel === 'paid' ? 'selected' : ''}>✅ Paid Full</option>
+                    </select>
                 `;
                 
-                div.onclick = () => loadActiveRoom(room);
                 container.appendChild(div);
             });
-        });
+        }
+
+        // Live Cloud Update Function for Database Syncing
+        async function updateUserLabel(roomId, newLabel) {
+            try {
+                await db.collection("user_labels").doc(roomId).set({
+                    label: newLabel,
+                    updated_at: Date.now()
+                }, { merge: true });
+            } catch(e) {
+                console.error("Label update error: ", e);
+            }
+        }
 
         function loadActiveRoom(room) {
             selectedRoomId = room;
             const friendlyName = roomMapping[room] || room;
             document.getElementById('active-user-title').innerText = friendlyName;
+            
+            // Re-render sidebar to highlight selected chat background
+            renderUserList();
             
             if(unsubscribeMessages) unsubscribeMessages();
             
@@ -232,7 +285,6 @@
             });
         }
 
-        // Direct Secure Base64 Local Database Upload Engine (No Failures)
         document.getElementById('admin-file-input').addEventListener('change', function(e) {
             if (!selectedRoomId) return;
             const file = e.target.files[0];
@@ -244,7 +296,6 @@
             const reader = new FileReader();
             reader.onloadend = async function() {
                 const base64String = reader.result;
-                
                 try {
                     await db.collection("messages").add({
                         message_text: "Sent an image",
@@ -261,7 +312,6 @@
                 }
                 inputField.placeholder = "Type a reply...";
             };
-            
             reader.readAsDataURL(file);
             e.target.value = '';
         });
