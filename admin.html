@@ -12,7 +12,6 @@
         body, html { font-family: 'Segoe UI', sans-serif; height: 100vh; height: 100dvh; width: 100vw; background: #f0f2f5; color: black; overflow: hidden; }
         
         .dashboard-container { display: flex; height: 100%; width: 100%; overflow: hidden; }
-        
         .sidebar { width: 160px; background: white; border-right: 1px solid #e9edef; display: flex; flex-direction: column; flex-shrink: 0; }
         .sidebar-header { background: #075e54; color: white; padding: 12px 4px; font-weight: bold; font-size: 11px; text-align: center; }
         .user-list { flex: 1; overflow-y: auto; }
@@ -29,8 +28,6 @@
         .label-select.none { border-left: 4px solid #bdc3c7; background: #f2f4f4; color: #7f8c8d; }
 
         .main-chat { flex: 1; display: flex; flex-direction: column; background: #ece5dd; height: 100%; overflow: hidden; position: relative; }
-        
-        /* Updated Admin Header with presence trackers */
         .chat-header { background: #075e54; color: white; padding: 10px 12px; font-size: 13px; font-weight: bold; flex-shrink: 0; display: flex; flex-direction: column; gap: 2px; }
         .admin-status-text { font-size: 10px; color: #b3d4d0; font-weight: normal; }
 
@@ -48,11 +45,19 @@
         .chat-media { max-width: 100%; border-radius: 6px; margin-bottom: 2px; display: block; max-height: 130px; object-fit: cover; cursor: pointer; }
         .chat-link { color: #0275d8; text-decoration: underline; word-break: break-all; }
         
+        /* Premium WhatsApp Style Audio Player Box */
+        .audio-player-box { display: flex; align-items: center; gap: 8px; min-width: 180px; padding: 4px 0; }
+        .audio-play-btn { background: none; border: none; color: #128c7e; font-size: 18px; cursor: pointer; outline: none; }
+        .audio-timeline { flex: 1; height: 4px; background: #b8d4ca; border-radius: 2px; position: relative; }
+        .audio-progress { width: 0%; height: 100%; background: #128c7e; border-radius: 2px; }
+        .audio-duration { font-size: 10px; color: #555; font-weight: bold; }
+        .mic-icon-active { color: #e74c3c !important; animation: blink 1s infinite; }
+
         .input-area { background: #f0f2f5; padding: 8px; display: flex; gap: 6px; align-items: center; border-top: 1px solid #e9edef; flex-shrink: 0; width: 100%; }
         .input-wrapper { flex: 1; background: white; border-radius: 20px; display: flex; align-items: center; padding: 0 8px; border: 1px solid #ccc; height: 36px; gap: 6px; }
         .input-box { flex: 1; background: transparent; border: none; outline: none; font-size: 13px; color: black; height: 100%; }
         
-        .attach-btn { color: #54656f; font-size: 16px; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; }
+        .attach-btn, .mic-btn { color: #54656f; font-size: 16px; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; background: none; border: none; outline: none; }
         .send-btn { background: #128c7e; color: white; border: none; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
         #admin-file-input { display: none; }
 
@@ -86,6 +91,7 @@
                     <label for="admin-file-input" class="attach-btn"><i class="fas fa-paperclip"></i></label>
                     <input type="file" id="admin-file-input" accept="image/*">
                     <input type="text" id="admin-msg-input" class="input-box" placeholder="Type a reply...">
+                    <button id="admin-mic-btn" class="mic-btn"><i class="fas fa-microphone"></i></button>
                 </div>
                 <button id="admin-send-btn" class="send-btn"><i class="fas fa-paper-plane"></i></button>
             </div>
@@ -121,27 +127,47 @@
         function formatTime(timestamp) {
             if(!timestamp) return '';
             const date = new Date(timestamp);
-            let hours = date.getHours();
-            let minutes = date.getMinutes();
+            let hours = date.getHours(), minutes = date.getMinutes();
             const ampm = hours >= 12 ? 'PM' : 'AM';
-            hours = hours % 12;
-            hours = hours ? hours : 12;
+            hours = hours % 12 || 12;
             minutes = minutes < 10 ? '0' + minutes : minutes;
             return hours + ':' + minutes + ' ' + ampm;
         }
 
         function linkify(text) {
-            const urlRegex = /(https?:\/\/[^\s]+)/g;
-            return text.replace(urlRegex, function(url) {
-                return '<a class="chat-link" href="' + url + '" target="_blank">' + url + '</a>';
-            });
+            return text.replace(/(https?:\/\/[^\s]+)/g, url => `<a class="chat-link" href="${url}" target="_blank">${url}</a>`);
+        }
+
+        function toggleAudio(btn, audioSrc, progressBarId) {
+            let activeAudio = window[`audio_${progressBarId}`];
+            const pBar = document.getElementById(progressBarId);
+            const icon = btn.querySelector('i');
+
+            if (!activeAudio) {
+                activeAudio = new Audio(audioSrc);
+                window[`audio_${progressBarId}`] = activeAudio;
+                activeAudio.addEventListener('timeupdate', () => {
+                    let percent = (activeAudio.currentTime / activeAudio.duration) * 100;
+                    pBar.style.width = percent + '%';
+                });
+                activeAudio.addEventListener('ended', () => {
+                    icon.className = 'fas fa-play';
+                    pBar.style.width = '0%';
+                });
+            }
+
+            if (activeAudio.paused) {
+                activeAudio.play();
+                icon.className = 'fas fa-pause';
+            } else {
+                activeAudio.pause();
+                icon.className = 'fas fa-play';
+            }
         }
 
         db.collection("user_labels").onSnapshot((labelSnapshot) => {
             userLabels = {};
-            labelSnapshot.forEach(doc => {
-                userLabels[doc.id] = doc.data().label || 'none';
-            });
+            labelSnapshot.forEach(doc => { userLabels[doc.id] = doc.data().label || 'none'; });
             renderUserList(); 
         });
 
@@ -150,35 +176,19 @@
 
         db.collection("messages").onSnapshot((snapshot) => {
             globalRoomsData = {};
-
             snapshot.forEach(doc => {
                 const data = doc.data();
                 const rId = data.room_id;
                 if (!rId) return;
-
-                if (!globalRoomsData[rId]) {
-                    globalRoomsData[rId] = { unreadCount: 0, earliestTime: data.time_now || Date.now() };
-                }
-                if (data.time_now && data.time_now < globalRoomsData[rId].earliestTime) {
-                    globalRoomsData[rId].earliestTime = data.time_now;
-                }
-                
+                if (!globalRoomsData[rId]) { globalRoomsData[rId] = { unreadCount: 0, earliestTime: data.time_now || Date.now() }; }
+                if (data.time_now && data.time_now < globalRoomsData[rId].earliestTime) { globalRoomsData[rId].earliestTime = data.time_now; }
                 if (data.sender !== 'admin' && data.status !== 'seen') {
                     globalRoomsData[rId].unreadCount++;
-                    if (data.status === 'sent') {
-                        db.collection("messages").doc(doc.id).update({ status: 'delivered' });
-                    }
+                    if (data.status === 'sent') { db.collection("messages").doc(doc.id).update({ status: 'delivered' }); }
                 }
             });
-
             globalSortedRooms = Object.keys(globalRoomsData).sort((a, b) => globalRoomsData[a].earliestTime - globalRoomsData[b].earliestTime);
-
-            globalSortedRooms.forEach((room, index) => {
-                if (!roomMapping[room]) {
-                    roomMapping[room] = `User ${index + 1}`;
-                }
-            });
-
+            globalSortedRooms.forEach((room, index) => { if (!roomMapping[room]) { roomMapping[room] = `User ${index + 1}`; } });
             renderUserList();
         });
 
@@ -186,24 +196,19 @@
             const container = document.getElementById('users-container');
             if(!container) return;
             container.innerHTML = '';
-
             globalSortedRooms.forEach(room => {
                 const friendlyName = roomMapping[room] || room;
                 const currentLabel = userLabels[room] || 'none';
-                
                 const div = document.createElement('div');
                 div.classList.add('user-item');
                 if(room === selectedRoomId) div.style.background = "#e9edef";
-                
                 let unreadBadgeHTML = '';
                 if (globalRoomsData[room] && globalRoomsData[room].unreadCount > 0 && room !== selectedRoomId) {
                     unreadBadgeHTML = `<span class="noti-badge">${globalRoomsData[room].unreadCount}</span>`;
                 }
-
                 div.innerHTML = `
                     <div class="user-row" onclick="loadActiveRoom('${room}')">
-                        <span class="user-name-text">${friendlyName}</span>
-                        ${unreadBadgeHTML}
+                        <span class="user-name-text">${friendlyName}</span>${unreadBadgeHTML}
                     </div>
                     <select class="label-select ${currentLabel}" onchange="updateUserLabel('${room}', this.value)">
                         <option value="none" ${currentLabel === 'none' ? 'selected' : ''}>No Label</option>
@@ -216,75 +221,51 @@
         }
 
         async function updateUserLabel(roomId, newLabel) {
-            try {
-                await db.collection("user_labels").doc(roomId).set({
-                    label: newLabel,
-                    updated_at: Date.now()
-                }, { merge: true });
-            } catch(e) {
-                console.error("Label update error: ", e);
-            }
+            try { await db.collection("user_labels").doc(roomId).set({ label: newLabel, updated_at: Date.now() }, { merge: true }); } catch(e) {}
         }
 
         function loadActiveRoom(room) {
             selectedRoomId = room;
-            const friendlyName = roomMapping[room] || room;
-            document.getElementById('active-user-title').innerText = friendlyName;
-            
+            document.getElementById('active-user-title').innerText = roomMapping[room] || room;
             renderUserList();
-            
             if(unsubscribeMessages) unsubscribeMessages();
             if(unsubscribePresence) unsubscribePresence();
 
-            // Real-time listener for current user's Online/Offline status
             unsubscribePresence = db.collection("user_presence").doc(room).onSnapshot((doc) => {
                 const statusEl = document.getElementById('active-user-status');
                 if (doc.exists) {
                     const pData = doc.data();
-                    if (pData.status === 'online') {
-                        statusEl.innerHTML = `<span style="color: #2ecc71; font-weight: bold;">● Online</span>`;
-                    } else {
-                        statusEl.innerText = "last seen today at " + formatTime(pData.last_seen);
-                    }
-                } else {
-                    statusEl.innerText = "offline";
-                }
+                    statusEl.innerHTML = pData.status === 'online' ? `<span style="color: #2ecc71; font-weight: bold;">● Online</span>` : "last seen today at " + formatTime(pData.last_seen);
+                } else { statusEl.innerText = "offline"; }
             });
             
             unsubscribeMessages = db.collection("messages").where("room_id", "==", room).onSnapshot((snapshot) => {
                 const box = document.getElementById('admin-chat-box');
                 box.innerHTML = '';
-                
                 let sortedDocs = snapshot.docs.sort((a, b) => a.data().time_now - b.data().time_now);
                 
                 sortedDocs.forEach(doc => {
                     const m = doc.data();
                     const isSentByAdmin = m.sender === 'admin';
-
-                    if (!isSentByAdmin && m.status !== 'seen') {
-                        db.collection("messages").doc(doc.id).update({ status: 'seen' });
-                    }
-
+                    if (!isSentByAdmin && m.status !== 'seen') { db.collection("messages").doc(doc.id).update({ status: 'seen' }); }
                     const d = document.createElement('div');
                     d.classList.add('msg', isSentByAdmin ? 'sent' : 'received');
                     
                     let contentHTML = '';
                     if (m.type === 'image') {
                         contentHTML = `<img src="${m.file_url}" class="chat-media" onclick="openImagePreview('${m.file_url}')">`;
-                    } else {
-                        contentHTML = `<div>${linkify(m.message_text)}</div>`;
-                    }
+                    } else if (m.type === 'audio') {
+                        const uniqueId = 'prog_' + doc.id;
+                        contentHTML = `
+                            <div class="audio-player-box">
+                                <button class="audio-play-btn" onclick="toggleAudio(this, '${m.file_url}', '${uniqueId}')"><i class="fas fa-play"></i></button>
+                                <div class="audio-timeline"><div class="audio-progress" id="${uniqueId}"></div></div>
+                                <span class="audio-duration">${m.duration || '0:00'}</span>
+                            </div>
+                        `;
+                    } else { contentHTML = `<div>${linkify(m.message_text)}</div>`; }
                     
-                    const timeStr = formatTime(m.time_now);
-                    const tickHTML = getTickHTML(m.status, isSentByAdmin);
-
-                    d.innerHTML = `
-                        ${contentHTML}
-                        <div class="msg-meta">
-                            <span>${timeStr}</span>
-                            ${tickHTML}
-                        </div>
-                    `;
+                    d.innerHTML = `${contentHTML}<div class="msg-meta"><span>${formatTime(m.time_now)}</span>${getTickHTML(m.status, isSentByAdmin)}</div>`;
                     box.appendChild(d);
                 });
                 box.scrollTop = box.scrollHeight;
@@ -297,57 +278,90 @@
             const val = inp.value.trim();
             if(!val) return;
             inp.value = '';
-            
-            await db.collection("messages").add({
-                message_text: val,
-                sender: 'admin',
-                receiver: selectedRoomId,
-                room_id: selectedRoomId,
-                time_now: Date.now(),
-                type: 'text',
-                status: 'sent'
-            });
+            await db.collection("messages").add({ message_text: val, sender: 'admin', receiver: selectedRoomId, room_id: selectedRoomId, time_now: Date.now(), type: 'text', status: 'sent' });
         }
 
         document.getElementById('admin-file-input').addEventListener('change', function(e) {
             if (!selectedRoomId) return;
             const file = e.target.files[0];
             if (!file) return;
-
             const inputField = document.getElementById('admin-msg-input');
             inputField.placeholder = "Sending secure file...";
-
             const reader = new FileReader();
             reader.onloadend = async function() {
-                const base64String = reader.result;
                 try {
-                    await db.collection("messages").add({
-                        message_text: "Sent an image",
-                        file_url: base64String,
-                        sender: 'admin',
-                        receiver: selectedRoomId,
-                        room_id: selectedRoomId,
-                        time_now: Date.now(),
-                        type: 'image',
-                        status: 'sent'
-                    });
-                } catch (err) {
-                    alert("Database write error: " + err.message);
-                }
+                    await db.collection("messages").add({ message_text: "Sent an image", file_url: reader.result, sender: 'admin', receiver: selectedRoomId, room_id: selectedRoomId, time_now: Date.now(), type: 'image', status: 'sent' });
+                } catch (err) { alert(err.message); }
                 inputField.placeholder = "Type a reply...";
             };
             reader.readAsDataURL(file);
             e.target.value = '';
         });
 
-        function openImagePreview(src) {
-            document.getElementById("modalImg").src = src;
-            document.getElementById("imageModal").style.display = "flex";
-        }
-        function closeImagePreview() {
-            document.getElementById("imageModal").style.display = "none";
-        }
+        // Admin Voice Recording Logic
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let isRecording = false;
+        let recordStartTime = 0;
 
+        document.getElementById('admin-mic-btn').addEventListener('click', async function() {
+            if (!selectedRoomId) return;
+            const micBtn = document.getElementById('admin-mic-btn');
+            const txtInput = document.getElementById('admin-msg-input');
+            
+            if (!isRecording) {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    alert("Microphone not supported.");
+                    return;
+                }
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+                    recordStartTime = Date.now();
+
+                    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+                    mediaRecorder.onstop = async () => {
+                        const durationSec = Math.round((Date.now() - recordStartTime) / 1000);
+                        const mins = Math.floor(durationSec / 60), secs = durationSec % 60;
+                        const finalDurationStr = mins + ":" + (secs < 10 ? '0' + secs : secs);
+
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
+                        const reader = new FileReader();
+                        reader.onloadend = async function() {
+                            await db.collection("messages").add({
+                                message_text: "🎤 Voice Note",
+                                file_url: reader.result,
+                                sender: 'admin',
+                                receiver: selectedRoomId,
+                                room_id: selectedRoomId,
+                                time_now: Date.now(),
+                                type: 'audio',
+                                duration: finalDurationStr,
+                                status: 'sent'
+                            });
+                        };
+                        reader.readAsDataURL(audioBlob);
+                        stream.getTracks().forEach(track => track.stop());
+                    };
+
+                    mediaRecorder.start();
+                    isRecording = true;
+                    micBtn.querySelector('i').className = "fas fa-stop mic-icon-active";
+                    txtInput.placeholder = "Recording voice note...";
+                    txtInput.disabled = true;
+                } catch (err) { alert("Mic Error: " + err.message); }
+            } else {
+                mediaRecorder.stop();
+                isRecording = false;
+                micBtn.querySelector('i').className = "fas fa-microphone";
+                txtInput.placeholder = "Type a reply...";
+                txtInput.disabled = false;
+            }
+        });
+
+        function openImagePreview(src) { document.getElementById("modalImg").src = src; document.getElementById("imageModal").style.display = "flex"; }
+        function closeImagePreview() { document.getElementById("imageModal").style.display = "none"; }
         document.getElementById('admin-send-btn').addEventListener('click', sendAdminMessage);
         document.getElementById('admin-msg-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') sendAdminMessage(); });
     </script>
