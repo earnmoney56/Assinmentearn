@@ -12,93 +12,109 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; flex-direction: column; height: 100vh; overflow: hidden; color: black; }
         
-        /* Main Top Header Line (Exact Image Match) */
-        .main-top-bar { background: var(--wa-dark-green); color: white; padding: 12px 20px; display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: bold; border-bottom: 1px solid rgba(0,0,0,0.1); }
-        .main-top-bar i.verified-icon { color: #34b7f1; font-size: 14px; }
+        /* Fixed Dynamic Top Bar Header */
+        .main-top-bar { background: var(--wa-dark-green); color: white; padding: 12px 15px; display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: bold; border-bottom: 1px solid rgba(0,0,0,0.1); flex-shrink: 0; }
+        .main-top-bar i.verified-icon { color: #34b7f1; font-size: 13px; }
 
-        /* Master Panel Framework Layout */
-        .panel-container { display: flex; flex: 1; height: calc(100vh - 43px); overflow: hidden; }
+        /* Main Master Grid Container Box */
+        .panel-container { display: flex; flex: 1; height: calc(100vh - 43px); overflow: hidden; position: relative; width: 100%; }
         
-        /* Sidebar Styling */
-        .sidebar { width: 35%; background: white; border-right: 1px solid #e9edef; display: flex; flex-direction: column; overflow-y: auto; }
+        /* Responsive Flex Sidebar Architecture */
+        .sidebar { width: 32%; min-width: 280px; background: white; border-right: 1px solid #e9edef; display: flex; flex-direction: column; overflow-y: auto; flex-shrink: 0; }
         
-        /* Picture Headers Section Dividers */
+        /* Category Section Headers Pack */
         .section-category-title { font-size: 11px; font-weight: bold; color: #0088cc; padding: 12px 16px 6px 16px; text-transform: uppercase; letter-spacing: 0.5px; background: #f8f9fa; border-bottom: 1px solid #f0f2f5; }
         .section-category-title.direct-title { color: #25d366; border-top: 1px solid #e9edef; }
 
-        /* User List Nodes Row Items */
+        /* User List Clickable Row Items */
         .user-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid #f7f7f7; cursor: pointer; transition: 0.2s; }
         .user-item:hover, .user-item.active { background: #ebebeb; }
         .user-info { display: flex; align-items: center; gap: 12px; width: 85%; }
         
-        /* Icon Profile Circle Pack */
+        /* Profile Image/Icon Rings UI Wrapper */
         .user-avatar-circle { width: 40px; height: 40px; background: #e3f2fd; color: #0088cc; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
         .user-avatar-circle.direct-user { background: #e8f5e9; color: #2e7d32; }
 
-        .user-meta-block { display: flex; flex-direction: column; gap: 2px; }
-        .user-profile-name { font-weight: 600; font-size: 14px; color: #333; }
+        .user-meta-block { display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
+        .user-profile-name { font-weight: 600; font-size: 14px; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         
-        /* Picture Perfect Status Dot & Label Row */
+        /* Real-time Status Dot indicators layout */
         .status-sub-row { font-size: 11px; display: flex; align-items: center; gap: 4px; color: #777; }
-        .dot-indicator { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+        .dot-indicator { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
         .dot-online { background: #2ecc71; }
         .dot-offline { background: #95a5a6; }
         
-        /* Unread Badge Counter Alert */
         .badge-counter { background: #25D366; color: white; font-size: 11px; font-weight: bold; min-width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; padding: 0 5px; }
 
-        /* Active Chat Workspace Windows Frame */
-        .chat-area-window { width: 65%; display: flex; flex-direction: column; background: var(--bg-color); }
-        .chat-area-header { background: #f0f2f5; padding: 12px 20px; font-size: 14px; font-weight: 600; border-bottom: 1px solid #e9edef; color: #333; }
-        .messages-viewport { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+        /* Responsive Flexible Right-Side Chat Screen Area Workspace */
+        .chat-area-window { flex: 1; display: flex; flex-direction: column; background: var(--bg-color); min-width: 0; overflow: hidden; }
+        .chat-area-header { background: #f0f2f5; padding: 12px 15px; font-size: 14px; font-weight: 600; border-bottom: 1px solid #e9edef; color: #333; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         
-        /* Whatsapp Chat Bubble Containers */
-        .msg-bubble { max-width: 65%; padding: 8px 12px 22px 12px; border-radius: 8px; font-size: 14.5px; position: relative; box-shadow: 0 1px 1px rgba(0,0,0,0.05); word-break: break-word; min-width: 85px; }
+        /* Viewport Frame for Scrollable Chat Bubbles */
+        .messages-viewport { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; width: 100%; }
+        
+        /* Message Chat Bubbles Pack Elements */
+        .msg-bubble { max-width: 75%; padding: 8px 12px 22px 12px; border-radius: 8px; font-size: 14px; position: relative; box-shadow: 0 1px 1px rgba(0,0,0,0.05); word-break: break-word; min-width: 80px; }
         .msg-bubble.sent { background: #d9fdd3; align-self: flex-end; border-top-right-radius: 0; }
         .msg-bubble.received { background: white; align-self: flex-start; border-top-left-radius: 0; }
         .msg-time-stamp { position: absolute; bottom: 3px; right: 8px; font-size: 10px; color: #767676; }
         
-        .media-image, .media-video { max-width: 100%; border-radius: 6px; display: block; max-height: 200px; cursor: pointer; }
+        .media-image, .media-video { max-width: 100%; border-radius: 6px; display: block; max-height: 180px; cursor: pointer; }
 
-        /* Audio Elements Playback System Frame */
-        .audio-node-box { display: flex; align-items: center; gap: 10px; min-width: 180px; padding: 4px 0; }
-        .audio-control-action { background: none; border: none; color: var(--wa-light); font-size: 18px; cursor: pointer; outline: none; }
+        /* Embedded Custom Audio Players style architecture */
+        .audio-node-box { display: flex; align-items: center; gap: 8px; min-width: 160px; padding: 4px 0; }
+        .audio-control-action { background: none; border: none; color: var(--wa-light); font-size: 16px; cursor: pointer; outline: none; }
         .audio-slider-track { flex: 1; height: 4px; background: #ccc; border-radius: 2px; }
 
-        /* Bottom Input Form Module Controls Pack */
-        .input-dock-panel { background: #f0f2f5; padding: 10px 16px; display: flex; align-items: center; gap: 12px; height: 60px; border-top: 1px solid #e9edef; }
-        .input-text-field { flex: 1; background: white; padding: 10px 16px; border-radius: 20px; border: 1px solid #deebd9; outline: none; font-size: 14px; color: black; }
+        /* Bottom Fixed Input Dock Panel (Crucial Mobile adjustments Fix) */
+        .input-dock-panel { background: #f0f2f5; padding: 8px 12px; display: flex; align-items: center; gap: 8px; height: 60px; border-top: 1px solid #e9edef; flex-shrink: 0; width: 100%; }
+        .input-text-field { flex: 1; background: white; padding: 10px 14px; border-radius: 20px; border: 1px solid #deebd9; outline: none; font-size: 14px; color: black; min-width: 0; }
         
-        .dock-action-btn { color: #54656f; font-size: 20px; cursor: pointer; background: none; border: none; outline: none; display: flex; align-items: center; justify-content: center; }
-        .dock-send-btn { background: var(--wa-light); color: white; border: none; width: 40px; height: 40px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 16px; }
+        .dock-action-btn { color: #54656f; font-size: 18px; cursor: pointer; background: none; border: none; outline: none; display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 32px; height: 32px; }
+        .dock-send-btn { background: var(--wa-light); color: white; border: none; width: 38px; height: 38px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 15px; flex-shrink: 0; }
         #admin-hidden-file { display: none; }
         
         .recording-active { color: #e74c3c !important; animation: micBlink 1s infinite; }
         @keyframes micBlink { 50% { opacity: 0.3; } }
 
-        .dashboard-empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; background: #f8f9fa; color: #888; gap: 12px; }
-        .dashboard-empty-state i { font-size: 60px; color: #dddddd; }
+        .dashboard-empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; background: #f8f9fa; color: #888; gap: 12px; padding: 20px; text-align: center; }
+        .dashboard-empty-state i { font-size: 50px; color: #dddddd; }
 
-        /* Mobile Optimization adjustments to prevent squishing */
+        /* ================= MOBILE VIEW ENGINE CRITICAL STYLES ================= */
         @media (max-width: 768px) {
-            .sidebar { width: 45%; }
-            .chat-area-window { width: 55%; }
+            /* Width ratio adjustments for mobile views */
+            .sidebar { width: 40%; min-width: 140px; }
+            .chat-area-window { width: 60%; }
+            .user-info { gap: 6px; }
+            .user-avatar-circle { width: 32px; height: 32px; font-size: 14px; }
+            .user-profile-name { font-size: 12.5px; }
+            .status-sub-row { font-size: 10px; }
+            .msg-bubble { max-width: 90%; font-size: 13px; }
+            .input-dock-panel { padding: 6px 8px; gap: 6px; }
+            .input-text-field { padding: 8px 12px; font-size: 13px; }
+            .dock-send-btn { width: 34px; height: 34px; font-size: 13px; }
+            .dock-action-btn { font-size: 16px; width: 28px; height: 28px; }
+        }
+
+        /* Extreme Small Screen Optimizations for standard Chrome Viewports */
+        @media (max-width: 480px) {
+            .sidebar { width: 35%; min-width: 125px; }
+            .chat-area-window { width: 65%; }
+            .section-category-title { padding: 8px 8px 4px 8px; font-size: 9px; }
+            .user-item { padding: 10px 8px; }
         }
     </style>
 </head>
 <body>
 
-    <!-- Main Dynamic Brand Header Line -->
     <div class="main-top-bar">
-        <i class="fab fa-whatsapp" style="font-size: 16px; color: #25d366;"></i>
+        <i class="fab fa-whatsapp" style="font-size: 15px; color: #25d366;"></i>
         <span>Official Live Support Panel (Admin)</span>
         <i class="fas fa-check-circle verified-icon"></i>
     </div>
 
-    <!-- Master Panels Layout Container Grid Frame -->
     <div class="panel-container">
         
-        <!-- Left Sidebar Scrollable List Grid -->
         <div class="sidebar">
             <div class="section-category-title">Rooms & Broadcast Channel</div>
             <div id="broadcast-group-container"></div>
@@ -107,20 +123,17 @@
             <div id="individual-users-container"></div>
         </div>
 
-        <!-- Right Working Live View Terminal Box Frame -->
         <div class="chat-area-window">
-            <div id="active-terminal-view" style="display: none; height: 100%; flex-direction: column;">
+            <div id="active-terminal-view" style="display: none; height: 100%; flex-direction: column; overflow: hidden;">
                 <div class="chat-area-header" id="active-user-title-text">Select Conversation target</div>
                 <div class="messages-viewport" id="admin-messages-container-box"></div>
                 
-                <!-- Bottom Interface Dock Panel Controls Form Input -->
                 <div class="input-dock-panel">
                     <label for="admin-hidden-file" class="dock-action-btn"><i class="fas fa-paperclip"></i></label>
                     <input type="file" id="admin-hidden-file" accept="image/*,video/*,audio/*">
                     
                     <input type="text" id="admin-chat-text-input" class="input-text-field" placeholder="Type a reply...">
                     
-                    <!-- Voice Recording Button for Admin Option -->
                     <button id="admin-voice-mic-btn" class="dock-action-btn"><i class="fas fa-microphone"></i></button>
                     
                     <button id="admin-submit-send-btn" class="dock-send-btn"><i class="fas fa-paper-plane"></i></button>
@@ -129,7 +142,7 @@
             
             <div id="fallback-empty-view-placeholder" class="dashboard-empty-state">
                 <i class="fab fa-whatsapp"></i>
-                <p style="font-size: 14px;">Kisi bhi group ya user par click karke live monitor ya reply karein.</p>
+                <p style="font-size: 13px;">Kisi bhi group ya user par click karke live monitor ya reply karein.</p>
             </div>
         </div>
     </div>
@@ -152,7 +165,7 @@
         let mediaRecorder = null;
         let audioChunks = [];
 
-        // Real-time listener structure mapping records onto separated UI Category Buckets
+        // Real-time listener sorting layout data across target categories
         db.collection("messages").onSnapshot((snapshot) => {
             const counts = {};
             const userTimestamps = {};
@@ -179,20 +192,18 @@
             const broadcastBox = document.getElementById('broadcast-group-container');
             const individualBox = document.getElementById('individual-users-container');
             
-            // Render Broadcast Channel Node
             broadcastBox.innerHTML = `
                 <div class="user-item ${selectedUserId === 'official_broadcast_group' ? 'active' : ''}" onclick="selectChatRoomChannel('official_broadcast_group')">
                     <div class="user-info">
                         <div class="user-avatar-circle"><i class="fas fa-users"></i></div>
                         <div class="user-meta-block">
                             <span class="user-profile-name" style="color:var(--wa-dark-green);">📢 Official Updates Group</span>
-                            <div class="status-sub-row">Broadcast to all users...</div>
+                            <div class="status-sub-row">Broadcast Channel</div>
                         </div>
                     </div>
                 </div>
             `;
 
-            // Render Client User Nodes
             individualBox.innerHTML = '';
             userIds.forEach(uid => {
                 const badgeCount = counts[uid] || 0;
@@ -205,14 +216,13 @@
                         <div class="user-meta-block">
                             <span class="user-profile-name">${uid}</span>
                             <div class="status-sub-row" id="presence-${uid}">
-                                <span class="dot-indicator dot-offline"></span> Checking status...
+                                <span class="dot-indicator dot-offline"></span> Checking...
                             </div>
                         </div>
                     </div>
                     ${badgeCount > 0 ? `<div class="badge-counter">${badgeCount}</div>` : ''}
                 `;
 
-                // Live Stream Connection for dynamic Online/Offline check dots
                 db.collection("user_presence").doc(uid).get().then(doc => {
                     const statusRow = item.querySelector(`#presence-${uid}`);
                     if(statusRow) {
@@ -235,7 +245,7 @@
             document.getElementById('active-terminal-view').style.display = 'flex';
             
             document.getElementById('active-user-title-text').innerText = 
-                uid === "official_broadcast_group" ? "Private Broadcast: Official Updates Group" : `Private Chat: ${uid}`;
+                uid === "official_broadcast_group" ? "Broadcast: Official Updates Group" : `Chat: ${uid}`;
 
             document.querySelectorAll('.user-item').forEach(el => el.classList.remove('active'));
 
@@ -299,12 +309,12 @@
             });
         }
 
-        // Voice Recording Implementation Pipeline Engine Block
+        // Voice Message Interface Core Block Modules Pack
         const micBtn = document.getElementById('admin-voice-mic-btn');
         micBtn.addEventListener('click', async () => {
             if (!mediaRecorder || mediaRecorder.state === "inactive") {
                 if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                    alert("Your browser structure blocks live microphone permissions.");
+                    alert("Live media voice capture interfaces are blocked by browser context.");
                     return;
                 }
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -330,7 +340,6 @@
                             status: 'sent'
                         });
                     };
-                    // Turn off components tracks to release mic hardware locks
                     stream.getTracks().forEach(track => track.stop());
                 };
 
@@ -344,7 +353,7 @@
             }
         });
 
-        // Paperclip Attachment Loader base64 File Upload Engine Setup
+        // Paperclip System Loader Event Pipeline Setup
         document.getElementById('admin-hidden-file').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file || !selectedUserId) return;
