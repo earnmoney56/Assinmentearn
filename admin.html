@@ -46,12 +46,10 @@
         
         .messages-viewport { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; width: 100%; background: var(--bg-color); }
         
-        /* Message bubble responsive system with bottom ticks space layout */
         .msg-bubble { max-width: 75%; padding: 8px 12px 24px 12px; border-radius: 8px; font-size: 14px; position: relative; box-shadow: 0 1px 1px rgba(0,0,0,0.05); word-break: break-word; min-width: 90px; }
         .msg-bubble.sent { background: #d9fdd3; align-self: flex-end; border-top-right-radius: 0; }
         .msg-bubble.received { background: white; align-self: flex-start; border-top-left-radius: 0; }
         
-        /* Fixed Bottom status and ticks meta row placement */
         .msg-meta-wrapper { position: absolute; bottom: 3px; right: 8px; display: flex; align-items: center; gap: 4px; font-size: 10px; color: #767676; }
         .status-tick-icon { font-size: 11px; display: inline-flex; }
         
@@ -142,43 +140,53 @@
 
         let selectedUserId = null;
         let activeMessagesListener = null;
+        let sidebarSnapshotListener = null;
         let mediaRecorder = null;
         let audioChunks = [];
-        
-        // Memory map object to assign permanent sequential identities 
         let userNamingMap = {};
 
-        db.collection("messages").onSnapshot((snapshot) => {
-            const counts = {};
-            const firstAppearanceTime = {};
-            const userTimestamps = {};
+        // LIGHTWEIGHT SIDEBAR TRACKER: Optimized to prevent rendering delay & wrong seen status triggers
+        function initSuperFastSidebarTracker() {
+            if(sidebarSnapshotListener) sidebarSnapshotListener();
+            
+            sidebarSnapshotListener = db.collection("messages")
+                .orderBy("time_now", "desc")
+                .limit(200) // Sirf active data fetch karega performance barkrar rakhne k liye
+                .onSnapshot((snapshot) => {
+                    const counts = {};
+                    const firstAppearanceTime = {};
+                    const userTimestamps = {};
 
-            snapshot.docs.forEach(doc => {
-                const data = doc.data();
-                const uid = data.room_id;
-                if (uid && uid !== "official_broadcast_group") {
-                    if (!counts[uid]) counts[uid] = 0;
-                    if (data.sender === uid && data.status !== 'seen') {
-                        counts[uid]++;
-                    }
-                    if (!userTimestamps[uid] || data.time_now > userTimestamps[uid]) {
-                        userTimestamps[uid] = data.time_now;
-                    }
-                    if (!firstAppearanceTime[uid] || data.time_now < firstAppearanceTime[uid]) {
-                        firstAppearanceTime[uid] = data.time_now;
-                    }
-                }
-            });
+                    snapshot.docs.forEach(doc => {
+                        const data = doc.data();
+                        const uid = data.room_id;
+                        if (uid && uid !== "official_broadcast_group") {
+                            if (!counts[uid]) counts[uid] = 0;
+                            
+                            // Unread badges counters calculation
+                            if (data.sender === uid && data.status !== 'seen') {
+                                counts[uid]++;
+                            }
+                            if (!userTimestamps[uid] || data.time_now > userTimestamps[uid]) {
+                                userTimestamps[uid] = data.time_now;
+                            }
+                            if (!firstAppearanceTime[uid] || data.time_now < firstAppearanceTime[uid]) {
+                                firstAppearanceTime[uid] = data.time_now;
+                            }
+                        }
+                    });
 
-            // Chronological mapping calculation logic for User 1, User 2 sequence assignment
-            const chronologicalIds = Object.keys(firstAppearanceTime).sort((a,b) => firstAppearanceTime[a] - firstAppearanceTime[b]);
-            chronologicalIds.forEach((uid, index) => {
-                userNamingMap[uid] = `User ${index + 1}`;
-            });
+                    const chronologicalIds = Object.keys(firstAppearanceTime).sort((a,b) => firstAppearanceTime[a] - firstAppearanceTime[b]);
+                    chronologicalIds.forEach((uid, index) => {
+                        userNamingMap[uid] = `User ${index + 1}`;
+                    });
 
-            const sortedIds = Object.keys(userTimestamps).sort((a,b) => userTimestamps[b] - userTimestamps[a]);
-            renderVisualSidebarLists(sortedIds, counts);
-        });
+                    const sortedIds = Object.keys(userTimestamps).sort((a,b) => userTimestamps[b] - userTimestamps[a]);
+                    renderVisualSidebarLists(sortedIds, counts);
+                }, (error) => {
+                    console.log("Sidebar snapshot throttle recovery active.");
+                });
+        }
 
         function renderVisualSidebarLists(userIds, counts) {
             const broadcastBox = document.getElementById('broadcast-group-container');
@@ -232,6 +240,7 @@
             });
         }
 
+        // FAST LIVE CONVERSATION WINDOW LOADER
         function selectChatRoomChannel(uid) {
             selectedUserId = uid;
             document.getElementById('fallback-empty-view-placeholder').style.display = 'none';
@@ -244,6 +253,7 @@
 
             if (activeMessagesListener) activeMessagesListener();
 
+            // Isolated listener targeting only selected conversation room
             activeMessagesListener = db.collection("messages")
                 .where("room_id", "==", uid)
                 .onSnapshot(snapshot => {
@@ -255,7 +265,8 @@
                         const m = doc.data();
                         const isMe = m.sender === 'admin';
 
-                        if (!isMe && m.status !== 'seen' && uid !== "official_broadcast_group") {
+                        // STRICT SEEN UPDATE RULE: Only updates if this specific chat room is opened right now
+                        if (!isMe && m.status !== 'seen' && uid === selectedUserId && uid !== "official_broadcast_group") {
                             db.collection("messages").doc(doc.id).update({ status: 'seen' });
                         }
 
@@ -277,7 +288,6 @@
                             content = `<div>${m.message_text}</div>`;
                         }
 
-                        // WhatsApp Tick Logic Generation Node Module 
                         let tickMarkup = '';
                         if (isMe && uid !== "official_broadcast_group") {
                             if (m.status === 'seen') {
@@ -384,6 +394,9 @@
 
         document.getElementById('admin-submit-send-btn').addEventListener('click', triggerTextMessageDispatch);
         document.getElementById('admin-chat-text-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') triggerTextMessageDispatch(); });
+
+        // Run the optimized engine on startup
+        initSuperFastSidebarTracker();
     </script>
 </body>
 </html>
