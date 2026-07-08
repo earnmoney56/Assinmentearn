@@ -218,6 +218,9 @@
                 lockBanner.style.display = 'none';
                 inputWrapper.style.display = 'flex';
                 sendBtn.style.display = 'flex';
+                
+                // Pure target check and instant unread clearer when tab switches to Personal
+                triggerPersonalChatSeenFlush();
                 loadPersonalMessages();
             }
         };
@@ -262,6 +265,18 @@
             box.scrollTop = box.scrollHeight;
         }
 
+        // Helper: Instant seen flusher when user is actively inside the chat viewport
+        function triggerPersonalChatSeenFlush() {
+            let roomId = isAdmin ? 'AdminRoomMock' : myUserId;
+            db.collection("messages").where("room_id", "==", roomId).get().then(snapshot => {
+                snapshot.forEach(doc => {
+                    if (doc.data().sender === 'admin' && doc.data().status !== 'seen') {
+                        db.collection("messages").doc(doc.id).update({ status: 'seen' });
+                    }
+                });
+            });
+        }
+
         // Load Personal Tab Database Listener
         function loadPersonalMessages() {
             if(groupUnsubscribe) groupUnsubscribe();
@@ -269,14 +284,37 @@
             let roomId = isAdmin ? 'AdminRoomMock' : myUserId; // Modify based on your Admin Routing structure
             personalUnsubscribe = db.collection("messages").where("room_id", "==", roomId)
                 .onSnapshot((snapshot) => {
-                    if (currentTab !== 'personal') return;
                     let sorted = snapshot.docs.sort((a, b) => a.data().time_now - b.data().time_now);
                     
-                    // Update unseen ticks logic
-                    if (!isAdmin && !initialLoadPersonal) {
+                    snapshot.docChanges().forEach(change => {
+                        if (change.type === "added") {
+                            const data = change.doc.data();
+                            // Target Condition: RINGTONE ONLY triggers when the message is incoming from Admin
+                            if (data.sender === 'admin' && !initialLoadPersonal) {
+                                notificationSound.play().catch(e => console.log("Audio contexts pending interaction."));
+                                triggerIncomingNotification(data.message_text || "Sent a media file");
+                            }
+                        }
+                    });
+
+                    if (currentTab !== 'personal') return;
+
+                    // --- STRICT WHATSAPP DOUBLE / BLUE TICK LOGIC ---
+                    // Agar user app khol kar baitha hai tabhi status 'seen' (Blue tick) hoga, warna nahi!
+                    if (!isAdmin) {
                         snapshot.docs.forEach(doc => {
-                            if (doc.data().sender === 'admin' && doc.data().status !== 'seen') {
-                                db.collection("messages").doc(doc.id).update({ status: 'seen' });
+                            const d = doc.data();
+                            if (d.sender === 'admin') {
+                                if (document.visibilityState === "visible" && currentTab === 'personal') {
+                                    if (d.status !== 'seen') {
+                                        db.collection("messages").doc(doc.id).update({ status: 'seen' });
+                                    }
+                                } else {
+                                    // Agar background ya screen off hai, tab double gray tick (delivered) jayega
+                                    if (d.status === 'sent') {
+                                        db.collection("messages").doc(doc.id).update({ status: 'delivered' });
+                                    }
+                                }
                             }
                         });
                     }
@@ -284,6 +322,18 @@
                     initialLoadPersonal = false;
                 });
         }
+
+        // Auto tracker check when the tab/app loses visibility or regains visibility focus
+        document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === "visible") {
+                updateUserPresence('online');
+                if(currentTab === 'personal') {
+                    triggerPersonalChatSeenFlush();
+                }
+            } else {
+                updateUserPresence('offline');
+            }
+        });
 
         // Load Global Updates Group Tab Database Listener
         function loadGroupMessages() {
@@ -445,8 +495,8 @@
 
         function triggerIncomingNotification(msgText) {
             notificationSound.play().catch(e => console.log("Sound muted"));
-            if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
-                new Notification("Updates Channel", { body: msgText, icon: 'https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=256&auto=format&fit=crop' });
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification("Support Notification", { body: msgText, icon: 'https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=256&auto=format&fit=crop' });
             }
         }
 
