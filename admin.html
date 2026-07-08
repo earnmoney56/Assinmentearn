@@ -3,99 +3,139 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Chat Dashboard</title>
+    <title>Official Live Support Panel (Admin)</title>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        :root { --wa-green: #075e54; --wa-light: #128c7e; --bg-color: #ece5dd; --announcement-blue: #0088cc; }
+        :root { --wa-dark-green: #005e54; --wa-green: #075e54; --wa-light: #128c7e; --bg-color: #efeae2; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; height: 100vh; overflow: hidden; color: black; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; flex-direction: column; height: 100vh; overflow: hidden; color: black; }
         
-        /* Sidebar Styles */
-        .sidebar { width: 30%; background: white; border-right: 1px solid #e9edef; display: flex; flex-direction: column; }
-        .sidebar-header { background: #f0f2f5; padding: 10px 16px; height: 60px; display: flex; align-items: center; font-weight: bold; font-size: 18px; border-bottom: 1px solid #e9edef; }
-        .user-list { flex: 1; overflow-y: auto; }
-        
-        /* User List Items with Chat Option Sub-text */
-        .user-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid #f0f2f5; cursor: pointer; transition: 0.2s; }
-        .user-item:hover, .user-item.active { background: #f0f2f5; }
-        .user-info { display: flex; align-items: center; gap: 12px; width: 80%; }
-        .user-avatar { width: 45px; height: 45px; background: #666; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 18px; flex-shrink: 0; }
-        
-        /* Special Group Styling */
-        .group-item { background: #e3f2fd; border-bottom: 2px solid #b3e5fc; }
-        .group-item .user-avatar { background: var(--announcement-blue); }
-        .group-item .chat-option-text { color: var(--announcement-blue) !important; font-weight: 600; }
+        /* Main Top Header Line (Exact Image Match) */
+        .main-top-bar { background: var(--wa-dark-green); color: white; padding: 12px 20px; display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: bold; border-bottom: 1px solid rgba(0,0,0,0.1); }
+        .main-top-bar i.verified-icon { color: #34b7f1; font-size: 14px; }
 
-        .user-details { display: flex; flex-direction: column; gap: 2px; width: 100%; overflow: hidden; }
-        .user-name { font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        /* Master Panel Framework Layout */
+        .panel-container { display: flex; flex: 1; height: calc(100vh - 43px); overflow: hidden; }
         
-        /* Fixed Chat Option and Sub-text */
-        .chat-option-text { font-size: 12px; color: #128c7e; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+        /* Sidebar Styling */
+        .sidebar { width: 35%; background: white; border-right: 1px solid #e9edef; display: flex; flex-direction: column; overflow-y: auto; }
         
-        /* Notification Counter Badge */
-        .msg-count-badge { background: #25D366; color: white; font-size: 12px; font-weight: bold; min-width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; padding: 0 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+        /* Picture Headers Section Dividers */
+        .section-category-title { font-size: 11px; font-weight: bold; color: #0088cc; padding: 12px 16px 6px 16px; text-transform: uppercase; letter-spacing: 0.5px; background: #f8f9fa; border-bottom: 1px solid #f0f2f5; }
+        .section-category-title.direct-title { color: #25d366; border-top: 1px solid #e9edef; }
 
-        /* Main Chat Window Area */
-        .chat-area { width: 70%; display: flex; flex-direction: column; background: var(--bg-color); position: relative; }
-        .chat-header { background: #f0f2f5; padding: 10px 16px; height: 60px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #e9edef; font-weight: 600; }
-        .messages-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+        /* User List Nodes Row Items */
+        .user-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid #f7f7f7; cursor: pointer; transition: 0.2s; }
+        .user-item:hover, .user-item.active { background: #ebebeb; }
+        .user-info { display: flex; align-items: center; gap: 12px; width: 85%; }
         
-        /* Bubble Chat Messages */
-        .message { max-width: 65%; padding: 8px 12px 24px 12px; border-radius: 10px; font-size: 15px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.08); word-break: break-word; min-width: 90px; }
-        .message.sent { background: #d9fdd3; align-self: flex-end; border-top-right-radius: 0; }
-        .message.received { background: white; align-self: flex-start; border-top-left-radius: 0; }
-        .msg-time { position: absolute; bottom: 4px; right: 8px; font-size: 10px; color: #727272; }
-        
-        .chat-media { max-width: 100%; border-radius: 8px; max-height: 200px; display: block; margin-bottom: 4px; cursor: pointer; }
-        .chat-link { color: #0275d8; text-decoration: underline; }
+        /* Icon Profile Circle Pack */
+        .user-avatar-circle { width: 40px; height: 40px; background: #e3f2fd; color: #0088cc; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+        .user-avatar-circle.direct-user { background: #e8f5e9; color: #2e7d32; }
 
-        /* Audio Controls style */
-        .audio-box { display: flex; align-items: center; gap: 10px; min-width: 200px; padding: 5px 0; }
-        .audio-btn { background: none; border: none; color: var(--wa-light); font-size: 18px; cursor: pointer; outline: none; }
-        .audio-bar { flex: 1; height: 4px; background: #b8d4ca; border-radius: 2px; }
-        .audio-progress { width: 0%; height: 100%; background: var(--wa-light); }
-
-        /* Input Bar Controls */
-        .admin-input-area { background: #f0f2f5; padding: 10px; display: flex; align-items: center; gap: 10px; height: 60px; }
-        .admin-input-box { flex: 1; background: white; padding: 10px 15px; border-radius: 20px; border: 1px solid #ccc; outline: none; font-size: 15px; }
-        .admin-send-btn { background: var(--wa-light); color: white; border: none; width: 40px; height: 40px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 16px; }
-        .admin-attach-btn { color: #54656f; font-size: 18px; cursor: pointer; padding: 4px; background: none; border: none; outline: none; }
-        #admin-file-input { display: none; }
+        .user-meta-block { display: flex; flex-direction: column; gap: 2px; }
+        .user-profile-name { font-weight: 600; font-size: 14px; color: #333; }
         
-        .no-chat-selected { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; background: #f8f9fa; color: #666; font-size: 16px; gap: 10px; }
-        .no-chat-selected i { font-size: 50px; color: #ccc; }
+        /* Picture Perfect Status Dot & Label Row */
+        .status-sub-row { font-size: 11px; display: flex; align-items: center; gap: 4px; color: #777; }
+        .dot-indicator { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+        .dot-online { background: #2ecc71; }
+        .dot-offline { background: #95a5a6; }
+        
+        /* Unread Badge Counter Alert */
+        .badge-counter { background: #25D366; color: white; font-size: 11px; font-weight: bold; min-width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; padding: 0 5px; }
+
+        /* Active Chat Workspace Windows Frame */
+        .chat-area-window { width: 65%; display: flex; flex-direction: column; background: var(--bg-color); }
+        .chat-area-header { background: #f0f2f5; padding: 12px 20px; font-size: 14px; font-weight: 600; border-bottom: 1px solid #e9edef; color: #333; }
+        .messages-viewport { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+        
+        /* Whatsapp Chat Bubble Containers */
+        .msg-bubble { max-width: 65%; padding: 8px 12px 22px 12px; border-radius: 8px; font-size: 14.5px; position: relative; box-shadow: 0 1px 1px rgba(0,0,0,0.05); word-break: break-word; min-width: 85px; }
+        .msg-bubble.sent { background: #d9fdd3; align-self: flex-end; border-top-right-radius: 0; }
+        .msg-bubble.received { background: white; align-self: flex-start; border-top-left-radius: 0; }
+        .msg-time-stamp { position: absolute; bottom: 3px; right: 8px; font-size: 10px; color: #767676; }
+        
+        .media-image, .media-video { max-width: 100%; border-radius: 6px; display: block; max-height: 200px; cursor: pointer; }
+
+        /* Audio Elements Playback System Frame */
+        .audio-node-box { display: flex; align-items: center; gap: 10px; min-width: 180px; padding: 4px 0; }
+        .audio-control-action { background: none; border: none; color: var(--wa-light); font-size: 18px; cursor: pointer; outline: none; }
+        .audio-slider-track { flex: 1; height: 4px; background: #ccc; border-radius: 2px; }
+
+        /* Bottom Input Form Module Controls Pack */
+        .input-dock-panel { background: #f0f2f5; padding: 10px 16px; display: flex; align-items: center; gap: 12px; height: 60px; border-top: 1px solid #e9edef; }
+        .input-text-field { flex: 1; background: white; padding: 10px 16px; border-radius: 20px; border: 1px solid #deebd9; outline: none; font-size: 14px; color: black; }
+        
+        .dock-action-btn { color: #54656f; font-size: 20px; cursor: pointer; background: none; border: none; outline: none; display: flex; align-items: center; justify-content: center; }
+        .dock-send-btn { background: var(--wa-light); color: white; border: none; width: 40px; height: 40px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 16px; }
+        #admin-hidden-file { display: none; }
+        
+        .recording-active { color: #e74c3c !important; animation: micBlink 1s infinite; }
+        @keyframes micBlink { 50% { opacity: 0.3; } }
+
+        .dashboard-empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; background: #f8f9fa; color: #888; gap: 12px; }
+        .dashboard-empty-state i { font-size: 60px; color: #dddddd; }
+
+        /* Mobile Optimization adjustments to prevent squishing */
+        @media (max-width: 768px) {
+            .sidebar { width: 45%; }
+            .chat-area-window { width: 55%; }
+        }
     </style>
 </head>
 <body>
 
-    <!-- Left Sidebar: Users List Grid -->
-    <div class="sidebar">
-        <div class="sidebar-header">💬 Live Active Support</div>
-        <div class="user-list" id="users-container"></div>
+    <!-- Main Dynamic Brand Header Line -->
+    <div class="main-top-bar">
+        <i class="fab fa-whatsapp" style="font-size: 16px; color: #25d366;"></i>
+        <span>Official Live Support Panel (Admin)</span>
+        <i class="fas fa-check-circle verified-icon"></i>
     </div>
 
-    <!-- Right Window: Message Terminal Frame -->
-    <div class="chat-area">
-        <div id="active-chat-window" style="display: none; height: 100%; flex-direction: column;">
-            <div class="chat-header" id="current-user-header">Select a User</div>
-            <div class="messages-container" id="admin-messages-box"></div>
-            <div class="admin-input-area">
-                <label for="admin-file-input" class="admin-attach-btn"><i class="fas fa-paperclip"></i></label>
-                <input type="file" id="admin-file-input" accept="image/*,video/*,audio/*">
-                <input type="text" id="admin-reply-input" class="admin-input-box" placeholder="Type a reply...">
-                <button id="admin-btn-send" class="admin-send-btn"><i class="fas fa-paper-plane"></i></button>
-            </div>
+    <!-- Master Panels Layout Container Grid Frame -->
+    <div class="panel-container">
+        
+        <!-- Left Sidebar Scrollable List Grid -->
+        <div class="sidebar">
+            <div class="section-category-title">Rooms & Broadcast Channel</div>
+            <div id="broadcast-group-container"></div>
+            
+            <div class="section-category-title direct-title">User Direct Messages</div>
+            <div id="individual-users-container"></div>
         </div>
-        <div id="no-chat-placeholder" class="no-chat-selected">
-            <i class="fab fa-whatsapp"></i>
-            <p>Kisi bhi user ya group par click karke live chat shuru karein.</p>
+
+        <!-- Right Working Live View Terminal Box Frame -->
+        <div class="chat-area-window">
+            <div id="active-terminal-view" style="display: none; height: 100%; flex-direction: column;">
+                <div class="chat-area-header" id="active-user-title-text">Select Conversation target</div>
+                <div class="messages-viewport" id="admin-messages-container-box"></div>
+                
+                <!-- Bottom Interface Dock Panel Controls Form Input -->
+                <div class="input-dock-panel">
+                    <label for="admin-hidden-file" class="dock-action-btn"><i class="fas fa-paperclip"></i></label>
+                    <input type="file" id="admin-hidden-file" accept="image/*,video/*,audio/*">
+                    
+                    <input type="text" id="admin-chat-text-input" class="input-text-field" placeholder="Type a reply...">
+                    
+                    <!-- Voice Recording Button for Admin Option -->
+                    <button id="admin-voice-mic-btn" class="dock-action-btn"><i class="fas fa-microphone"></i></button>
+                    
+                    <button id="admin-submit-send-btn" class="dock-send-btn"><i class="fas fa-paper-plane"></i></button>
+                </div>
+            </div>
+            
+            <div id="fallback-empty-view-placeholder" class="dashboard-empty-state">
+                <i class="fab fa-whatsapp"></i>
+                <p style="font-size: 14px;">Kisi bhi group ya user par click karke live monitor ya reply karein.</p>
+            </div>
         </div>
     </div>
 
     <script>
-        // Firebase Configuration Details
+        // Firebase Configuration Details Initialization Pack
         const firebaseConfig = {
             apiKey: "AIzaSyDe8zFsomI7Qn1PfuJb_FyWOLe1SdqEZHM",
             authDomain: "wattsapp-27aa4.firebaseapp.com",
@@ -109,101 +149,105 @@
 
         let selectedUserId = null;
         let activeMessagesListener = null;
+        let mediaRecorder = null;
+        let audioChunks = [];
 
-        // Step 1: Real-time fetch and structure user lists + unread count calculation
+        // Real-time listener structure mapping records onto separated UI Category Buckets
         db.collection("messages").onSnapshot((snapshot) => {
-            const userCounts = {};
-            const userLastMsg = {};
-            const userLastTimestamp = {};
+            const counts = {};
+            const userTimestamps = {};
 
             snapshot.docs.forEach(doc => {
                 const data = doc.data();
                 const uid = data.room_id;
-                
-                // Skip tracking the official global broadcast room within normal individual channels
                 if (uid && uid !== "official_broadcast_group") {
-                    if (!userCounts[uid]) userCounts[uid] = 0;
+                    if (!counts[uid]) counts[uid] = 0;
                     if (data.sender === uid && data.status !== 'seen') {
-                        userCounts[uid]++;
+                        counts[uid]++;
                     }
-                    if (!userLastTimestamp[uid] || data.time_now > userLastTimestamp[uid]) {
-                        userLastTimestamp[uid] = data.time_now;
-                        userLastMsg[uid] = data.message_text || "Sent an attachment";
+                    if (!userTimestamps[uid] || data.time_now > userTimestamps[uid]) {
+                        userTimestamps[uid] = data.time_now;
                     }
                 }
             });
 
-            const sortedUsersIds = Object.keys(userCounts).sort((a,b) => userLastTimestamp[b] - userLastTimestamp[a]);
-            renderUserSidebar(sortedUsersIds, userCounts, userLastMsg);
+            const sortedIds = Object.keys(userTimestamps).sort((a,b) => userTimestamps[b] - userTimestamps[a]);
+            renderVisualSidebarLists(sortedIds, counts);
         });
 
-        // Step 2: Render sidebar with dynamic selection tracking + Fixed Chat sub-option layout
-        function renderUserSidebar(userIds, counts, lastMsgs) {
-            const container = document.getElementById('users-container');
-            container.innerHTML = '';
-
-            // 📢 ALWAYS APPEND OFFICIAL BROADCST GROUP TOP OF THE STREAM LIST
-            const groupItem = document.createElement('div');
-            groupItem.className = `user-item group-item ${selectedUserId === "official_broadcast_group" ? 'active' : ''}`;
-            groupItem.innerHTML = `
-                <div class="user-info">
-                    <div class="user-avatar"><i class="fas fa-bullhorn"></i></div>
-                    <div class="user-details">
-                        <span class="user-name" style="color: #004d40;">Official Announcement Group</span>
-                        <span class="chat-option-text">📢 Tap to Broadcast to all users</span>
+        function renderVisualSidebarLists(userIds, counts) {
+            const broadcastBox = document.getElementById('broadcast-group-container');
+            const individualBox = document.getElementById('individual-users-container');
+            
+            // Render Broadcast Channel Node
+            broadcastBox.innerHTML = `
+                <div class="user-item ${selectedUserId === 'official_broadcast_group' ? 'active' : ''}" onclick="selectChatRoomChannel('official_broadcast_group')">
+                    <div class="user-info">
+                        <div class="user-avatar-circle"><i class="fas fa-users"></i></div>
+                        <div class="user-meta-block">
+                            <span class="user-profile-name" style="color:var(--wa-dark-green);">📢 Official Updates Group</span>
+                            <div class="status-sub-row">Broadcast to all users...</div>
+                        </div>
                     </div>
                 </div>
             `;
-            groupItem.onclick = () => selectUserChatRoom("official_broadcast_group");
-            container.appendChild(groupItem);
 
-            // Append regular chat user cells
+            // Render Client User Nodes
+            individualBox.innerHTML = '';
             userIds.forEach(uid => {
-                const unreadCount = counts[uid] || 0;
-                const lastText = lastMsgs[uid] || "Tap to chat with this client";
+                const badgeCount = counts[uid] || 0;
                 const item = document.createElement('div');
                 item.className = `user-item ${selectedUserId === uid ? 'active' : ''}`;
                 
                 item.innerHTML = `
                     <div class="user-info">
-                        <div class="user-avatar">${uid.charAt(0)}</div>
-                        <div class="user-details">
-                            <span class="user-name">${uid}</span>
-                            <span class="chat-option-text"><i class="far fa-comments"></i> ${lastText}</span>
+                        <div class="user-avatar-circle direct-user"><i class="fas fa-user"></i></div>
+                        <div class="user-meta-block">
+                            <span class="user-profile-name">${uid}</span>
+                            <div class="status-sub-row" id="presence-${uid}">
+                                <span class="dot-indicator dot-offline"></span> Checking status...
+                            </div>
                         </div>
                     </div>
-                    ${unreadCount > 0 ? `<div class="msg-count-badge">${unreadCount}</div>` : ''}
+                    ${badgeCount > 0 ? `<div class="badge-counter">${badgeCount}</div>` : ''}
                 `;
 
-                item.onclick = () => selectUserChatRoom(uid);
-                container.appendChild(item);
+                // Live Stream Connection for dynamic Online/Offline check dots
+                db.collection("user_presence").doc(uid).get().then(doc => {
+                    const statusRow = item.querySelector(`#presence-${uid}`);
+                    if(statusRow) {
+                        if(doc.exists && doc.data().status === 'online') {
+                            statusRow.innerHTML = `<span class="dot-indicator dot-online"></span> Online`;
+                        } else {
+                            statusRow.innerHTML = `<span class="dot-indicator dot-offline"></span> Offline`;
+                        }
+                    }
+                });
+
+                item.onclick = () => selectChatRoomChannel(uid);
+                individualBox.appendChild(item);
             });
         }
 
-        // Step 3: Open selection target chat panel and update read markers
-        function selectUserChatRoom(uid) {
+        function selectChatRoomChannel(uid) {
             selectedUserId = uid;
+            document.getElementById('fallback-empty-view-placeholder').style.display = 'none';
+            document.getElementById('active-terminal-view').style.display = 'flex';
             
-            document.getElementById('no-chat-placeholder').style.display = 'none';
-            document.getElementById('active-chat-window').style.display = 'flex';
-            
-            if(uid === "official_broadcast_group") {
-                document.getElementById('current-user-header').innerHTML = `<i class="fas fa-bullhorn" style="color: var(--announcement-blue);"></i> Official Announcement Group (Broadcast Room)`;
-            } else {
-                document.getElementById('current-user-header').innerText = `Chat Options with: ${uid}`;
-            }
+            document.getElementById('active-user-title-text').innerText = 
+                uid === "official_broadcast_group" ? "Private Broadcast: Official Updates Group" : `Private Chat: ${uid}`;
 
             document.querySelectorAll('.user-item').forEach(el => el.classList.remove('active'));
+
             if (activeMessagesListener) activeMessagesListener();
 
             activeMessagesListener = db.collection("messages")
                 .where("room_id", "==", uid)
                 .onSnapshot(snapshot => {
-                    const box = document.getElementById('admin-messages-box');
-                    box.innerHTML = '';
+                    const msgBox = document.getElementById('admin-messages-container-box');
+                    msgBox.innerHTML = '';
                     
                     let sorted = snapshot.docs.sort((a,b) => a.data().time_now - b.data().time_now);
-                    
                     sorted.forEach(doc => {
                         const m = doc.data();
                         const isMe = m.sender === 'admin';
@@ -213,40 +257,39 @@
                         }
 
                         const d = document.createElement('div');
-                        d.classList.add('message', isMe ? 'sent' : 'received');
+                        d.classList.add('msg-bubble', isMe ? 'sent' : 'received');
 
                         let content = '';
                         if (m.type === 'image') {
-                            content = `<img src="${m.file_url}" class="chat-media" onclick="window.open('${m.file_url}')">`;
+                            content = `<img src="${m.file_url}" class="media-image" onclick="window.open('${m.file_url}')">`;
                         } else if (m.type === 'video') {
-                            content = `<video src="${m.file_url}" controls class="chat-media"></video>`;
+                            content = `<video src="${m.file_url}" controls class="media-video"></video>`;
                         } else if (m.type === 'audio') {
                             content = `
-                                <div class="audio-box">
-                                    <button class="audio-btn" onclick="new Audio('${m.file_url}').play()"><i class="fas fa-play"></i></button>
-                                    <div class="audio-bar"><div class="audio-progress" style="width:100%"></div></div>
+                                <div class="audio-node-box">
+                                    <button class="audio-control-action" onclick="new Audio('${m.file_url}').play()"><i class="fas fa-play"></i></button>
+                                    <div class="audio-slider-track"><div style="width:100%; height:100%; background:var(--wa-light); border-radius:2px;"></div></div>
                                 </div>`;
                         } else {
                             content = `<div>${m.message_text}</div>`;
                         }
 
-                        const time = new Date(m.time_now).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                        d.innerHTML = `${content}<span class="msg-time">${time}</span>`;
-                        box.appendChild(d);
+                        const tStr = new Date(m.time_now).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                        d.innerHTML = `${content}<span class="msg-time-stamp">${tStr}</span>`;
+                        msgBox.appendChild(d);
                     });
-                    box.scrollTop = box.scrollHeight;
+                    msgBox.scrollTop = msgBox.scrollHeight;
                 });
         }
 
-        // Link/Text/Media Delivery dispatch router pipeline
-        async function sendAdminReply() {
-            const inp = document.getElementById('admin-reply-input');
-            const val = inp.value.trim();
-            if (!val || !selectedUserId) return;
+        async function triggerTextMessageDispatch() {
+            const inp = document.getElementById('admin-chat-text-input');
+            const txt = inp.value.trim();
+            if (!txt || !selectedUserId) return;
             inp.value = '';
 
             await db.collection("messages").add({
-                message_text: val,
+                message_text: txt,
                 sender: 'admin',
                 receiver: selectedUserId === "official_broadcast_group" ? "all_users" : selectedUserId,
                 room_id: selectedUserId,
@@ -256,40 +299,79 @@
             });
         }
 
-        // File/Media Upload and Reader System Base64 Conversion
-        document.getElementById('admin-file-input').addEventListener('change', function(e) {
+        // Voice Recording Implementation Pipeline Engine Block
+        const micBtn = document.getElementById('admin-voice-mic-btn');
+        micBtn.addEventListener('click', async () => {
+            if (!mediaRecorder || mediaRecorder.state === "inactive") {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    alert("Your browser structure blocks live microphone permissions.");
+                    return;
+                }
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                audioChunks = [];
+                mediaRecorder = new MediaRecorder(stream);
+                
+                mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+                
+                mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/ogg; codecs=opus' });
+                    const reader = new FileReader();
+                    reader.readAsDataURL(audioBlob);
+                    reader.onloadend = async () => {
+                        if(!selectedUserId) return;
+                        await db.collection("messages").add({
+                            message_text: "Sent a voice message",
+                            file_url: reader.result,
+                            sender: 'admin',
+                            receiver: selectedUserId === "official_broadcast_group" ? "all_users" : selectedUserId,
+                            room_id: selectedUserId,
+                            time_now: Date.now(),
+                            type: 'audio',
+                            status: 'sent'
+                        });
+                    };
+                    // Turn off components tracks to release mic hardware locks
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                mediaRecorder.start();
+                micBtn.classList.add('recording-active');
+                micBtn.innerHTML = `<i class="fas fa-stop"></i>`;
+            } else {
+                mediaRecorder.stop();
+                micBtn.classList.remove('recording-active');
+                micBtn.innerHTML = `<i class="fas fa-microphone"></i>`;
+            }
+        });
+
+        // Paperclip Attachment Loader base64 File Upload Engine Setup
+        document.getElementById('admin-hidden-file').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file || !selectedUserId) return;
             
-            const replyInp = document.getElementById('admin-reply-input');
-            replyInp.placeholder = "Uploading attachment object...";
-            
-            let fileType = 'image';
-            if (file.type.includes('video')) fileType = 'video';
-            if (file.type.includes('audio')) fileType = 'audio';
+            let fType = 'image';
+            if (file.type.includes('video')) fType = 'video';
+            if (file.type.includes('audio')) fType = 'audio';
 
-            const reader = new FileReader();
-            reader.onloadend = async function() {
-                try {
-                    await db.collection("messages").add({
-                        message_text: `Sent a ${fileType}`,
-                        file_url: reader.result,
-                        sender: 'admin',
-                        receiver: selectedUserId === "official_broadcast_group" ? "all_users" : selectedUserId,
-                        room_id: selectedUserId,
-                        time_now: Date.now(),
-                        type: fileType,
-                        status: 'sent'
-                    });
-                } catch (err) { alert(err.message); }
-                replyInp.placeholder = "Type a reply...";
+            const r = new FileReader();
+            r.onloadend = async () => {
+                await db.collection("messages").add({
+                    message_text: `Sent a ${fType}`,
+                    file_url: r.result,
+                    sender: 'admin',
+                    receiver: selectedUserId === "official_broadcast_group" ? "all_users" : selectedUserId,
+                    room_id: selectedUserId,
+                    time_now: Date.now(),
+                    type: fType,
+                    status: 'sent'
+                });
             };
-            reader.readAsDataURL(file);
+            r.readAsDataURL(file);
             e.target.value = '';
         });
 
-        document.getElementById('admin-btn-send').addEventListener('click', sendAdminReply);
-        document.getElementById('admin-reply-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') sendAdminReply(); });
+        document.getElementById('admin-submit-send-btn').addEventListener('click', triggerTextMessageDispatch);
+        document.getElementById('admin-chat-text-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') triggerTextMessageDispatch(); });
     </script>
 </body>
 </html>
