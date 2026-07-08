@@ -2,156 +2,87 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Admin Dashboard - Live Sorting & Ticks System</title>
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Chat Dashboard</title>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    
     <style>
         :root { --wa-green: #075e54; --wa-light: #128c7e; --bg-color: #ece5dd; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body, html { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; height: 100vh; height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; height: 100vh; overflow: hidden; color: black; }
         
-        /* Top Navigation Header Bar */
-        .wa-header { background: var(--wa-green); color: white; padding: 10px 15px; display: flex; align-items: center; gap: 12px; height: 60px; min-height: 60px; box-shadow: 0 1px 3px rgba(0,0,0,0.15); width: 100%; z-index: 10; }
-        .wa-avatar-img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
-        .verified-badge { color: #34b7f1; font-size: 14px; }
+        /* Sidebar Styles */
+        .sidebar { width: 30%; background: white; border-right: 1px solid #e9edef; display: flex; flex-direction: column; }
+        .sidebar-header { background: #f0f2f5; padding: 10px 16px; height: 60px; display: flex; align-items: center; font-weight: bold; font-size: 18px; border-bottom: 1px solid #e9edef; }
+        .user-list { flex: 1; overflow-y: auto; }
+        .user-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid #f0f2f5; cursor: pointer; transition: 0.2s; }
+        .user-item:hover, .user-item.active { background: #f0f2f5; }
+        .user-info { display: flex; align-items: center; gap: 12px; }
+        .user-avatar { width: 45px; height: 45px; background: #ccc; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 18px; }
+        .user-details { display: flex; flex-direction: column; gap: 4px; }
+        .user-name { font-weight: 600; font-size: 15px; }
+        .user-status { font-size: 12px; color: #666; }
+        .status-online { color: #2ecc71; font-weight: bold; }
+        
+        /* Notification Counter Badge */
+        .msg-count-badge { background: #25D366; color: white; font-size: 12px; font-weight: bold; min-width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; padding: 0 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
 
-        /* Dashboard Master Space split */
-        .dashboard-body { display: flex; flex: 1; width: 100vw; height: calc(100vh - 60px); position: relative; overflow: hidden; }
+        /* Main Chat Window Area */
+        .chat-area { width: 70%; display: flex; flex-direction: column; background: var(--bg-color); position: relative; }
+        .chat-header { background: #f0f2f5; padding: 10px 16px; height: 60px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #e9edef; font-weight: 600; }
+        .messages-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
         
-        /* Left Side Bar List Layout */
-        .sidebar { width: 35%; max-width: 380px; min-width: 270px; background: white; border-right: 1px solid #e9edef; overflow-y: auto; display: flex; flex-direction: column; }
-        .sidebar-title { padding: 12px 15px; font-size: 12px; font-weight: bold; color: var(--wa-light); border-bottom: 1px solid #f0f2f5; text-transform: uppercase; letter-spacing: 0.5px; }
-        
-        .chat-row { display: flex; align-items: center; gap: 10px; padding: 12px 15px; border-bottom: 1px solid #f0f2f5; cursor: pointer; transition: 0.2s; position: relative; }
-        .chat-row:hover { background: #f0f2f5; }
-        .chat-row.active { background: #e9edef; }
-        .row-avatar { width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #e1f3ff; color: #0275d8; font-size: 16px; flex-shrink: 0; }
-        .row-avatar.group-avatar { background: #e1fbd4; color: var(--wa-green); }
-        .row-details { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-        
-        .row-meta-container { display: flex; justify-content: space-between; align-items: center; width: 100%; }
-        .row-name { font-weight: 600; font-size: 14px; color: black; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        
-        /* Unread Msg Counter Notification Badge */
-        .unread-counter-badge { background: #25D366; color: white; border-radius: 50%; min-width: 20px; height: 20px; padding: 2px 6px; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
-        
-        /* Dropdown Label Selector Styles */
-        .label-picker { width: 100%; max-width: 140px; font-size: 11px; padding: 3px; border-radius: 4px; border: 1px solid #ccc; background: white; outline: none; margin-top: 2px; font-weight: 500; cursor: pointer; }
-        .label-picker.pending { background: #fff3cd; color: #856404; border-color: #ffeeba; }
-        .label-picker.paid { background: #d4edda; color: #155724; border-color: #c3e6cb; }
-        .label-picker.cancelled { background: #f8d7da; color: #721c24; border-color: #f5c6cb; }
-
-        /* Right Selected Dialog Window Workspace block */
-        .chat-window { flex: 1; background: var(--bg-color); display: flex; flex-direction: column; height: 100%; position: relative; overflow: hidden; }
-        .placeholder-view { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #667781; gap: 10px; font-size: 15px; background: #f8f9fa; text-align: center; padding: 20px; }
-        
-        .window-header { background: #f0f2f5; padding: 10px 15px; display: flex; align-items: center; gap: 12px; height: 50px; min-height: 50px; border-bottom: 1px solid #e9edef; font-weight: 600; font-size: 15px; z-index: 5; }
-        
-        /* Chat Content Canvas History Panel */
-        .chat-container { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; background-color: var(--bg-color); padding-bottom: 20px; }
-        
-        /* Chat Bubble Nodes Matrix */
-        .message { max-width: 75%; padding: 8px 12px 24px 12px; border-radius: 10px; font-size: 15px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.08); word-break: break-word; color: black; display: inline-block; min-width: 90px; }
+        /* Bubble Chat Messages */
+        .message { max-width: 65%; padding: 8px 12px 24px 12px; border-radius: 10px; font-size: 15px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.08); word-break: break-word; min-width: 90px; }
         .message.sent { background: #d9fdd3; align-self: flex-end; border-top-right-radius: 0; }
         .message.received { background: white; align-self: flex-start; border-top-left-radius: 0; }
+        .msg-time { position: absolute; bottom: 4px; right: 8px; font-size: 10px; color: #727272; }
         
-        /* Meta row tracking timings & Ticks inside bubble */
-        .msg-meta { position: absolute; bottom: 3px; right: 8px; font-size: 10px; color: #727272; display: flex; align-items: center; gap: 4px; white-space: nowrap; }
-        .tick-icon { font-size: 11px; }
-        .tick-blue { color: #34b7f1; }
-        .tick-gray { color: #8696a0; }
-        
-        .chat-media { max-width: 100%; border-radius: 8px; margin-bottom: 4px; display: block; max-height: 180px; object-fit: cover; }
-        .chat-video { max-width: 100%; border-radius: 8px; margin-bottom: 4px; display: block; max-height: 180px; }
-        .chat-link { color: #0275d8; text-decoration: underline; word-break: break-all; }
+        .chat-media { max-width: 100%; border-radius: 8px; max-height: 200px; display: block; margin-bottom: 4px; cursor: pointer; }
+        .chat-link { color: #0275d8; text-decoration: underline; }
 
-        /* Media Control Layout elements */
-        .audio-player-box { display: flex; align-items: center; gap: 10px; min-width: 180px; padding: 4px 0; }
-        .audio-play-btn { background: none; border: none; color: var(--wa-light); font-size: 18px; cursor: pointer; }
-        .audio-timeline { flex: 1; height: 4px; background: #b8d4ca; border-radius: 2px; position: relative; }
-        .audio-progress { width: 0%; height: 100%; background: var(--wa-light); border-radius: 2px; }
-        .audio-duration { font-size: 11px; color: #555; }
+        /* Audio Controls style */
+        .audio-box { display: flex; align-items: center; gap: 10px; min-width: 200px; padding: 5px 0; }
+        .audio-btn { background: none; border: none; color: var(--wa-light); font-size: 18px; cursor: pointer; outline: none; }
+        .audio-bar { flex: 1; height: 4px; background: #b8d4ca; border-radius: 2px; }
+        .audio-progress { width: 0%; height: 100%; background: var(--wa-light); }
 
-        /* FIXED BOTTOM INPUT BAR AREA */
-        .input-area { background: #f0f2f5; padding: 8px 12px; display: flex; align-items: center; gap: 8px; border-top: 1px solid #e9edef; height: 60px; min-height: 60px; width: 100%; position: relative; z-index: 10; margin-top: auto; }
-        .input-wrapper { flex: 1; background: white; border-radius: 25px; display: flex; align-items: center; padding: 0 12px; border: 1px solid #ccc; height: 40px; gap: 8px; }
-        .input-box { flex: 1; background: transparent; border: none; outline: none; font-size: 15px; height: 100%; color: black; }
+        /* Input Bar Controls */
+        .admin-input-area { background: #f0f2f5; padding: 10px; display: flex; align-items: center; gap: 10px; height: 60px; }
+        .admin-input-box { flex: 1; background: white; padding: 10px 15px; border-radius: 20px; border: 1px solid #ccc; outline: none; font-size: 15px; }
+        .admin-send-btn { background: var(--wa-light); color: white; border: none; width: 40px; height: 40px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 16px; }
         
-        .attach-btn, .mic-btn { color: #54656f; font-size: 18px; cursor: pointer; padding: 4px; background: none; border: none; display: flex; align-items: center; }
-        .send-btn { background: var(--wa-light); color: white; width: 40px; height: 40px; border-radius: 50%; border: none; display: flex; justify-content: center; align-items: center; font-size: 16px; cursor: pointer; flex-shrink: 0; }
-        #file-input { display: none; }
-        
-        .img-modal { display: none; position: fixed; z-index: 9999; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.9); align-items: center; justify-content: center; }
-        .modal-content { max-width: 90%; max-height: 85%; border-radius: 8px; }
-        .close-modal { position: absolute; top: 20px; right: 25px; color: white; font-size: 35px; cursor: pointer; }
+        .no-chat-selected { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; background: #f8f9fa; color: #666; font-size: 16px; gap: 10px; }
+        .no-chat-selected i { font-size: 50px; color: #ccc; }
     </style>
 </head>
 <body>
 
-    <div class="wa-header">
-        <img src="https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=256&auto=format&fit=crop" class="wa-avatar-img" alt="Admin App Logo">
-        <div>
-            <div style="font-weight: 600; display: flex; align-items: center; gap: 5px; font-size: 15px;">
-                <span>Official Live Support Panel (Admin)</span>
-                <i class="fas fa-check-circle verified-badge"></i>
-            </div>
-        </div>
+    <!-- Left Sidebar: Users List Grid -->
+    <div class="sidebar">
+        <div class="sidebar-header">💬 Live Active Support</div>
+        <div class="user-list" id="users-container"></div>
     </div>
 
-    <div class="dashboard-body">
-        
-        <div class="sidebar">
-            <div class="sidebar-title">Channels & Broadcasting</div>
-            
-            <div class="chat-row" id="room-global-group" onclick="selectActiveRoom('group', '📢 Official Updates Group', 'group')">
-                <div class="row-avatar group-avatar"><i class="fas fa-users"></i></div>
-                <div class="row-details">
-                    <div class="row-name" style="color: var(--wa-green); font-weight: 700;">📢 Official Updates Group</div>
-                    <div class="row-subtitle">Broadcast to all users...</div>
-                </div>
-            </div>
-
-            <div class="sidebar-title" style="border-top: 5px solid #f0f2f5;">Customer Channels</div>
-            <div id="users-list-container"></div>
-        </div>
-
-        <div class="chat-window" id="active-chat-window">
-            
-            <div class="placeholder-view" id="blank-placeholder">
-                <i class="fab fa-whatsapp" style="font-size: 45px; color: #cbd5e1;"></i>
-                <p style="font-size: 14px;">Select any chat room or broadcast group to start messaging.</p>
-            </div>
-
-            <div class="window-header" id="chat-header-node" style="display: none;">
-                <span id="target-room-title">Select Chat</span>
-            </div>
-
-            <div class="chat-container" id="chat-box" style="display: none;"></div>
-
-            <div class="input-area" id="chat-input-node" style="display: none;">
-                <div class="input-wrapper">
-                    <label for="file-input" class="attach-btn"><i class="fas fa-paperclip"></i></label>
-                    <input type="file" id="file-input" accept="image/*,video/*">
-                    <input type="text" id="msg-input" class="input-box" placeholder="Type a message...">
-                    <button id="admin-mic-btn" class="mic-btn"><i class="fas fa-microphone"></i></button>
-                </div>
-                <button id="btn-send" class="send-btn"><i class="fas fa-paper-plane"></i></button>
+    <!-- Right Window: Message Terminal Frame -->
+    <div class="chat-area">
+        <div id="active-chat-window" style="display: none; height: 100%; flex-direction: column;">
+            <div class="chat-header" id="current-user-header">Select a User</div>
+            <div class="messages-container" id="admin-messages-box"></div>
+            <div class="admin-input-area">
+                <input type="text" id="admin-reply-input" class="admin-input-box" placeholder="Type a reply...">
+                <button id="admin-btn-send" class="admin-send-btn"><i class="fas fa-paper-plane"></i></button>
             </div>
         </div>
-
-    </div>
-
-    <div id="imageModal" class="img-modal">
-        <span class="close-modal" onclick="closeImagePreview()">&times;</span>
-        <img class="modal-content" id="modalImg">
+        <div id="no-chat-placeholder" class="no-chat-selected">
+            <i class="fab fa-whatsapp"></i>
+            <p>Kisi bhi user par click karke live chat shuru karein.</p>
+        </div>
     </div>
 
     <script>
-        // Firebase Core Credentials Configuration setup keys
+        // Firebase Configuration Details
         const firebaseConfig = {
             apiKey: "AIzaSyDe8zFsomI7Qn1PfuJb_FyWOLe1SdqEZHM",
             authDomain: "wattsapp-27aa4.firebaseapp.com",
@@ -163,330 +94,148 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        let activeTargetId = null;
-        let currentRoomType = null;
-        let activeSnapshotListener = null;
+        let selectedUserId = null;
+        let activeMessagesListener = null;
 
-        let userNamesMapping = {};
+        // Step 1: Real-time fetch and structure user lists + unread count calculation
+        db.collection("messages").onSnapshot((snapshot) => {
+            const userCounts = {};
+            const userLastTimestamp = {};
 
-        // Realtime Data Sync Pipeline with Sorting logic + Unread Counters
-        db.collection("user_presence").onSnapshot(presenceSnapshot => {
-            // Map data items and include custom sort timestamp parameters inside processing
-            let usersDataList = [];
-            
-            presenceSnapshot.docs.forEach(doc => {
-                const userId = doc.id;
-                if(userId === 'admin') return; // bypass admin node track
-                
-                usersDataList.push({
-                    id: userId,
-                    ...doc.data()
-                });
-            });
-
-            // SORT DATA SYSTEM: Newest updated interactions (last_msg_time) bubble up straight to the top
-            usersDataList.sort((a, b) => {
-                let timeA = a.last_msg_time || 0;
-                let timeB = b.last_msg_time || 0;
-                return timeB - timeA; 
-            });
-
-            // Re-render the Left Sidebar with calculated sequence mappings safely
-            const container = document.getElementById('users-list-container');
-            container.innerHTML = '';
-            
-            let IndexTracker = 1;
-            usersDataList.forEach(user => {
-                const userId = user.id;
-                
-                if(!userNamesMapping[userId]) {
-                    userNamesMapping[userId] = `User ${IndexTracker}`;
+            // Collect unique user identifiers and monitor counts
+            snapshot.docs.forEach(doc => {
+                const data = doc.data();
+                const uid = data.room_id;
+                if (uid) {
+                    if (!userCounts[uid]) userCounts[uid] = 0;
+                    // Count message if it belongs to the user and is NOT read by admin yet
+                    if (data.sender === uid && data.status !== 'seen') {
+                        userCounts[uid]++;
+                    }
+                    if (!userLastTimestamp[uid] || data.time_now > userLastTimestamp[uid]) {
+                        userLastTimestamp[uid] = data.time_now;
+                    }
                 }
-                const visibleFriendlyName = userNamesMapping[userId];
-                IndexTracker++;
-
-                const selectedLabel = user.label || 'none';
-                const countUnread = user.unread_count || 0;
-
-                const div = document.createElement('div');
-                div.classList.add('chat-row');
-                div.id = `room-${userId}`;
-                if(activeTargetId === userId) div.classList.add('active');
-                
-                // Construct inner node frame elements blocks tree grid
-                div.innerHTML = `
-                    <div class="row-avatar" onclick="selectActiveRoom('${userId}', 'Private Chat: ${visibleFriendlyName}', 'personal')"><i class="fas fa-user"></i></div>
-                    <div class="row-details">
-                        <div class="row-meta-container">
-                            <div class="row-name" onclick="selectActiveRoom('${userId}', 'Private Chat: ${visibleFriendlyName}', 'personal')">${visibleFriendlyName}</div>
-                            ${countUnread > 0 ? `<span class="unread-counter-badge">${countUnread}</span>` : ''}
-                        </div>
-                        <select class="label-picker ${selectedLabel}" onchange="updateUserLabel('${userId}', this.value)">
-                            <option value="none" ${selectedLabel==='none'?'selected':''}>No Label</option>
-                            <option value="pending" ${selectedLabel==='pending'?'selected':''}>⏳ Pending Payment</option>
-                            <option value="paid" ${selectedLabel==='paid'?'selected':''}>✅ Paid</option>
-                            <option value="cancelled" ${selectedLabel==='cancelled'?'selected':''}>❌ Cancelled</option>
-                        </select>
-                    </div>
-                `;
-                container.appendChild(div);
             });
+
+            // Order user nodes by latest timeline interaction activity
+            const sortedUsersIds = Object.keys(userCounts).sort((a,b) => userLastTimestamp[b] - userLastTimestamp[a]);
+            renderUserSidebar(sortedUsersIds, userCounts);
         });
 
-        // Trigger updates adjustments user label parameter meta updates back to cloud firestore records
-        window.updateUserLabel = async function(userId, selectedValue) {
-            try {
-                await db.collection("user_presence").doc(userId).set({ label: selectedValue }, { merge: true });
-            } catch(e) { console.error(e); }
-        };
+        // Step 2: Render sidebar with dynamic selection tracking
+        function renderUserSidebar(userIds, counts) {
+            const container = document.getElementById('users-container');
+            container.innerHTML = '';
 
-        // Workspace selection click pointer operations routing handler
-        window.selectActiveRoom = async function(targetId, displayName, type = 'group') {
-            activeTargetId = targetId;
-            currentRoomType = type;
+            userIds.forEach(uid => {
+                const unreadCount = counts[uid] || 0;
+                const item = document.createElement('div');
+                item.className = `user-item ${selectedUserId === uid ? 'active' : ''}`;
+                
+                // Fetch dynamic network online status from database presence tables
+                db.collection("user_presence").doc(uid).get().then(presenceDoc => {
+                    let statusStr = "Offline";
+                    if(presenceDoc.exists && presenceDoc.data().status === 'online') {
+                        statusStr = `<span class="status-online">Online</span>`;
+                    }
+                    item.querySelector('.user-status').innerHTML = statusStr;
+                });
 
-            document.querySelectorAll('.chat-row').forEach(r => r.classList.remove('active'));
-            const targetRow = document.getElementById(`room-${targetId}`);
-            if(targetRow) targetRow.classList.add('active');
-
-            document.getElementById('blank-placeholder').style.display = 'none';
-            document.getElementById('chat-header-node').style.display = 'flex';
-            document.getElementById('chat-box').style.display = 'flex';
-            document.getElementById('chat-input-node').style.display = 'flex';
-            document.getElementById('target-room-title').innerText = displayName;
-
-            if(activeSnapshotListener) activeSnapshotListener();
-
-            if (currentRoomType === 'group') {
-                activeSnapshotListener = db.collection("group_messages").orderBy("time_now", "asc")
-                    .onSnapshot(snap => renderMessages(snap.docs, true));
-            } else {
-                // RESET COUNTER: Chat open hote hi admin side se dynamic counter cleared back to 0
-                await db.collection("user_presence").doc(targetId).set({ unread_count: 0 }, { merge: true });
-
-                // Loop chat stream listener updates matrix
-                activeSnapshotListener = db.collection("messages").where("room_id", "==", targetId)
-                    .onSnapshot(snap => {
-                        let sorted = snap.docs.sort((a, b) => a.data().time_now - b.data().time_now);
-                        renderMessages(sorted, false);
-                    });
-            }
-        };
-
-        // UI Element Bubbles Painter core logic renderer loop matrix
-        function renderMessages(docs, isGroupContext) {
-            const box = document.getElementById('chat-box');
-            box.innerHTML = '';
-
-            docs.forEach(doc => {
-                const m = doc.data();
-                const isSentByMe = m.sender === 'admin';
-
-                const d = document.createElement('div');
-                d.classList.add('message', isSentByMe ? 'sent' : 'received');
-
-                let contentHTML = '';
-                if (m.type === 'image') {
-                    contentHTML = `<img src="${m.file_url}" class="chat-media" onclick="openImagePreview('${m.file_url}')">`;
-                } else if (m.type === 'video') {
-                    contentHTML = `<video src="${m.file_url}" controls class="chat-video"></video>`;
-                } else if (m.type === 'audio') {
-                    const uniqueId = 'prog_' + doc.id;
-                    contentHTML = `
-                        <div class="audio-player-box">
-                            <button class="audio-play-btn" onclick="toggleAudio(this, '${m.file_url}', '${uniqueId}')"><i class="fas fa-play"></i></button>
-                            <div class="audio-timeline"><div class="audio-progress" id="${uniqueId}"></div></div>
-                            <span class="audio-duration">${m.duration || '0:04'}</span>
+                item.innerHTML = `
+                    <div class="user-info">
+                        <div class="user-avatar">${uid.charAt(0)}</div>
+                        <div class="user-details">
+                            <span class="user-name">${uid}</span>
+                            <span class="user-status">Checking status...</span>
                         </div>
-                    `;
-                } else {
-                    contentHTML = `<div>${linkify(m.message_text)}</div>`;
-                }
+                    </div>
+                    ${unreadCount > 0 ? `<div class="msg-count-badge">${unreadCount}</div>` : ''}
+                `;
 
-                const timeStr = formatTime(m.time_now);
-                // Render custom dynamic ticks if message context flows outwards from Admin
-                const ticksHTML = (!isGroupContext && isSentByMe) ? getTickHTML(m.status) : '';
-
-                d.innerHTML = `${contentHTML}<div class="msg-meta"><span>${timeStr}</span>${ticksHTML}</div>`;
-                box.appendChild(d);
+                // CRITICAL FIX: Click handler to perfectly open chat screen
+                item.onclick = () => selectUserChatRoom(uid);
+                container.appendChild(item);
             });
-            box.scrollTop = box.scrollHeight;
         }
 
-        // WhatsApp Ticks Status Layout Generator Function
-        function getTickHTML(status) {
-            if (status === 'seen') {
-                return '<i class="fas fa-check-double tick-icon tick-blue" style="color: #34b7f1;"></i>'; // Blue Double Tick
-            } else if (status === 'delivered') {
-                return '<i class="fas fa-check-double tick-icon tick-gray" style="color: #8696a0;"></i>'; // Gray Double Tick
-            } else {
-                return '<i class="fas fa-check tick-icon tick-gray" style="color: #8696a0;"></i>'; // Gray Single Tick
-            }
+        // Step 3: Open selection target chat panel and update read markers
+        function selectUserChatRoom(uid) {
+            selectedUserId = uid;
+            
+            // UI views switcher
+            document.getElementById('no-chat-placeholder').style.display = 'none';
+            document.getElementById('active-chat-window').style.display = 'flex';
+            document.getElementById('current-user-header').innerText = `Chatting with: ${uid}`;
+
+            // Highlight chosen user item block UI
+            document.querySelectorAll('.user-item').forEach(el => el.classList.remove('active'));
+            
+            // Clean active listeners to prevent stack leaks
+            if (activeMessagesListener) activeMessagesListener();
+
+            // Open stream channel for message items
+            activeMessagesListener = db.collection("messages")
+                .where("room_id", "==", uid)
+                .onSnapshot(snapshot => {
+                    const box = document.getElementById('admin-messages-box');
+                    box.innerHTML = '';
+                    
+                    let sorted = snapshot.docs.sort((a,b) => a.data().time_now - b.data().time_now);
+                    
+                    sorted.forEach(doc => {
+                        const m = doc.data();
+                        const isMe = m.sender === 'admin';
+
+                        // Mark user incoming messages as seen immediately
+                        if (!isMe && m.status !== 'seen') {
+                            db.collection("messages").doc(doc.id).update({ status: 'seen' });
+                        }
+
+                        const d = document.createElement('div');
+                        d.classList.add('message', isMe ? 'sent' : 'received');
+
+                        let content = '';
+                        if (m.type === 'image') {
+                            content = `<img src="${m.file_url}" class="chat-media" onclick="window.open('${m.file_url}')">`;
+                        } else if (m.type === 'audio') {
+                            content = `
+                                <div class="audio-box">
+                                    <button class="audio-btn" onclick="new Audio('${m.file_url}').play()"><i class="fas fa-play"></i></button>
+                                    <div class="audio-bar"><div class="audio-progress" style="width:100%"></div></div>
+                                </div>`;
+                        } else {
+                            content = `<div>${m.message_text}</div>`;
+                        }
+
+                        const time = new Date(m.time_now).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                        d.innerHTML = `${content}<span class="msg-time">${time}</span>`;
+                        box.appendChild(d);
+                    });
+                    box.scrollTop = box.scrollHeight;
+                });
         }
 
-        // Outbound Transmitter data dispatcher flow core process pipeline
-        async function sendAdminMessage() {
-            const inp = document.getElementById('msg-input');
+        // Step 4: Outgoing admin reply message handler routine
+        async function sendAdminReply() {
+            const inp = document.getElementById('admin-reply-input');
             const val = inp.value.trim();
-            if(!val || !activeTargetId) return;
+            if (!val || !selectedUserId) return;
             inp.value = '';
 
-            const timeNow = Date.now();
-
-            if (currentRoomType === 'group') {
-                await db.collection("group_messages").add({
-                    message_text: val, sender: 'admin', time_now: timeNow, type: 'text'
-                });
-            } else {
-                // Fetch user dynamic presence profile state directly to mark exact outbound status logic instantly
-                const userDoc = await db.collection("user_presence").doc(activeTargetId).get();
-                let initialStatus = 'sent'; // default gray single tick fallback
-                
-                if (userDoc.exists && userDoc.data().status === 'online') {
-                    initialStatus = 'delivered'; // User online hai toh straight gray double tick
-                }
-
-                await db.collection("messages").add({
-                    message_text: val, sender: 'admin', receiver: activeTargetId, room_id: activeTargetId, time_now: timeNow, type: 'text', status: initialStatus
-                });
-
-                // Update timestamps reference data track records node parameters pipeline
-                await db.collection("user_presence").doc(activeTargetId).set({ last_msg_time: timeNow }, { merge: true });
-            }
+            await db.collection("messages").add({
+                message_text: val,
+                sender: 'admin',
+                receiver: selectedUserId,
+                room_id: selectedUserId,
+                time_now: Date.now(),
+                type: 'text',
+                status: 'sent'
+            });
         }
 
-        // Base64 Multi Document Media loader files uploader streams attachment listener
-        document.getElementById('file-input').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file || !activeTargetId) return;
-
-            const isVideo = file.type.startsWith('video/');
-            const inputField = document.getElementById('msg-input');
-            inputField.placeholder = isVideo ? "Uploading video..." : "Uploading image...";
-
-            const reader = new FileReader();
-            reader.onloadend = async function() {
-                try {
-                    let targetCol = currentRoomType === 'group' ? "group_messages" : "messages";
-                    const timeNow = Date.now();
-
-                    let payload = {
-                        message_text: isVideo ? "Admin sent a video" : "Admin sent an image",
-                        file_url: reader.result,
-                        sender: 'admin',
-                        time_now: timeNow,
-                        type: isVideo ? 'video' : 'image'
-                    };
-
-                    if (currentRoomType === 'personal') {
-                        const userDoc = await db.collection("user_presence").doc(activeTargetId).get();
-                        let initialStatus = 'sent';
-                        if (userDoc.exists && userDoc.data().status === 'online') { initialStatus = 'delivered'; }
-
-                        payload.receiver = activeTargetId;
-                        payload.room_id = activeTargetId;
-                        payload.status = initialStatus;
-
-                        await db.collection("user_presence").doc(activeTargetId).set({ last_msg_time: timeNow }, { merge: true });
-                    }
-
-                    await db.collection(targetCol).add(payload);
-                } catch(err) { alert(err.message); }
-                inputField.placeholder = "Type a message...";
-            };
-            reader.readAsDataURL(file);
-            e.target.value = '';
-        });
-
-        // Mic recorder Dictation system hardware engine controller codes setup properties
-        let mediaRecorder;
-        let audioChunks = [];
-        let isRecording = false;
-        const micBtn = document.getElementById('admin-mic-btn');
-
-        micBtn.addEventListener('click', async () => {
-            if (!isRecording && activeTargetId) {
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    mediaRecorder = new MediaRecorder(stream);
-                    audioChunks = [];
-                    mediaRecorder.addEventListener('dataavailable', e => audioChunks.push(e.data));
-
-                    mediaRecorder.addEventListener('stop', () => {
-                        const audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
-                        const reader = new FileReader();
-                        reader.readAsDataURL(audioBlob);
-                        reader.onloadend = async () => {
-                            let targetCol = currentRoomType === 'group' ? "group_messages" : "messages";
-                            const timeNow = Date.now();
-
-                            let payload = {
-                                message_text: "Admin sent a voice note",
-                                file_url: reader.result,
-                                sender: 'admin',
-                                time_now: timeNow,
-                                type: 'audio',
-                                duration: '0:04'
-                            };
-                            if (currentRoomType === 'personal') {
-                                const userDoc = await db.collection("user_presence").doc(activeTargetId).get();
-                                let initialStatus = 'sent';
-                                if (userDoc.exists && userDoc.data().status === 'online') { initialStatus = 'delivered'; }
-
-                                payload.receiver = activeTargetId; payload.room_id = activeTargetId; payload.status = initialStatus;
-                                await db.collection("user_presence").doc(activeTargetId).set({ last_msg_time: timeNow }, { merge: true });
-                            }
-                            await db.collection(targetCol).add(payload);
-                        };
-                        stream.getTracks().forEach(t => t.stop());
-                    });
-
-                    mediaRecorder.start();
-                    isRecording = true;
-                    micBtn.innerHTML = '<i class="fas fa-stop" style="color:#e74c3c;"></i>';
-                } catch (err) { alert("Mic hardware interface error."); }
-            } else if (isRecording) {
-                mediaRecorder.stop();
-                isRecording = false;
-                micBtn.innerHTML = '<i class="fas fa-microphone"></i>';
-            }
-        });
-
-        // Dynamic Audio player timelines updates core function
-        window.toggleAudio = function(btn, audioUrl, progressId) {
-            let activeAudio = window[`audio_${progressId}`];
-            const progressBar = document.getElementById(progressId);
-            if (!activeAudio) {
-                activeAudio = new Audio(audioUrl);
-                window[`audio_${progressId}`] = activeAudio;
-                activeAudio.addEventListener('timeupdate', () => {
-                    progressBar.style.width = ((activeAudio.currentTime / activeAudio.duration) * 100) + '%';
-                });
-                activeAudio.addEventListener('ended', () => { btn.innerHTML = '<i class="fas fa-play"></i>'; progressBar.style.width = '0%'; });
-            }
-            if (activeAudio.paused) { activeAudio.play(); btn.innerHTML = '<i class="fas fa-pause"></i>'; }
-            else { activeAudio.pause(); btn.innerHTML = '<i class="fas fa-play"></i>'; }
-        };
-
-        function formatTime(timestamp) {
-            if(!timestamp) return '';
-            const date = new Date(timestamp);
-            let hours = date.getHours(), minutes = date.getMinutes();
-            const ampm = hours >= 12 ? 'PM' : 'AM';
-            hours = hours % 12 || 12;
-            minutes = minutes < 10 ? '0' + minutes : minutes;
-            return hours + ':' + minutes + ' ' + ampm;
-        }
-
-        function linkify(text) {
-            return text.replace(/(https?:\/\/[^\s]+)/g, url => `<a class="chat-link" href="${url}" target="_blank">${url}</a>`);
-        }
-
-        function openImagePreview(src) { document.getElementById("modalImg").src = src; document.getElementById("imageModal").style.display = "flex"; }
-        function closeImagePreview() { document.getElementById("imageModal").style.display = "none"; }
-
-        document.getElementById('btn-send').addEventListener('click', sendAdminMessage);
-        document.getElementById('msg-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') sendAdminMessage(); });
+        document.getElementById('admin-btn-send').addEventListener('click', sendAdminReply);
+        document.getElementById('admin-reply-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') sendAdminReply(); });
     </script>
 </body>
 </html>
