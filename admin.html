@@ -145,37 +145,34 @@
         let mediaRecorder = null;
         let audioChunks = [];
         let userNamingMap = {};
-        let cachedPresence = {}; // Store presence data globally to avoid infinite nested queries
+        let cachedPresence = {};
+        let loadedMessageIds = new Set(); // Speed Optimization: Pure database load ko track karne ke liye
 
-        // Global single-stream presence listener to eliminate sidebar lag
         function listenToGlobalPresenceChanges() {
             if(presenceSnapshotListener) presenceSnapshotListener();
             presenceSnapshotListener = db.collection("user_presence").onSnapshot(snapshot => {
                 snapshot.forEach(doc => {
                     cachedPresence[doc.id] = doc.data().status;
                 });
-                // Realtime UI sync refresh without reloading structural elements
                 Object.keys(cachedPresence).forEach(uid => {
                     const statusRow = document.getElementById(`presence-${uid}`);
                     if(statusRow) {
-                        if(cachedPresence[uid] === 'online') {
-                            statusRow.innerHTML = `<span class="dot-indicator dot-online"></span> Online`;
-                        } else {
-                            statusRow.innerHTML = `<span class="dot-indicator dot-offline"></span> Offline`;
-                        }
+                        statusRow.innerHTML = cachedPresence[uid] === 'online' 
+                            ? `<span class="dot-indicator dot-online"></span> Online` 
+                            : `<span class="dot-indicator dot-offline"></span> Offline`;
                     }
                 });
             });
         }
 
-        // LIGHTWEIGHT SIDEBAR TRACKER: Optimized to prevent rendering delay
+        // ULTRA-FAST SIDEBAR: Re-rendering khatam, bas DOM update hoga
         function initSuperFastSidebarTracker() {
             if(sidebarSnapshotListener) sidebarSnapshotListener();
             listenToGlobalPresenceChanges();
             
             sidebarSnapshotListener = db.collection("messages")
                 .orderBy("time_now", "desc")
-                .limit(150) // Reduced limit for smooth hardware performance
+                .limit(100) // Performance load lightweight rakha hai
                 .onSnapshot((snapshot) => {
                     const counts = {};
                     const firstAppearanceTime = {};
@@ -212,49 +209,56 @@
             const broadcastBox = document.getElementById('broadcast-group-container');
             const individualBox = document.getElementById('individual-users-container');
             
-            broadcastBox.innerHTML = `
-                <div class="user-item ${selectedUserId === 'official_broadcast_group' ? 'active' : ''}" onclick="selectChatRoomChannel('official_broadcast_group')">
-                    <div class="user-info">
-                        <div class="user-avatar-circle"><i class="fas fa-users"></i></div>
-                        <div class="user-meta-block">
-                            <span class="user-profile-name" style="color:var(--wa-dark-green);">📢 Official Updates Group</span>
-                            <div class="status-sub-row">Broadcast Channel</div>
+            if(!broadcastBox.innerHTML.trim()) {
+                broadcastBox.innerHTML = `
+                    <div class="user-item" id="user-row-official_broadcast_group" onclick="selectChatRoomChannel('official_broadcast_group')">
+                        <div class="user-info">
+                            <div class="user-avatar-circle"><i class="fas fa-users"></i></div>
+                            <div class="user-meta-block">
+                                <span class="user-profile-name" style="color:var(--wa-dark-green);">📢 Official Updates Group</span>
+                                <div class="status-sub-row">Broadcast Channel</div>
+                            </div>
                         </div>
                     </div>
-                </div>
-            `;
+                `;
+            }
 
-            individualBox.innerHTML = '';
+            // Purani HTML ko delete karne ke bajay rearrange karein (WhatsApp fast style sorting)
             userIds.forEach(uid => {
                 const badgeCount = counts[uid] || 0;
                 const assignedName = userNamingMap[uid] || uid;
-                const item = document.createElement('div');
-                item.className = `user-item ${selectedUserId === uid ? 'active' : ''}`;
+                let existingRow = document.getElementById(`user-row-${uid}`);
                 
                 const currentStatus = cachedPresence[uid] || 'offline';
                 const presenceMarkup = currentStatus === 'online' 
                     ? `<span class="dot-indicator dot-online"></span> Online` 
                     : `<span class="dot-indicator dot-offline"></span> Offline`;
 
-                item.innerHTML = `
+                if (!existingRow) {
+                    existingRow = document.createElement('div');
+                    existingRow.id = `user-row-${uid}`;
+                    existingRow.onclick = () => selectChatRoomChannel(uid);
+                    individualBox.appendChild(existingRow);
+                }
+
+                existingRow.className = `user-item ${selectedUserId === uid ? 'active' : ''}`;
+                existingRow.innerHTML = `
                     <div class="user-info">
                         <div class="user-avatar-circle direct-user"><i class="fas fa-user"></i></div>
                         <div class="user-meta-block">
                             <span class="user-profile-name">${assignedName}</span>
-                            <div class="status-sub-row" id="presence-${uid}">
-                                ${presenceMarkup}
-                            </div>
+                            <div class="status-sub-row" id="presence-${uid}">${presenceMarkup}</div>
                         </div>
                     </div>
                     ${badgeCount > 0 ? `<div class="badge-counter">${badgeCount}</div>` : ''}
                 `;
-
-                item.onclick = () => selectChatRoomChannel(uid);
-                individualBox.appendChild(item);
+                
+                // Sabse upar insert/move karein bina lag ke
+                individualBox.appendChild(existingRow); 
             });
         }
 
-        // FAST LIVE CONVERSATION WINDOW LOADER
+        // DELAY FIX FOR LIVE CHAT VIEW
         function selectChatRoomChannel(uid) {
             selectedUserId = uid;
             document.getElementById('fallback-empty-view-placeholder').style.display = 'none';
@@ -264,37 +268,72 @@
             document.getElementById('active-user-title-text').innerText = assignedHeaderTitle;
 
             document.querySelectorAll('.user-item').forEach(el => el.classList.remove('active'));
+            const activeRow = document.getElementById(`user-row-${uid}`);
+            if(activeRow) activeRow.classList.add('active');
 
             if (activeMessagesListener) activeMessagesListener();
+            
+            const msgBox = document.getElementById('admin-messages-container-box');
+            msgBox.innerHTML = ''; // Channel badalne par clear karein
+            loadedMessageIds.clear();
 
             activeMessagesListener = db.collection("messages")
                 .where("room_id", "==", uid)
                 .onSnapshot(snapshot => {
-                    const msgBox = document.getElementById('admin-messages-container-box');
-                    msgBox.innerHTML = '';
+                    // Instant differential updates loop (Sirf naye documents render honge)
+                    let newDocs = snapshot.docChanges();
                     
-                    let sorted = snapshot.docs.sort((a,b) => a.data().time_now - b.data().time_now);
-                    sorted.forEach(doc => {
-                        const m = doc.data();
-                        const isMe = m.sender === 'admin';
+                    // Sort updates sequence correctly
+                    let sortedChanges = newDocs.sort((a, b) => a.doc.data().time_now - b.doc.data().time_now);
 
-                        if (!isMe && m.status !== 'seen' && uid === selectedUserId && uid !== "official_broadcast_group") {
-                            db.collection("messages").doc(doc.id).update({ status: 'seen' });
+                    sortedChanges.forEach(change => {
+                        const m = change.doc.data();
+                        const docId = change.doc.id;
+
+                        if (change.type === "added") {
+                            // Optimistic placeholder element ko dhoond kar remove karein agar real entity aa gayi hai
+                            const tempPlaceholder = document.getElementById(`temp-${m.time_now}`);
+                            if(tempPlaceholder) tempPlaceholder.remove();
+
+                            if (!loadedMessageIds.has(docId)) {
+                                loadedMessageIds.add(docId);
+                                appendMessageElementHTML(m, docId, false);
+                            }
+                        }
+                        
+                        if (change.type === "modified") {
+                            // Status update hone par bina text reload kiye tick change karein
+                            const existingMsg = document.getElementById(`msg-${docId}`);
+                            if(existingMsg && m.sender === 'admin') {
+                                const metaWrapper = existingMsg.querySelector('.msg-meta-wrapper');
+                                if(metaWrapper) {
+                                    metaWrapper.innerHTML = `<span>${new Date(m.time_now).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span> ${getTickMarkup(m.status)}`;
+                                }
+                            }
                         }
 
-                        appendMessageElementHTML(m, doc.id);
+                        // Seen mark optimization process
+                        if (m.sender === uid && m.status !== 'seen' && uid === selectedUserId && uid !== "official_broadcast_group") {
+                            db.collection("messages").doc(docId).update({ status: 'seen' });
+                        }
                     });
-                    msgBox.scrollTop = msgBox.scrollHeight;
                 });
         }
 
-        // Separate renderer for seamless batch rendering and UI append speed
+        function getTickMarkup(status) {
+            if (status === 'seen') return `<span class="status-tick-icon" style="color:#34b7f1;"><i class="fas fa-check-double"></i></span>`;
+            if (status === 'delivered') return `<span class="status-tick-icon" style="color:#8696a0;"><i class="fas fa-check-double"></i></span>`;
+            return `<span class="status-tick-icon" style="color:#8696a0;"><i class="fas fa-check"></i></span>`;
+        }
+
         function appendMessageElementHTML(m, id, isOptimistic = false) {
             const msgBox = document.getElementById('admin-messages-container-box');
             const isMe = m.sender === 'admin';
+            
             const d = document.createElement('div');
+            d.id = isOptimistic ? `temp-${m.time_now}` : `msg-${id}`;
             d.classList.add('msg-bubble', isMe ? 'sent' : 'received');
-            if(isOptimistic) d.style.opacity = '0.7';
+            if(isOptimistic) d.style.opacity = '0.6';
 
             let content = '';
             if (m.type === 'image') {
@@ -311,49 +350,38 @@
                 content = `<div>${m.message_text}</div>`;
             }
 
-            let tickMarkup = '';
-            if (isMe && selectedUserId !== "official_broadcast_group") {
-                if (m.status === 'seen') {
-                    tickMarkup = `<span class="status-tick-icon" style="color:#34b7f1;"><i class="fas fa-check-double"></i></span>`;
-                } else if (m.status === 'delivered') {
-                    tickMarkup = `<span class="status-tick-icon" style="color:#8696a0;"><i class="fas fa-check-double"></i></span>`;
-                } else {
-                    tickMarkup = `<span class="status-tick-icon" style="color:#8696a0;"><i class="fas fa-check"></i></span>`;
-                }
-            }
-
+            let tickMarkup = (isMe && selectedUserId !== "official_broadcast_group") ? getTickMarkup(m.status) : '';
             const tStr = new Date(m.time_now).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            d.innerHTML = `${content}
-                <div class="msg-meta-wrapper">
-                    <span>${tStr}</span>
-                    ${tickMarkup}
-                </div>`;
+            
+            d.innerHTML = `${content}<div class="msg-meta-wrapper"><span>${tStr}</span>${tickMarkup}</div>`;
+            
             msgBox.appendChild(d);
             msgBox.scrollTop = msgBox.scrollHeight;
         }
 
-        // WHATSAPP-LIKE OPTIMISTIC MESSAGE DELIVERY (Instant Send)
+        // WHATSAPP INSTANT OPTIMISTIC DISPATCHER (0ms Send Lag)
         async function triggerTextMessageDispatch() {
             const inp = document.getElementById('admin-chat-text-input');
             const txt = inp.value.trim();
             if (!txt || !selectedUserId) return;
             inp.value = '';
 
+            const timeStamp = Date.now();
             const localPayload = {
                 message_text: txt,
                 sender: 'admin',
                 receiver: selectedUserId === "official_broadcast_group" ? "all_users" : selectedUserId,
                 room_id: selectedUserId,
-                time_now: Date.now(),
+                time_now: timeStamp,
                 type: 'text',
                 status: 'sent'
             };
 
-            // Step 1: Render instantly to screen without database delay
-            appendMessageElementHTML(localPayload, "temp_id", true);
+            // Instant Screen UI update (Bina firebase wait kiye screen par show)
+            appendMessageElementHTML(localPayload, null, true);
 
-            // Step 2: Push asynchronously to Firebase in background
-            await db.collection("messages").add(localPayload);
+            // Back-end async dispatch pipeline
+            db.collection("messages").add(localPayload);
         }
 
         const micBtn = document.getElementById('admin-voice-mic-btn');
@@ -373,18 +401,19 @@
                     reader.readAsDataURL(audioBlob);
                     reader.onloadend = async () => {
                         if(!selectedUserId) return;
+                        const timeStamp = Date.now();
                         const payload = {
                             message_text: "Sent a voice message",
                             file_url: reader.result,
                             sender: 'admin',
                             receiver: selectedUserId === "official_broadcast_group" ? "all_users" : selectedUserId,
                             room_id: selectedUserId,
-                            time_now: Date.now(),
+                            time_now: timeStamp,
                             type: 'audio',
                             status: 'sent'
                         };
-                        appendMessageElementHTML(payload, "temp_id", true);
-                        await db.collection("messages").add(payload);
+                        appendMessageElementHTML(payload, null, true);
+                        db.collection("messages").add(payload);
                     };
                     stream.getTracks().forEach(track => track.stop());
                 };
@@ -407,18 +436,19 @@
 
             const r = new FileReader();
             r.onloadend = async () => {
+                const timeStamp = Date.now();
                 const payload = {
                     message_text: `Sent a ${fType}`,
                     file_url: r.result,
                     sender: 'admin',
                     receiver: selectedUserId === "official_broadcast_group" ? "all_users" : selectedUserId,
                     room_id: selectedUserId,
-                    time_now: Date.now(),
+                    time_now: timeStamp,
                     type: fType,
                     status: 'sent'
                 };
-                appendMessageElementHTML(payload, "temp_id", true);
-                await db.collection("messages").add(payload);
+                appendMessageElementHTML(payload, null, true);
+                db.collection("messages").add(payload);
             };
             r.readAsDataURL(file);
             e.target.value = '';
