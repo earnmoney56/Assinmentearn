@@ -167,12 +167,12 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // Detect Roles (Change 'admin' to true in localStorage for testing Admin UI privileges)
-        let isAdmin = localStorage.getItem('chat_is_admin') === 'true'; 
+        // STRICT USER-ONLY ROLE LOGIC
+        let isAdmin = false; 
         let myUserId = localStorage.getItem('user_chat_uuid') || 'User-' + Math.floor(1000 + Math.random() * 9000);
         localStorage.setItem('user_chat_uuid', myUserId);
 
-        let currentTab = 'personal'; // default tab mode
+        let currentTab = 'personal'; 
         let personalUnsubscribe = null;
         let groupUnsubscribe = null;
         let initialLoadPersonal = true;
@@ -183,7 +183,6 @@
         }
         updateUserPresence('online');
 
-        // Tab Management Function
         window.switchTab = function(tabName) {
             currentTab = tabName;
             document.getElementById('tab-personal').classList.toggle('active', tabName === 'personal');
@@ -200,16 +199,10 @@
                 statusEl.innerHTML = "<i class='fas fa-bullhorn'></i> Announcements Channel";
                 document.getElementById('group-badge').style.display = 'none';
 
-                // If user is not admin, disable input area completely
-                if (!isAdmin) {
-                    lockBanner.style.display = 'block';
-                    inputWrapper.style.display = 'none';
-                    sendBtn.style.display = 'none';
-                } else {
-                    lockBanner.style.display = 'none';
-                    inputWrapper.style.display = 'flex';
-                    sendBtn.style.display = 'flex';
-                }
+                lockBanner.style.display = 'block';
+                inputWrapper.style.display = 'none';
+                sendBtn.style.display = 'none';
+                
                 loadGroupMessages();
             } else {
                 titleEl.innerText = "Official Web Support";
@@ -219,21 +212,18 @@
                 inputWrapper.style.display = 'flex';
                 sendBtn.style.display = 'flex';
                 
-                // Pure target check and instant unread clearer when tab switches to Personal
                 triggerPersonalChatSeenFlush();
                 loadPersonalMessages();
             }
         };
 
-        // Render Functions
         function renderMessages(docs, isGroupContext) {
             const box = document.getElementById('chat-box');
             box.innerHTML = '';
             
             docs.forEach((doc) => {
                 const m = doc.data();
-                // Admin messages or self messages are aligned right
-                const isSentByMe = m.sender === myUserId || (isGroupContext && m.sender === 'admin' && isAdmin);
+                const isSentByMe = m.sender === myUserId;
 
                 const d = document.createElement('div');
                 d.classList.add('message', isSentByMe ? 'sent' : 'received');
@@ -265,10 +255,8 @@
             box.scrollTop = box.scrollHeight;
         }
 
-        // Helper: Instant seen flusher when user is actively inside the chat viewport
         function triggerPersonalChatSeenFlush() {
-            let roomId = isAdmin ? 'AdminRoomMock' : myUserId;
-            db.collection("messages").where("room_id", "==", roomId).get().then(snapshot => {
+            db.collection("messages").where("room_id", "==", myUserId).get().then(snapshot => {
                 snapshot.forEach(doc => {
                     if (doc.data().sender === 'admin' && doc.data().status !== 'seen') {
                         db.collection("messages").doc(doc.id).update({ status: 'seen' });
@@ -277,53 +265,48 @@
             });
         }
 
-        // Load Personal Tab Database Listener
+        // --- FIXED REALTIME FAST REALTIME SNAPSHOT LISTENER ---
         function loadPersonalMessages() {
             if(groupUnsubscribe) groupUnsubscribe();
             
-            let roomId = isAdmin ? 'AdminRoomMock' : myUserId; // Modify based on your Admin Routing structure
-            personalUnsubscribe = db.collection("messages").where("room_id", "==", roomId)
+            // Ab user sirf apne unique ID wale room ko pure tarike se sunega bina kisi delay ke
+            personalUnsubscribe = db.collection("messages").where("room_id", "==", myUserId)
                 .onSnapshot((snapshot) => {
                     let sorted = snapshot.docs.sort((a, b) => a.data().time_now - b.data().time_now);
                     
                     snapshot.docChanges().forEach(change => {
                         if (change.type === "added") {
                             const data = change.doc.data();
-                            // Target Condition: RINGTONE ONLY triggers when the message is incoming from Admin
                             if (data.sender === 'admin' && !initialLoadPersonal) {
-                                notificationSound.play().catch(e => console.log("Audio contexts pending interaction."));
+                                notificationSound.play().catch(e => console.log("Audio gesture delay handled."));
                                 triggerIncomingNotification(data.message_text || "Sent a media file");
                             }
                         }
                     });
 
-                    if (currentTab !== 'personal') return;
-
-                    // --- STRICT WHATSAPP DOUBLE / BLUE TICK LOGIC ---
-                    // Agar user app khol kar baitha hai tabhi status 'seen' (Blue tick) hoga, warna nahi!
-                    if (!isAdmin) {
-                        snapshot.docs.forEach(doc => {
-                            const d = doc.data();
-                            if (d.sender === 'admin') {
-                                if (document.visibilityState === "visible" && currentTab === 'personal') {
-                                    if (d.status !== 'seen') {
-                                        db.collection("messages").doc(doc.id).update({ status: 'seen' });
-                                    }
-                                } else {
-                                    // Agar background ya screen off hai, tab double gray tick (delivered) jayega
-                                    if (d.status === 'sent') {
-                                        db.collection("messages").doc(doc.id).update({ status: 'delivered' });
-                                    }
+                    // WHATSAPP RE-LIVE BLUE TICK UPDATE LOGIC
+                    snapshot.docs.forEach(doc => {
+                        const d = doc.data();
+                        if (d.sender === 'admin') {
+                            if (document.visibilityState === "visible" && currentTab === 'personal') {
+                                if (d.status !== 'seen') {
+                                    db.collection("messages").doc(doc.id).update({ status: 'seen' });
+                                }
+                            } else {
+                                if (d.status === 'sent') {
+                                    db.collection("messages").doc(doc.id).update({ status: 'delivered' });
                                 }
                             }
-                        });
-                    }
+                        }
+                    });
+
                     renderMessages(sorted, false);
                     initialLoadPersonal = false;
+                }, (error) => {
+                    console.error("Firestore error:", error);
                 });
         }
 
-        // Auto tracker check when the tab/app loses visibility or regains visibility focus
         document.addEventListener("visibilitychange", () => {
             if (document.visibilityState === "visible") {
                 updateUserPresence('online');
@@ -335,7 +318,6 @@
             }
         });
 
-        // Load Global Updates Group Tab Database Listener
         function loadGroupMessages() {
             if(personalUnsubscribe) personalUnsubscribe();
             
@@ -344,8 +326,7 @@
                     if (currentTab === 'group') {
                         renderMessages(snapshot.docs, true);
                     } else {
-                        // Notify group update when on personal chat tab
-                        if (!initialLoadGroup && !isAdmin) {
+                        if (!initialLoadGroup) {
                             document.getElementById('group-badge').style.display = 'inline-block';
                             triggerIncomingNotification("Group Update: New announcement posted!");
                         }
@@ -354,26 +335,25 @@
                 });
         }
 
-        // Send Message Handler
         async function sendMessage() {
             const inp = document.getElementById('msg-input');
             const val = inp.value.trim();
             if(!val) return;
             inp.value = '';
 
-            if (currentTab === 'group') {
-                if(!isAdmin) return; // Prevent spoof
-                await db.collection("group_messages").add({
-                    message_text: val, sender: 'admin', time_now: Date.now(), type: 'text'
-                });
-            } else {
-                await db.collection("messages").add({
-                    message_text: val, sender: myUserId, receiver: 'admin', room_id: myUserId, time_now: Date.now(), type: 'text', status: 'sent'
-                });
-            }
+            if (currentTab === 'group') return; // User cannot send to group
+
+            await db.collection("messages").add({
+                message_text: val, 
+                sender: myUserId, 
+                receiver: 'admin', 
+                room_id: myUserId, 
+                time_now: Date.now(), 
+                type: 'text', 
+                status: 'sent'
+            });
         }
 
-        // Base64 File Uploader (Supports Image & Video)
         document.getElementById('file-input').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -385,22 +365,17 @@
             const reader = new FileReader();
             reader.onloadend = async function() {
                 try {
-                    let targetCollection = currentTab === 'group' ? "group_messages" : "messages";
                     let payload = {
                         message_text: isVideo ? "Sent a video" : "Sent an image",
                         file_url: reader.result,
-                        sender: currentTab === 'group' ? 'admin' : myUserId,
+                        sender: myUserId,
+                        receiver: 'admin',
+                        room_id: myUserId,
                         time_now: Date.now(),
-                        type: isVideo ? 'video' : 'image'
+                        type: isVideo ? 'video' : 'image',
+                        status: 'sent'
                     };
-                    
-                    if(currentTab === 'personal') {
-                        payload.receiver = 'admin';
-                        payload.room_id = myUserId;
-                        payload.status = 'sent';
-                    }
-                    
-                    await db.collection(targetCollection).add(payload);
+                    await db.collection("messages").add(payload);
                 } catch (err) { alert(err.message); }
                 inputField.placeholder = "Type a message...";
             };
@@ -408,7 +383,6 @@
             e.target.value = ''; 
         });
 
-        // Media Voice Recorder Setup
         let mediaRecorder;
         let audioChunks = [];
         let isRecording = false;
@@ -427,19 +401,18 @@
                         const reader = new FileReader();
                         reader.readAsDataURL(audioBlob);
                         reader.onloadend = async () => {
-                            let targetCollection = currentTab === 'group' ? "group_messages" : "messages";
                             let payload = {
                                 message_text: "Sent a voice note",
                                 file_url: reader.result,
-                                sender: currentTab === 'group' ? 'admin' : myUserId,
+                                sender: myUserId,
+                                receiver: 'admin',
+                                room_id: myUserId,
                                 time_now: Date.now(),
                                 type: 'audio',
-                                duration: '0:08'
+                                duration: '0:08',
+                                status: 'sent'
                             };
-                            if (currentTab === 'personal') {
-                                payload.receiver = 'admin'; payload.room_id = myUserId; payload.status = 'sent';
-                            }
-                            await db.collection(targetCollection).add(payload);
+                            await db.collection("messages").add(payload);
                         };
                         stream.getTracks().forEach(t => t.stop());
                     });
@@ -447,7 +420,7 @@
                     mediaRecorder.start();
                     isRecording = true;
                     micBtn.innerHTML = '<i class="fas fa-stop" style="color:#e74c3c;"></i>';
-                } catch (err) { alert("Mic integration failed. Please allow explicit microphone permissions."); }
+                } catch (err) { alert("Mic permission denied."); }
             } else {
                 mediaRecorder.stop();
                 isRecording = false;
@@ -455,7 +428,6 @@
             }
         });
 
-        // Audio Track Controller
         window.toggleAudio = function(btn, audioUrl, progressId) {
             let activeAudio = window[`audio_${progressId}`];
             const progressBar = document.getElementById(progressId);
@@ -494,7 +466,6 @@
         }
 
         function triggerIncomingNotification(msgText) {
-            notificationSound.play().catch(e => console.log("Sound muted"));
             if ('Notification' in window && Notification.permission === 'granted') {
                 new Notification("Support Notification", { body: msgText, icon: 'https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=256&auto=format&fit=crop' });
             }
@@ -506,13 +477,11 @@
         document.getElementById('btn-send').addEventListener('click', sendMessage);
         document.getElementById('msg-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') sendMessage(); });
 
-        // Initialize App Mode Setup
         loadPersonalMessages();
-        // Also load background updates listener for group badges
         db.collection("group_messages").orderBy("time_now", "asc").onSnapshot(snap => {
-            if(currentTab !== 'group' && !initialLoadGroup && !isAdmin) {
+            if(currentTab !== 'group' && !initialLoadGroup) {
                 document.getElementById('group-badge').style.display = 'inline-block';
-                triggerIncomingNotification("Group Update: New announcement posted!");
+                notificationSound.play().catch(e => {});
             }
             initialLoadGroup = false;
         });
