@@ -222,25 +222,22 @@
                 `;
             }
 
+            individualBox.innerHTML = ''; // Fresh snapshot mapping for ultra speed list rendering
+
             userIds.forEach(uid => {
                 const badgeCount = counts[uid] || 0;
                 const assignedName = userNamingMap[uid] || uid;
-                let existingRow = document.getElementById(`user-row-${uid}`);
                 
                 const currentStatus = cachedPresence[uid] || 'offline';
                 const presenceMarkup = currentStatus === 'online' 
                     ? `<span class="dot-indicator dot-online"></span> Online` 
                     : `<span class="dot-indicator dot-offline"></span> Offline`;
 
-                if (!existingRow) {
-                    existingRow = document.createElement('div');
-                    existingRow.id = `user-row-${uid}`;
-                    existingRow.onclick = () => selectChatRoomChannel(uid);
-                    individualBox.appendChild(existingRow);
-                }
-
-                existingRow.className = `user-item ${selectedUserId === uid ? 'active' : ''}`;
-                existingRow.innerHTML = `
+                const itemRow = document.createElement('div');
+                itemRow.id = `user-row-${uid}`;
+                itemRow.onclick = () => selectChatRoomChannel(uid);
+                itemRow.className = `user-item ${selectedUserId === uid ? 'active' : ''}`;
+                itemRow.innerHTML = `
                     <div class="user-info">
                         <div class="user-avatar-circle direct-user"><i class="fas fa-user"></i></div>
                         <div class="user-meta-block">
@@ -250,11 +247,11 @@
                     </div>
                     ${badgeCount > 0 ? `<div class="badge-counter">${badgeCount}</div>` : ''}
                 `;
-                
-                individualBox.appendChild(existingRow); 
+                individualBox.appendChild(itemRow); 
             });
         }
 
+        // --- FULLY OPTIMIZED DIRECT RENDERING ENGINE ---
         function selectChatRoomChannel(uid) {
             selectedUserId = uid;
             document.getElementById('fallback-empty-view-placeholder').style.display = 'none';
@@ -273,41 +270,34 @@
             msgBox.innerHTML = ''; 
             loadedMessageIds.clear();
 
-            activeMessagesListener = db.collection("messages")
-                .where("room_id", "==", uid)
-                .onSnapshot(snapshot => {
-                    let newDocs = snapshot.docChanges();
-                    let sortedChanges = newDocs.sort((a, b) => a.doc.data().time_now - b.doc.data().time_now);
+            // FIXED TARGET TARGET: Group/Broadcast checking mechanism
+            let targetCollection = uid === "official_broadcast_group" ? "group_messages" : "messages";
 
-                    sortedChanges.forEach(change => {
-                        const m = change.doc.data();
-                        const docId = change.doc.id;
-
-                        if (change.type === "added") {
-                            const tempPlaceholder = document.getElementById(`temp-${m.time_now}`);
-                            if(tempPlaceholder) tempPlaceholder.remove();
-
-                            if (!loadedMessageIds.has(docId)) {
-                                loadedMessageIds.add(docId);
-                                appendMessageElementHTML(m, docId, false);
-                            }
-                        }
-                        
-                        if (change.type === "modified") {
-                            const existingMsg = document.getElementById(`msg-${docId}`);
-                            if(existingMsg && m.sender === 'admin') {
-                                const metaWrapper = existingMsg.querySelector('.msg-meta-wrapper');
-                                if(metaWrapper) {
-                                    metaWrapper.innerHTML = `<span>${new Date(m.time_now).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span> ${getTickMarkup(m.status)}`;
-                                }
-                            }
-                        }
-
-                        if (m.sender === uid && m.status !== 'seen' && uid === selectedUserId && uid !== "official_broadcast_group") {
-                            db.collection("messages").doc(docId).update({ status: 'seen' });
-                        }
+            if(uid === "official_broadcast_group") {
+                activeMessagesListener = db.collection("group_messages").orderBy("time_now", "asc")
+                    .onSnapshot(snapshot => {
+                        msgBox.innerHTML = '';
+                        snapshot.docs.forEach(doc => {
+                            appendMessageElementHTML(doc.data(), doc.id, false);
+                        });
                     });
-                });
+            } else {
+                activeMessagesListener = db.collection("messages")
+                    .where("room_id", "==", uid)
+                    .onSnapshot(snapshot => {
+                        let sortedDocs = snapshot.docs.sort((a, b) => a.data().time_now - b.data().time_now);
+                        msgBox.innerHTML = '';
+                        
+                        sortedDocs.forEach(doc => {
+                            const m = doc.data();
+                            appendMessageElementHTML(m, doc.id, false);
+
+                            if (m.sender === uid && m.status !== 'seen') {
+                                db.collection("messages").doc(doc.id).update({ status: 'seen' });
+                            }
+                        });
+                    });
+            }
         }
 
         function getTickMarkup(status) {
@@ -356,18 +346,27 @@
             inp.value = '';
 
             const timeStamp = Date.now();
-            const localPayload = {
-                message_text: txt,
-                sender: 'admin',
-                receiver: selectedUserId === "official_broadcast_group" ? "all_users" : selectedUserId,
-                room_id: selectedUserId,
-                time_now: timeStamp,
-                type: 'text',
-                status: 'sent'
-            };
-
-            appendMessageElementHTML(localPayload, null, true);
-            db.collection("messages").add(localPayload);
+            
+            if(selectedUserId === "official_broadcast_group") {
+                const groupPayload = {
+                    message_text: txt,
+                    sender: 'admin',
+                    time_now: timeStamp,
+                    type: 'text'
+                };
+                db.collection("group_messages").add(groupPayload);
+            } else {
+                const localPayload = {
+                    message_text: txt,
+                    sender: 'admin',
+                    receiver: selectedUserId,
+                    room_id: selectedUserId,
+                    time_now: timeStamp,
+                    type: 'text',
+                    status: 'sent'
+                };
+                db.collection("messages").add(localPayload);
+            }
         }
 
         const micBtn = document.getElementById('admin-voice-mic-btn');
@@ -388,19 +387,27 @@
                     reader.onloadend = async () => {
                         if(!selectedUserId) return;
                         const timeStamp = Date.now();
-                        const payload = {
-                            message_text: "Sent a voice message",
-                            file_url: reader.result,
-                            sender: 'admin',
-                            // FIXED: Group/Broadcast ke liye receiver correctly route ho sake
-                            receiver: selectedUserId === "official_broadcast_group" ? "all_users" : selectedUserId,
-                            room_id: selectedUserId,
-                            time_now: timeStamp,
-                            type: 'audio',
-                            status: 'sent'
-                        };
-                        appendMessageElementHTML(payload, null, true);
-                        db.collection("messages").add(payload);
+
+                        if(selectedUserId === "official_broadcast_group") {
+                            db.collection("group_messages").add({
+                                message_text: "Sent a voice message",
+                                file_url: reader.result,
+                                sender: 'admin',
+                                time_now: timeStamp,
+                                type: 'audio'
+                            });
+                        } else {
+                            db.collection("messages").add({
+                                message_text: "Sent a voice message",
+                                file_url: reader.result,
+                                sender: 'admin',
+                                receiver: selectedUserId,
+                                room_id: selectedUserId,
+                                time_now: timeStamp,
+                                type: 'audio',
+                                status: 'sent'
+                            });
+                        }
                     };
                     stream.getTracks().forEach(track => track.stop());
                 };
@@ -424,19 +431,26 @@
             const r = new FileReader();
             r.onloadend = async () => {
                 const timeStamp = Date.now();
-                const payload = {
-                    message_text: `Sent a ${fType}`,
-                    file_url: r.result,
-                    sender: 'admin',
-                    // FIXED: Picture aur video select hone par ab automatic check karega, agar group khula hai toh sabhi users (all_users) ke paas bhejega
-                    receiver: selectedUserId === "official_broadcast_group" ? "all_users" : selectedUserId,
-                    room_id: selectedUserId,
-                    time_now: timeStamp,
-                    type: fType,
-                    status: 'sent'
-                };
-                appendMessageElementHTML(payload, null, true);
-                db.collection("messages").add(payload);
+                if(selectedUserId === "official_broadcast_group") {
+                    db.collection("group_messages").add({
+                        message_text: `Sent a ${fType}`,
+                        file_url: r.result,
+                        sender: 'admin',
+                        time_now: timeStamp,
+                        type: fType
+                    });
+                } else {
+                    db.collection("messages").add({
+                        message_text: `Sent a ${fType}`,
+                        file_url: r.result,
+                        sender: 'admin',
+                        receiver: selectedUserId,
+                        room_id: selectedUserId,
+                        time_now: timeStamp,
+                        type: fType,
+                        status: 'sent'
+                    });
+                }
             };
             r.readAsDataURL(file);
             e.target.value = '';
