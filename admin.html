@@ -146,7 +146,7 @@
         let audioChunks = [];
         let userNamingMap = {};
         let cachedPresence = {};
-        let loadedMessageIds = new Set(); // Speed Optimization: Pure database load ko track karne ke liye
+        let loadedMessageIds = new Set(); 
 
         function listenToGlobalPresenceChanges() {
             if(presenceSnapshotListener) presenceSnapshotListener();
@@ -165,14 +165,13 @@
             });
         }
 
-        // ULTRA-FAST SIDEBAR: Re-rendering khatam, bas DOM update hoga
         function initSuperFastSidebarTracker() {
             if(sidebarSnapshotListener) sidebarSnapshotListener();
             listenToGlobalPresenceChanges();
             
             sidebarSnapshotListener = db.collection("messages")
                 .orderBy("time_now", "desc")
-                .limit(100) // Performance load lightweight rakha hai
+                .limit(100) 
                 .onSnapshot((snapshot) => {
                     const counts = {};
                     const firstAppearanceTime = {};
@@ -223,7 +222,6 @@
                 `;
             }
 
-            // Purani HTML ko delete karne ke bajay rearrange karein (WhatsApp fast style sorting)
             userIds.forEach(uid => {
                 const badgeCount = counts[uid] || 0;
                 const assignedName = userNamingMap[uid] || uid;
@@ -253,12 +251,10 @@
                     ${badgeCount > 0 ? `<div class="badge-counter">${badgeCount}</div>` : ''}
                 `;
                 
-                // Sabse upar insert/move karein bina lag ke
                 individualBox.appendChild(existingRow); 
             });
         }
 
-        // DELAY FIX FOR LIVE CHAT VIEW
         function selectChatRoomChannel(uid) {
             selectedUserId = uid;
             document.getElementById('fallback-empty-view-placeholder').style.display = 'none';
@@ -274,16 +270,13 @@
             if (activeMessagesListener) activeMessagesListener();
             
             const msgBox = document.getElementById('admin-messages-container-box');
-            msgBox.innerHTML = ''; // Channel badalne par clear karein
+            msgBox.innerHTML = ''; 
             loadedMessageIds.clear();
 
             activeMessagesListener = db.collection("messages")
                 .where("room_id", "==", uid)
                 .onSnapshot(snapshot => {
-                    // Instant differential updates loop (Sirf naye documents render honge)
                     let newDocs = snapshot.docChanges();
-                    
-                    // Sort updates sequence correctly
                     let sortedChanges = newDocs.sort((a, b) => a.doc.data().time_now - b.doc.data().time_now);
 
                     sortedChanges.forEach(change => {
@@ -291,7 +284,6 @@
                         const docId = change.doc.id;
 
                         if (change.type === "added") {
-                            // Optimistic placeholder element ko dhoond kar remove karein agar real entity aa gayi hai
                             const tempPlaceholder = document.getElementById(`temp-${m.time_now}`);
                             if(tempPlaceholder) tempPlaceholder.remove();
 
@@ -302,7 +294,6 @@
                         }
                         
                         if (change.type === "modified") {
-                            // Status update hone par bina text reload kiye tick change karein
                             const existingMsg = document.getElementById(`msg-${docId}`);
                             if(existingMsg && m.sender === 'admin') {
                                 const metaWrapper = existingMsg.querySelector('.msg-meta-wrapper');
@@ -312,7 +303,6 @@
                             }
                         }
 
-                        // Seen mark optimization process
                         if (m.sender === uid && m.status !== 'seen' && uid === selectedUserId && uid !== "official_broadcast_group") {
                             db.collection("messages").doc(docId).update({ status: 'seen' });
                         }
@@ -359,7 +349,6 @@
             msgBox.scrollTop = msgBox.scrollHeight;
         }
 
-        // WHATSAPP INSTANT OPTIMISTIC DISPATCHER (0ms Send Lag)
         async function triggerTextMessageDispatch() {
             const inp = document.getElementById('admin-chat-text-input');
             const txt = inp.value.trim();
@@ -377,10 +366,7 @@
                 status: 'sent'
             };
 
-            // Instant Screen UI update (Bina firebase wait kiye screen par show)
             appendMessageElementHTML(localPayload, null, true);
-
-            // Back-end async dispatch pipeline
             db.collection("messages").add(localPayload);
         }
 
@@ -406,6 +392,7 @@
                             message_text: "Sent a voice message",
                             file_url: reader.result,
                             sender: 'admin',
+                            // FIXED: Group/Broadcast ke liye receiver correctly route ho sake
                             receiver: selectedUserId === "official_broadcast_group" ? "all_users" : selectedUserId,
                             room_id: selectedUserId,
                             time_now: timeStamp,
@@ -441,6 +428,7 @@
                     message_text: `Sent a ${fType}`,
                     file_url: r.result,
                     sender: 'admin',
+                    // FIXED: Picture aur video select hone par ab automatic check karega, agar group khula hai toh sabhi users (all_users) ke paas bhejega
                     receiver: selectedUserId === "official_broadcast_group" ? "all_users" : selectedUserId,
                     room_id: selectedUserId,
                     time_now: timeStamp,
