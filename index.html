@@ -2,489 +2,131 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Live Support & Announcements</title>
-    <link rel="manifest" href="manifest.json">
-    
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        :root { --wa-green: #075e54; --wa-light: #128c7e; --bg-color: #ece5dd; }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body, html { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; height: 100vh; height: 100dvh; width: 100vw; overflow: hidden; }
-        
-        .pwa-lock-overlay { position: fixed; top:0; left:0; width:100vw; height:100vh; background: #ffffff; z-index: 99999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px; text-align: center; }
-        .pwa-lock-card { background: #f9f9f9; padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 340px; display: flex; flex-direction: column; align-items: center; gap: 15px; }
-        .pwa-logo { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; }
-        .pwa-btn { background: #25D366; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 25px; cursor: pointer; width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 3px 6px rgba(0,0,0,0.2); }
-        
-        /* Fixed Headers & Tabs Layout */
-        .wa-header { position: fixed; top: 0; left: 0; right: 0; background: var(--wa-green); color: white; padding: 10px 15px; display: flex; align-items: center; gap: 12px; font-size: 16px; height: 60px; z-index: 1000; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
-        .wa-avatar-img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
-        .header-info { display: flex; flex-direction: column; }
-        .brand-row { display: flex; align-items: center; gap: 5px; }
-        .verified-badge { color: #34b7f1; font-size: 14px; }
-        .status-dot { width: 8px; height: 8px; background: #2ecc71; border-radius: 50%; display: inline-block; margin-right: 4px; }
-        
-        /* Navigation Tabs Style */
-        .tabs-container { position: fixed; top: 60px; left: 0; right: 0; height: 45px; background: var(--wa-green); display: table; width: 100%; z-index: 1000; border-top: 1px solid rgba(255,255,255,0.1); }
-        .tab-item { display: table-cell; width: 50%; text-align: center; vertical-align: middle; color: #b3d4d0; font-weight: 600; font-size: 14px; cursor: pointer; text-transform: uppercase; position: relative; }
-        .tab-item.active { color: white; }
-        .tab-item.active::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: white; }
-        .badge-count { background: #25D366; color: white; border-radius: 50%; padding: 2px 6px; font-size: 10px; margin-left: 5px; font-weight: bold; }
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp CRM Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, doc, query, orderBy, onSnapshot, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        /* Chat Layout Adjustments */
-        .chat-container { position: absolute; top: 105px; bottom: 60px; left: 0; right: 0; background-color: var(--bg-color); overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
-        
-        .message { max-width: 75%; padding: 8px 12px 24px 12px; border-radius: 10px; font-size: 15px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.08); word-break: break-word; color: black; display: inline-block; min-width: 90px; }
-        .message.sent { background: #d9fdd3; align-self: flex-end; border-top-right-radius: 0; }
-        .message.received { background: white; align-self: flex-start; border-top-left-radius: 0; }
-        
-        .msg-meta { position: absolute; bottom: 3px; right: 8px; font-size: 10px; color: #727272; display: flex; align-items: center; gap: 4px; white-space: nowrap; }
-        .tick-icon { font-size: 11px; }
-        .tick-blue { color: #34b7f1; }
-        .tick-gray { color: #8696a0; }
-        
-        .chat-media { max-width: 100%; border-radius: 8px; margin-bottom: 4px; display: block; max-height: 200px; object-fit: cover; cursor: pointer; }
-        .chat-video { max-width: 100%; border-radius: 8px; margin-bottom: 4px; display: block; max-height: 220px; }
-        .chat-link { color: #0275d8; text-decoration: underline; word-break: break-all; font-weight: 500; }
-        
-        .audio-player-box { display: flex; align-items: center; gap: 10px; min-width: 200px; padding: 5px 0; }
-        .audio-play-btn { background: none; border: none; color: var(--wa-light); font-size: 20px; cursor: pointer; outline: none; }
-        .audio-timeline { flex: 1; height: 4px; background: #b8d4ca; border-radius: 2px; position: relative; }
-        .audio-progress { width: 0%; height: 100%; background: var(--wa-light); border-radius: 2px; }
-        .audio-duration { font-size: 11px; color: #555; font-weight: bold; }
+        // ⬇️ REPLCE THIS WITH YOUR OWN FIREBASE CONFIG FROM SCREENSHOT ⬇️
+        const firebaseConfig = {
+            apiKey: "AIzaSyDLjMjhHspr_Iovoo3vLaDyWU...",
+            authDomain: "new-website-6d291.firebaseapp.com",
+            projectId: "new-website-6d291",
+            storageBucket: "new-website-6d291.appspot.com",
+            messagingSenderId: "32392835026",
+            appId: "1:32392835026:web:2f1aa823ccd4...",
+            measurementId: "G-LZFEQN2NX2"
+        };
 
-        /* Input Area styles and disabled warning for group */
-        .input-area { position: fixed; bottom: 0; left: 0; right: 0; background: #f0f2f5; padding: 10px 12px; display: flex; align-items: center; gap: 8px; border-top: 1px solid #e9edef; height: 60px; z-index: 1000; }
-        .input-wrapper { flex: 1; background: white; border-radius: 25px; display: flex; align-items: center; padding: 0 12px; border: 1px solid #ccc; height: 40px; gap: 8px; }
-        .input-box { flex: 1; background: transparent; border: none; outline: none; font-size: 15px; height: 100%; color: black; }
-        
-        .group-lock-msg { flex: 1; text-align: center; color: #667781; font-size: 14px; font-style: italic; background: #e1f3ff; padding: 8px; border-radius: 8px; border: 1px solid #bcdbf7; display: none; }
-        
-        .attach-btn, .mic-btn { color: #54656f; font-size: 18px; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; background: none; border: none; outline: none; }
-        .send-btn { background: var(--wa-light); color: white; width: 40px; height: 40px; border-radius: 50%; border: none; display: flex; justify-content: center; align-items: center; font-size: 16px; cursor: pointer; flex-shrink: 0; }
-        #file-input { display: none; }
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
 
-        .img-modal { display: none; position: fixed; z-index: 9999; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.9); align-items: center; justify-content: center; }
-        .modal-content { max-width: 90%; max-height: 85%; border-radius: 8px; }
-        .close-modal { position: absolute; top: 20px; right: 25px; color: white; font-size: 35px; cursor: pointer; }
-    </style>
-</head>
-<body>
+        let activeChatNumber = null;
 
-    <div id="pwa-overlay" class="pwa-lock-overlay">
-        <div class="pwa-lock-card">
-            <img src="https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=256&auto=format&fit=crop" class="pwa-logo" id="overlay-logo" alt="Logo">
-            <h3 style="color: black;">Official Web Support</h3>
-            <p style="font-size: 14px; color: #444;">Admin se live chat karne ke liye pehle app ko home screen par add karein.</p>
-            <button id="pwa-install-btn" class="pwa-btn">
-                <i class="fab fa-whatsapp"></i> Add To Home Screen
-            </button>
-            <p class="pwa-instruction" id="pwa-instructions-text">Neeche diye gaye button par click karke application ko screen par set karein.</p>
-        </div>
-    </div>
-
-    <div id="imageModal" class="img-modal">
-        <span class="close-modal" onclick="closeImagePreview()">&times;</span>
-        <img class="modal-content" id="modalImg">
-    </div>
-
-    <div class="wa-header">
-        <img src="https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=256&auto=format&fit=crop" class="wa-avatar-img" id="header-logo" alt="Profile">
-        <div class="header-info">
-            <div class="brand-row">
-                <span id="header-title" style="font-weight: 600;">Official Web</span>
-                <i class="fas fa-check-circle verified-badge" title="Verified Account"></i>
-            </div>
-            <span id="header-status" style="font-size: 11px; color: #b3d4d0; display: block;"><span class="status-dot"></span> Verified Support</span>
-        </div>
-    </div>
-
-    <div class="tabs-container">
-        <div class="tab-item active" id="tab-personal" onclick="switchTab('personal')">
-            <i class="fas fa-user"></i> Support
-        </div>
-        <div class="tab-item" id="tab-group" onclick="switchTab('group')">
-            <i class="fas fa-users"></i> Updates Group <span class="badge-count" id="group-badge" style="display:none;">New</span>
-        </div>
-    </div>
-    
-    <div class="chat-container" id="chat-box"></div>
-    
-    <div class="input-area">
-        <div class="group-lock-msg" id="group-lock-banner">
-            <i class="fas fa-lock"></i> Only Admin can send messages to this group.
-        </div>
-
-        <div class="input-wrapper" id="input-controls-wrapper">
-            <label for="file-input" class="attach-btn"><i class="fas fa-paperclip"></i></label>
-            <input type="file" id="file-input" accept="image/*,video/*">
-            <input type="text" id="msg-input" class="input-box" placeholder="Type a message...">
-            <button id="user-mic-btn" class="mic-btn"><i class="fas fa-microphone"></i></button>
-        </div>
-        <button id="btn-send" class="send-btn"><i class="fas fa-paper-plane"></i></button>
-    </div>
-
-    <script>
-        const notificationSound = new Audio('https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg');
-
-        if ('Notification' in window && Notification.permission !== 'granted') {
-            Notification.requestPermission();
-        }
-
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js').catch(err => console.log(err));
-        }
-
-        const isPWA = window.matchMedia('(display-mode: standalone)').matches || window.location.search.includes('launcher=true');
-        if (isPWA) { document.getElementById('pwa-overlay').style.display = 'none'; }
-
-        let deferredPrompt;
-        window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; });
-
-        document.getElementById('pwa-install-btn').addEventListener('click', async () => {
-            if (deferredPrompt) {
-                deferredPrompt.prompt();
-                const { outcome } = await deferredPrompt.userChoice;
-                if (outcome === 'accepted') document.getElementById('pwa-overlay').style.display = 'none';
-                deferredPrompt = null;
-            } else {
-                document.getElementById('pwa-instructions-text').innerHTML = "Click Top Menu 3-dots and select 'Install app' or 'Add to Home Screen'.";
-            }
+        // Load Chat List Realtime
+        const chatsQuery = query(collection(db, "chats"), orderBy("lastMessageTime", "desc"));
+        onSnapshot(chatsQuery, (snapshot) => {
+            const chatListHtml = document.getElementById('chat-list');
+            chatListHtml.innerHTML = '';
+            snapshot.forEach((doc) => {
+                const chat = doc.data();
+                const activeClass = activeChatNumber === doc.id ? 'bg-green-100' : 'hover:bg-gray-100';
+                chatListHtml.innerHTML += `
+                    <div onclick="openChat('${doc.id}')" class="p-4 border-b cursor-pointer transition ${activeClass}">
+                        <p class="font-bold text-gray-800">+${doc.id}</p>
+                        <p class="text-sm text-gray-500 truncate">${chat.lastMessage || ''}</p>
+                    </div>
+                `;
+            });
         });
 
-        // Firebase Initialization
-        const firebaseConfig = {
-            apiKey: "AIzaSyDe8zFsomI7Qn1PfuJb_FyWOLe1SdqEZHM",
-            authDomain: "wattsapp-27aa4.firebaseapp.com",
-            projectId: "wattsapp-27aa4",
-            storageBucket: "wattsapp-27aa4.appspot.com",
-            messagingSenderId: "826330591993",
-            appId: "1:826330591993:web:51865cddf32ba8b5312028"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
+        // Open Specific Chat
+        window.openChat = function(phoneNumber) {
+            activeChatNumber = phoneNumber;
+            document.getElementById('chat-title').innerText = `Chat: +${phoneNumber}`;
+            document.getElementById('chat-box-placeholder').classList.add('hidden');
+            document.getElementById('active-chat-area').classList.remove('hidden');
 
-        // STRICT USER-ONLY ROLE LOGIC
-        let isAdmin = false; 
-        let myUserId = localStorage.getItem('user_chat_uuid') || 'User-' + Math.floor(1000 + Math.random() * 9000);
-        localStorage.setItem('user_chat_uuid', myUserId);
-
-        let currentTab = 'personal'; 
-        let personalUnsubscribe = null;
-        let groupUnsubscribe = null;
-        let initialLoadPersonal = true;
-        let initialLoadGroup = true;
-
-        function updateUserPresence(status) {
-            db.collection("user_presence").doc(myUserId).set({ status: status, last_seen: Date.now() }, { merge: true });
-        }
-        updateUserPresence('online');
-
-        window.switchTab = function(tabName) {
-            currentTab = tabName;
-            document.getElementById('tab-personal').classList.toggle('active', tabName === 'personal');
-            document.getElementById('tab-group').classList.toggle('active', tabName === 'group');
-            
-            const titleEl = document.getElementById('header-title');
-            const statusEl = document.getElementById('header-status');
-            const lockBanner = document.getElementById('group-lock-banner');
-            const inputWrapper = document.getElementById('input-controls-wrapper');
-            const sendBtn = document.getElementById('btn-send');
-
-            if (tabName === 'group') {
-                titleEl.innerText = "Official Updates Group";
-                statusEl.innerHTML = "<i class='fas fa-bullhorn'></i> Announcements Channel";
-                document.getElementById('group-badge').style.display = 'none';
-
-                lockBanner.style.display = 'block';
-                inputWrapper.style.display = 'none';
-                sendBtn.style.display = 'none';
-                
-                loadGroupMessages();
-            } else {
-                titleEl.innerText = "Official Web Support";
-                statusEl.innerHTML = "<span class='status-dot'></span> Verified Support";
-                
-                lockBanner.style.display = 'none';
-                inputWrapper.style.display = 'flex';
-                sendBtn.style.display = 'flex';
-                
-                triggerPersonalChatSeenFlush();
-                loadPersonalMessages();
-            }
-        };
-
-        function renderMessages(docs, isGroupContext) {
-            const box = document.getElementById('chat-box');
-            box.innerHTML = '';
-            
-            docs.forEach((doc) => {
-                const m = doc.data();
-                const isSentByMe = m.sender === myUserId;
-
-                const d = document.createElement('div');
-                d.classList.add('message', isSentByMe ? 'sent' : 'received');
-                
-                let contentHTML = '';
-                if (m.type === 'image') {
-                    contentHTML = `<img src="${m.file_url}" class="chat-media" onclick="openImagePreview('${m.file_url}')">`;
-                } else if (m.type === 'video') {
-                    contentHTML = `<video src="${m.file_url}" controls class="chat-video"></video>`;
-                } else if (m.type === 'audio') {
-                    const uniqueId = 'prog_' + doc.id;
-                    contentHTML = `
-                        <div class="audio-player-box">
-                            <button class="audio-play-btn" onclick="toggleAudio(this, '${m.file_url}', '${uniqueId}')"><i class="fas fa-play"></i></button>
-                            <div class="audio-timeline"><div class="audio-progress" id="${uniqueId}"></div></div>
-                            <span class="audio-duration">${m.duration || '0:05'}</span>
+            const messagesQuery = query(collection(db, `chats/${phoneNumber}/messages`), orderBy("timestamp", "asc"));
+            onSnapshot(messagesQuery, (snapshot) => {
+                const messageWindow = document.getElementById('message-window');
+                messageWindow.innerHTML = '';
+                snapshot.forEach((msgDoc) => {
+                    const msg = msgDoc.data();
+                    const isMe = msg.sender === 'admin';
+                    const msgClass = isMe ? 'bg-green-500 text-white ml-auto' : 'bg-gray-200 text-gray-800';
+                    messageWindow.innerHTML += `
+                        <div class="max-w-xs md:max-w-md p-3 rounded-lg my-2 text-sm ${msgClass}">
+                            ${msg.text}
                         </div>
                     `;
-                } else {
-                    contentHTML = `<div>${linkify(m.message_text)}</div>`;
-                }
-                
-                const timeStr = formatTime(m.time_now);
-                const tickHTML = isGroupContext ? '' : getTickHTML(m.status, isSentByMe);
-
-                d.innerHTML = `${contentHTML}<div class="msg-meta"><span>${timeStr}</span>${tickHTML}</div>`;
-                box.appendChild(d);
-            });
-            box.scrollTop = box.scrollHeight;
-        }
-
-        function triggerPersonalChatSeenFlush() {
-            db.collection("messages").where("room_id", "==", myUserId).get().then(snapshot => {
-                snapshot.forEach(doc => {
-                    if (doc.data().sender === 'admin' && doc.data().status !== 'seen') {
-                        db.collection("messages").doc(doc.id).update({ status: 'seen' });
-                    }
                 });
+                messageWindow.scrollTop = messageWindow.scrollHeight;
             });
         }
 
-        // --- FIXED REALTIME FAST REALTIME SNAPSHOT LISTENER ---
-        function loadPersonalMessages() {
-            if(groupUnsubscribe) groupUnsubscribe();
-            
-            // Ab user sirf apne unique ID wale room ko pure tarike se sunega bina kisi delay ke
-            personalUnsubscribe = db.collection("messages").where("room_id", "==", myUserId)
-                .onSnapshot((snapshot) => {
-                    let sorted = snapshot.docs.sort((a, b) => a.data().time_now - b.data().time_now);
-                    
-                    snapshot.docChanges().forEach(change => {
-                        if (change.type === "added") {
-                            const data = change.doc.data();
-                            if (data.sender === 'admin' && !initialLoadPersonal) {
-                                notificationSound.play().catch(e => console.log("Audio gesture delay handled."));
-                                triggerIncomingNotification(data.message_text || "Sent a media file");
-                            }
-                        }
-                    });
+        // Send Reply via Meta Cloud API
+        window.sendMessage = async function() {
+            const inputField = document.getElementById('message-input');
+            const text = inputField.value.trim();
+            if(!text || !activeChatNumber) return;
 
-                    // WHATSAPP RE-LIVE BLUE TICK UPDATE LOGIC
-                    snapshot.docs.forEach(doc => {
-                        const d = doc.data();
-                        if (d.sender === 'admin') {
-                            if (document.visibilityState === "visible" && currentTab === 'personal') {
-                                if (d.status !== 'seen') {
-                                    db.collection("messages").doc(doc.id).update({ status: 'seen' });
-                                }
-                            } else {
-                                if (d.status === 'sent') {
-                                    db.collection("messages").doc(doc.id).update({ status: 'delivered' });
-                                }
-                            }
-                        }
-                    });
+            inputField.value = '';
 
-                    renderMessages(sorted, false);
-                    initialLoadPersonal = false;
-                }, (error) => {
-                    console.error("Firestore error:", error);
-                });
-        }
-
-        document.addEventListener("visibilitychange", () => {
-            if (document.visibilityState === "visible") {
-                updateUserPresence('online');
-                if(currentTab === 'personal') {
-                    triggerPersonalChatSeenFlush();
-                }
-            } else {
-                updateUserPresence('offline');
-            }
-        });
-
-        function loadGroupMessages() {
-            if(personalUnsubscribe) personalUnsubscribe();
-            
-            groupUnsubscribe = db.collection("group_messages").orderBy("time_now", "asc")
-                .onSnapshot((snapshot) => {
-                    if (currentTab === 'group') {
-                        renderMessages(snapshot.docs, true);
-                    } else {
-                        if (!initialLoadGroup) {
-                            document.getElementById('group-badge').style.display = 'inline-block';
-                            triggerIncomingNotification("Group Update: New announcement posted!");
-                        }
-                    }
-                    initialLoadGroup = false;
-                });
-        }
-
-        async function sendMessage() {
-            const inp = document.getElementById('msg-input');
-            const val = inp.value.trim();
-            if(!val) return;
-            inp.value = '';
-
-            if (currentTab === 'group') return; // User cannot send to group
-
-            await db.collection("messages").add({
-                message_text: val, 
-                sender: myUserId, 
-                receiver: 'admin', 
-                room_id: myUserId, 
-                time_now: Date.now(), 
-                type: 'text', 
-                status: 'sent'
+            // 1. Save to Local Firebase Database
+            await addDoc(collection(db, `chats/${activeChatNumber}/messages`), {
+                text: text,
+                sender: 'admin',
+                timestamp: serverTimestamp()
             });
-        }
 
-        document.getElementById('file-input').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            
-            const isVideo = file.type.startsWith('video/');
-            const inputField = document.getElementById('msg-input');
-            inputField.placeholder = isVideo ? "Sending video..." : "Sending image...";
-            
-            const reader = new FileReader();
-            reader.onloadend = async function() {
-                try {
-                    let payload = {
-                        message_text: isVideo ? "Sent a video" : "Sent an image",
-                        file_url: reader.result,
-                        sender: myUserId,
-                        receiver: 'admin',
-                        room_id: myUserId,
-                        time_now: Date.now(),
-                        type: isVideo ? 'video' : 'image',
-                        status: 'sent'
-                    };
-                    await db.collection("messages").add(payload);
-                } catch (err) { alert(err.message); }
-                inputField.placeholder = "Type a message...";
-            };
-            reader.readAsDataURL(file);
-            e.target.value = ''; 
-        });
-
-        let mediaRecorder;
-        let audioChunks = [];
-        let isRecording = false;
-        const micBtn = document.getElementById('user-mic-btn');
-
-        micBtn.addEventListener('click', async () => {
-            if (!isRecording) {
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    mediaRecorder = new MediaRecorder(stream);
-                    audioChunks = [];
-                    mediaRecorder.addEventListener('dataavailable', e => audioChunks.push(e.data));
-
-                    mediaRecorder.addEventListener('stop', () => {
-                        const audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
-                        const reader = new FileReader();
-                        reader.readAsDataURL(audioBlob);
-                        reader.onloadend = async () => {
-                            let payload = {
-                                message_text: "Sent a voice note",
-                                file_url: reader.result,
-                                sender: myUserId,
-                                receiver: 'admin',
-                                room_id: myUserId,
-                                time_now: Date.now(),
-                                type: 'audio',
-                                duration: '0:08',
-                                status: 'sent'
-                            };
-                            await db.collection("messages").add(payload);
-                        };
-                        stream.getTracks().forEach(t => t.stop());
-                    });
-
-                    mediaRecorder.start();
-                    isRecording = true;
-                    micBtn.innerHTML = '<i class="fas fa-stop" style="color:#e74c3c;"></i>';
-                } catch (err) { alert("Mic permission denied."); }
-            } else {
-                mediaRecorder.stop();
-                isRecording = false;
-                micBtn.innerHTML = '<i class="fas fa-microphone"></i>';
-            }
-        });
-
-        window.toggleAudio = function(btn, audioUrl, progressId) {
-            let activeAudio = window[`audio_${progressId}`];
-            const progressBar = document.getElementById(progressId);
-            if (!activeAudio) {
-                activeAudio = new Audio(audioUrl);
-                window[`audio_${progressId}`] = activeAudio;
-                activeAudio.addEventListener('timeupdate', () => {
-                    progressBar.style.width = ((activeAudio.currentTime / activeAudio.duration) * 100) + '%';
+            // 2. Trigger Meta WhatsApp API to Send to Customer Mobile
+            // NOTE: Replace 'YOUR_META_PHONE_NUMBER_ID' and 'YOUR_META_ACCESS_TOKEN' when ready
+            try {
+                await fetch(`https://graph.facebook.com/v20.0/YOUR_META_PHONE_NUMBER_ID/messages`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer YOUR_META_ACCESS_TOKEN',
+                        'Content-Type': 'application/center'
+                    },
+                    body: JSON.stringify({
+                        messaging_product: "whatsapp",
+                        recipient_type: "individual",
+                        to: activeChatNumber,
+                        type: "text",
+                        text: { preview_url: false, body: text }
+                    })
                 });
-                activeAudio.addEventListener('ended', () => { btn.innerHTML = '<i class="fas fa-play"></i>'; progressBar.style.width = '0%'; });
-            }
-            if (activeAudio.paused) { activeAudio.play(); btn.innerHTML = '<i class="fas fa-pause"></i>'; }
-            else { activeAudio.pause(); btn.innerHTML = '<i class="fas fa-play"></i>'; }
-        };
-
-        function getTickHTML(status, isSent) {
-            if (!isSent) return ''; 
-            if (status === 'sent') return '<i class="fas fa-check tick-icon tick-gray"></i>';
-            if (status === 'delivered') return '<i class="fas fa-check-double tick-icon tick-gray"></i>';
-            if (status === 'seen') return '<i class="fas fa-check-double tick-icon tick-blue"></i>';
-            return '';
+            } catch (e) { console.error("Error sending via Meta:", e); }
         }
-
-        function formatTime(timestamp) {
-            if(!timestamp) return '';
-            const date = new Date(timestamp);
-            let hours = date.getHours(), minutes = date.getMinutes();
-            const ampm = hours >= 12 ? 'PM' : 'AM';
-            hours = hours % 12 || 12;
-            minutes = minutes < 10 ? '0' + minutes : minutes;
-            return hours + ':' + minutes + ' ' + ampm;
-        }
-
-        function linkify(text) {
-            return text.replace(/(https?:\/\/[^\s]+)/g, url => `<a class="chat-link" href="${url}" target="_blank">${url}</a>`);
-        }
-
-        function triggerIncomingNotification(msgText) {
-            if ('Notification' in window && Notification.permission === 'granted') {
-                new Notification("Support Notification", { body: msgText, icon: 'https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=256&auto=format&fit=crop' });
-            }
-        }
-
-        function openImagePreview(src) { document.getElementById("modalImg").src = src; document.getElementById("imageModal").style.display = "flex"; }
-        function closeImagePreview() { document.getElementById("imageModal").style.display = "none"; }
-        
-        document.getElementById('btn-send').addEventListener('click', sendMessage);
-        document.getElementById('msg-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') sendMessage(); });
-
-        loadPersonalMessages();
-        db.collection("group_messages").orderBy("time_now", "asc").onSnapshot(snap => {
-            if(currentTab !== 'group' && !initialLoadGroup) {
-                document.getElementById('group-badge').style.display = 'inline-block';
-                notificationSound.play().catch(e => {});
-            }
-            initialLoadGroup = false;
-        });
     </script>
+</head>
+<body class="bg-gray-50 h-screen flex flex-col font-sans">
+    <div class="bg-green-600 text-white p-4 shadow-md flex items-center">
+        <h1 class="text-xl font-bold">Jh Seller CRM Dashboard</h1>
+    </div>
+    <div class="flex flex-1 overflow-hidden">
+        <!-- Sidebar Chat List -->
+        <div id="chat-list" class="w-1/3 bg-white border-r overflow-y-auto">
+            <p class="p-4 text-gray-400 text-center">No active chats yet...</p>
+        </div>
+        <!-- Chat Area -->
+        <div class="w-2/3 flex flex-col bg-gray-100 relative">
+            <div id="chat-box-placeholder" class="absolute inset-0 flex items-center justify-center text-gray-400 flex-col">
+                <p class="text-lg">Click on a chat sequence to start replying</p>
+            </div>
+            <div id="active-chat-area" class="hidden flex flex-col h-full">
+                <div class="bg-white p-4 border-b font-bold text-gray-700" id="chat-title">Chat</div>
+                <div id="message-window" class="flex-1 p-4 overflow-y-auto flex flex-col bg-dashed"></div>
+                <div class="p-4 bg-white border-t flex gap-2">
+                    <input id="message-input" type="text" placeholder="Type your reply here..." class="flex-1 border p-2 rounded-lg outline-none focus:border-green-500">
+                    <button onclick="sendMessage()" class="bg-green-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-green-700">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
