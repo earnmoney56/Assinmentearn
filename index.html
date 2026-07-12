@@ -3,129 +3,167 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WhatsApp CRM Dashboard</title>
+    <title>Jh Seller - WhatsApp Chat Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <!-- Firebase SDKs -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, doc, query, orderBy, onSnapshot, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+</head>
+<body class="bg-gray-100 h-screen flex flex-col md:flex-row">
 
-        // ✅ Aapka Real Firebase Config Code
+    <div class="w-full md:w-1/3 bg-white border-r border-gray-200 flex flex-col h-1/3 md:h-full">
+        <div class="p-4 bg-green-600 text-white font-bold text-lg flex items-center justify-between">
+            <span>Jh Seller Chats</span>
+            <span class="text-xs bg-green-800 px-2 py-1 rounded">Live</span>
+        </div>
+        <div id="chat-list" class="overflow-y-auto flex-1 divide-y divide-gray-100">
+            <p class="p-4 text-gray-500 text-center text-sm">Waiting for incoming messages...</p>
+        </div>
+    </div>
+
+    <div class="w-full md:w-2/3 flex flex-col h-2/3 md:h-full bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat">
+        <div class="p-4 bg-gray-200 border-b border-gray-300 font-semibold text-gray-700" id="active-chat-header">
+            Select a customer to view conversation
+        </div>
+
+        <div id="messages-container" class="flex-1 p-4 overflow-y-auto flex flex-col space-y-2">
+            </div>
+
+        <div class="p-4 bg-gray-100 border-t border-gray-300 flex flex-col space-y-2">
+            <div class="flex items-center space-x-2">
+                <input type="text" id="msg-input" placeholder="Type your text message here..." class="flex-1 p-2 border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-green-500">
+                <button onclick="sendText()" class="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700">Send</button>
+            </div>
+
+            <div class="flex flex-wrap gap-2 pt-1 border-t border-gray-200 justify-start items-center">
+                <span class="text-xs font-bold text-gray-500 uppercase mr-2">Send Media via WhatsApp:</span>
+                <button onclick="sendMedia('image')" class="bg-blue-500 text-white text-xs px-3 py-1.5 rounded hover:bg-blue-600">🖼️ Image URL</button>
+                <button onclick="sendMedia('video')" class="bg-purple-500 text-white text-xs px-3 py-1.5 rounded hover:bg-purple-600">🎥 Video URL</button>
+                <button onclick="sendMedia('audio')" class="bg-yellow-600 text-white text-xs px-3 py-1.5 rounded hover:bg-yellow-700">🎙️ Voice/Audio URL</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Your Firebase Configuration from 'new-website-6d291'
         const firebaseConfig = {
-          apiKey: "AIzaSyDLjMjHspr_Iovoo3vLaDyWU35KqafN9a8",
-          authDomain: "new-website-6d291.firebaseapp.com",
-          projectId: "new-website-6d291",
-          storageBucket: "new-website-6d291.firebasestorage.app",
-          messagingSenderId: "32392835026",
-          appId: "1:32392835026:web:2f1aa823ccd46fcb2a220b",
-          measurementId: "G-LZFEQN2NX2"
+            projectId: "new-website-6d291",
+            authDomain: "new-website-6d291.firebaseapp.com",
+            storageBucket: "new-website-6d291.appspot.com"
         };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
 
-        let activeChatNumber = null;
+        let currentActiveCustomer = null;
 
-        // Load Chat List Realtime
-        const chatsQuery = query(collection(db, "chats"), orderBy("lastMessageTime", "desc"));
-        onSnapshot(chatsQuery, (snapshot) => {
-            const chatListHtml = document.getElementById('chat-list');
-            chatListHtml.innerHTML = '';
+        // 1. Listen to 'chats' collection in real-time from Firestore
+        db.collection("chats").orderBy("timestamp", "desc").onSnapshot((snapshot) => {
+            const chatListDiv = document.getElementById("chat-list");
+            chatListDiv.innerHTML = "";
+
+            if(snapshot.empty) {
+                chatListDiv.innerHTML = `<p class="p-4 text-gray-500 text-center text-sm">No active chats found.</p>`;
+                return;
+            }
+
             snapshot.forEach((doc) => {
-                const chat = doc.data();
-                const activeClass = activeChatNumber === doc.id ? 'bg-green-100' : 'hover:bg-gray-100';
-                chatListHtml.innerHTML += `
-                    <div onclick="openChat('${doc.id}')" class="p-4 border-b cursor-pointer transition ${activeClass}">
-                        <p class="font-bold text-gray-800">+${doc.id}</p>
-                        <p class="text-sm text-gray-500 truncate">${chat.lastMessage || ''}</p>
+                const data = doc.data();
+                const customerId = doc.id; // Phone number
+                
+                const chatItem = document.createElement("div");
+                chatItem.className = `p-4 cursor-pointer hover:bg-gray-50 transition flex flex-col ${currentActiveCustomer === customerId ? 'bg-green-50' : ''}`;
+                chatItem.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold text-gray-800">+${customerId}</span>
+                        <span class="text-xs text-gray-400">${data.timestamp ? new Date(data.timestamp * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}</span>
                     </div>
+                    <p class="text-sm text-gray-500 truncate mt-1">${data.lastMessage || 'Media message'}</p>
                 `;
+                
+                chatItem.onclick = () => selectCustomer(customerId, data);
+                chatListDiv.appendChild(chatItem);
             });
         });
 
-        // Open Specific Chat
-        window.openChat = function(phoneNumber) {
-            activeChatNumber = phoneNumber;
-            document.getElementById('chat-title').innerText = `Chat: +${phoneNumber}`;
-            document.getElementById('chat-box-placeholder').classList.add('hidden');
-            document.getElementById('active-chat-area').classList.remove('hidden');
+        // 2. Select a customer to chat
+        function selectCustomer(phone, data) {
+            currentActiveCustomer = phone;
+            document.getElementById("active-chat-header").innerText = `Chatting with: +${phone}`;
+            
+            const container = document.getElementById("messages-container");
+            container.innerHTML = ""; // Clear old views
 
-            const messagesQuery = query(collection(db, `chats/${phoneNumber}/messages`), orderBy("timestamp", "asc"));
-            onSnapshot(messagesQuery, (snapshot) => {
-                const messageWindow = document.getElementById('message-window');
-                messageWindow.innerHTML = '';
-                snapshot.forEach((msgDoc) => {
-                    const msg = msgDoc.data();
-                    const isMe = msg.sender === 'admin';
-                    const msgClass = isMe ? 'bg-green-500 text-white ml-auto' : 'bg-gray-200 text-gray-800';
-                    messageWindow.innerHTML += `
-                        <div class="max-w-xs md:max-w-md p-3 rounded-lg my-2 text-sm ${msgClass}">
-                            ${msg.text}
-                        </div>
-                    `;
-                });
-                messageWindow.scrollTop = messageWindow.scrollHeight;
-            });
+            // Add the last incoming message captured by Pipedream as a bubble
+            if (data.lastMessage) {
+                const msgBubble = document.createElement("div");
+                msgBubble.className = "bg-white text-gray-800 p-3 rounded-lg max-w-xs shadow self-start rounded-tl-none";
+                msgBubble.innerHTML = `
+                    <p class="text-sm">${data.lastMessage}</p>
+                    <span class="text-[10px] text-gray-400 block text-right mt-1">Customer</span>
+                `;
+                container.appendChild(msgBubble);
+            }
+            container.scrollTop = container.scrollHeight;
         }
 
-        // Send Reply via Meta Cloud API
-        window.sendMessage = async function() {
-            const inputField = document.getElementById('message-input');
-            const text = inputField.value.trim();
-            if(!text || !activeChatNumber) return;
+        // 3. Action: Send Text Message via WhatsApp API link
+        function sendText() {
+            const textInput = document.getElementById("msg-input");
+            const text = textInput.value.trim();
 
-            inputField.value = '';
+            if (!currentActiveCustomer) {
+                alert("Please select a customer from the left sidebar first!");
+                return;
+            }
+            if (!text) return;
 
-            // 1. Save to Local Firebase Database
-            await addDoc(collection(db, `chats/${activeChatNumber}/messages`), {
-                text: text,
-                sender: 'admin',
-                timestamp: serverTimestamp()
-            });
+            // Direct WhatsApp Send URL Setup for business communication redirection
+            const waUrl = `https://wa.me/${currentActiveCustomer}?text=${encodeURIComponent(text)}`;
+            window.open(waUrl, '_blank');
+            
+            // Append locally to chat box for visual history tracking
+            appendLocalMessage(text, "text");
+            textInput.value = "";
+        }
 
-            // 2. Trigger Meta WhatsApp API to Send to Customer Mobile
-            try {
-                await fetch(`https://graph.facebook.com/v20.0/YOUR_META_PHONE_NUMBER_ID/messages`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': 'Bearer YOUR_META_ACCESS_TOKEN',
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        messaging_product: "whatsapp",
-                        recipient_type: "individual",
-                        to: activeChatNumber,
-                        type: "text",
-                        text: { preview_url: false, body: text }
-                    })
-                });
-            } catch (e) { console.error("Error sending via Meta:", e); }
+        // 4. Action: Send Media (Image, Video, Audio)
+        function sendMedia(type) {
+            if (!currentActiveCustomer) {
+                alert("Please select a customer from the left sidebar first!");
+                return;
+            }
+
+            const mediaUrl = prompt(`Enter the direct public URL of your ${type}:`);
+            if (!mediaUrl) return;
+
+            // Open target WhatsApp layout with standard tracking text
+            const textPayload = `Here is the shared ${type}: ${mediaUrl}`;
+            const waUrl = `https://wa.me/${currentActiveCustomer}?text=${encodeURIComponent(textPayload)}`;
+            window.open(waUrl, '_blank');
+
+            appendLocalMessage(mediaUrl, type);
+        }
+
+        // Helper to instantly add outgoing bubble to screen
+        function appendLocalMessage(content, type) {
+            const container = document.getElementById("messages-container");
+            const bubble = document.createElement("div");
+            bubble.className = "bg-green-500 text-white p-3 rounded-lg max-w-xs shadow self-end rounded-tr-none";
+            
+            if (type === 'image') {
+                bubble.innerHTML = `<img src="${content}" class="max-w-xs rounded mb-1" alt="Image File"><span class="text-[10px] text-green-100 block text-right">Sent</span>`;
+            } else if (type === 'video') {
+                bubble.innerHTML = `<video src="${content}" controls class="max-w-xs rounded mb-1"></video><span class="text-[10px] text-green-100 block text-right">Sent</span>`;
+            } else if (type === 'audio') {
+                bubble.innerHTML = `<audio src="${content}" controls class="max-w-full scale-90"></audio><span class="text-[10px] text-green-100 block text-right">Sent</span>`;
+            } else {
+                bubble.innerHTML = `<p class="text-sm">${content}</p><span class="text-[10px] text-green-100 block text-right">Sent</span>`;
+            }
+            
+            container.appendChild(bubble);
+            container.scrollTop = container.scrollHeight;
         }
     </script>
-</head>
-<body class="bg-gray-50 h-screen flex flex-col font-sans">
-    <div class="bg-green-600 text-white p-4 shadow-md flex items-center">
-        <h1 class="text-xl font-bold">Jh Seller CRM Dashboard</h1>
-    </div>
-    <div class="flex flex-1 overflow-hidden">
-        <!-- Sidebar Chat List -->
-        <div id="chat-list" class="w-1/3 bg-white border-r overflow-y-auto">
-            <p class="p-4 text-gray-400 text-center">No active chats yet...</p>
-        </div>
-        <!-- Chat Area -->
-        <div class="w-2/3 flex flex-col bg-gray-100 relative">
-            <div id="chat-box-placeholder" class="absolute inset-0 flex items-center justify-center text-gray-400 flex-col">
-                <p class="text-lg">Click on a chat sequence to start replying</p>
-            </div>
-            <div id="active-chat-area" class="hidden flex flex-col h-full">
-                <div class="bg-white p-4 border-b font-bold text-gray-700" id="chat-title">Chat</div>
-                <div id="message-window" class="flex-1 p-4 overflow-y-auto flex flex-col bg-dashed"></div>
-                <div class="p-4 bg-white border-t flex gap-2">
-                    <input id="message-input" type="text" placeholder="Type your reply here..." class="flex-1 border p-2 rounded-lg outline-none focus:border-green-500">
-                    <button onclick="sendMessage()" class="bg-green-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-green-700">Send</button>
-                </div>
-            </div>
-        </div>
-    </div>
 </body>
 </html>
