@@ -10,15 +10,15 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, doc, query, orderBy, onSnapshot, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // ⬇️ REPLCE THIS WITH YOUR OWN FIREBASE CONFIG FROM SCREENSHOT ⬇️
+        // ✅ Aapka Real Firebase Config Code
         const firebaseConfig = {
-            apiKey: "AIzaSyDLjMjhHspr_Iovoo3vLaDyWU...",
-            authDomain: "new-website-6d291.firebaseapp.com",
-            projectId: "new-website-6d291",
-            storageBucket: "new-website-6d291.appspot.com",
-            messagingSenderId: "32392835026",
-            appId: "1:32392835026:web:2f1aa823ccd4...",
-            measurementId: "G-LZFEQN2NX2"
+          apiKey: "AIzaSyDLjMjHspr_Iovoo3vLaDyWU35KqafN9a8",
+          authDomain: "new-website-6d291.firebaseapp.com",
+          projectId: "new-website-6d291",
+          storageBucket: "new-website-6d291.firebasestorage.app",
+          messagingSenderId: "32392835026",
+          appId: "1:32392835026:web:2f1aa823ccd46fcb2a220b",
+          measurementId: "G-LZFEQN2NX2"
         };
 
         const app = initializeApp(firebaseConfig);
@@ -84,13 +84,12 @@
             });
 
             // 2. Trigger Meta WhatsApp API to Send to Customer Mobile
-            // NOTE: Replace 'YOUR_META_PHONE_NUMBER_ID' and 'YOUR_META_ACCESS_TOKEN' when ready
             try {
                 await fetch(`https://graph.facebook.com/v20.0/YOUR_META_PHONE_NUMBER_ID/messages`, {
                     method: 'POST',
                     headers: {
                         'Authorization': 'Bearer YOUR_META_ACCESS_TOKEN',
-                        'Content-Type': 'application/center'
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
                         messaging_product: "whatsapp",
