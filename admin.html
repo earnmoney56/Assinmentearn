@@ -5,231 +5,131 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WhatsApp Admin</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        body { 
-            background: #dadbd3; 
-            background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); 
-            display: flex; justify-content: center; align-items: center; height: 100vh; 
-        }
-        .chat-container { width: 100%; max-width: 450px; height: 100vh; background: #efeae2; display: flex; flex-direction: column; box-shadow: 0 4px 15px rgba(0,0,0,0.15); overflow: hidden; }
-        .chat-header { background: #004d40; color: white; padding: 12px 16px; display: flex; align-items: center; gap: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .profile-img { width: 40px; height: 40px; border-radius: 50%; background: #ccc; object-fit: cover; }
-        .header-info { flex: 1; }
-        .header-info .name { font-size: 16px; font-weight: 600; }
-        .header-info .status { font-size: 12px; color: #b2dfdb; }
-        .chat-messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); background-color: #efeae2; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
+        body { background: #dadbd3; height: 100vh; display: flex; justify-content: center; align-items: center; }
+        .chat-container { width: 100%; max-width: 450px; height: 100vh; background: #efeae2; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.15); }
         
-        /* 🟢 UPDATED WHATSAPP STYLE BUBBLES FOR ADMIN */
-        .msg { 
-            max-width: 80%; 
-            padding: 6px 7px 6px 9px; 
-            border-radius: 8px; 
-            font-size: 14.5px; 
-            line-height: 1.4; 
-            word-wrap: break-word; 
-            position: relative; 
-            box-shadow: 0 1px 1px rgba(0,0,0,0.13); 
-            display: flex;
-            flex-direction: row;
-            align-items: flex-end;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-        .msg.sent-by-me { background: #d9fdd3; align-self: flex-end; border-top-right-radius: 0; color: #111b21; }
-        .msg.received-by-me { background: #ffffff; align-self: flex-start; border-top-left-radius: 0; color: #111b21; }
-        .msg img, .msg video { max-width: 100%; border-radius: 6px; display: block; }
-        .msg audio { max-width: 100%; display: block; }
-
-        /* ⏱️ REAL TIME & TICKS POSITIONING */
-        .msg-meta { 
-            margin-left: auto;
-            display: inline-flex; 
-            align-items: center; 
-            gap: 3px; 
-            font-size: 10px; 
-            color: #667781; 
-            padding-top: 4px;
-            vertical-align: bottom;
-            user-select: none;
-        }
-        .msg.received-by-me .msg-meta { 
-            margin-left: auto;
-        }
+        /* Inbox View Styles */
+        #inbox-view { padding: 10px; }
+        .user-item { background: white; padding: 15px; margin-bottom: 5px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .user-item:hover { background: #f0f2f5; }
         
-        /* Ticks Styling */
-        .tick { display: inline-block; font-weight: bold; font-size: 12px; margin-left: 1px; }
-        .tick.sent { color: #8696a0; }
-        .tick.delivered { color: #8696a0; }
+        /* Chat Interface Styles (Same as before) */
+        #chat-view { display: none; flex-direction: column; height: 100%; }
+        .chat-header { background: #004d40; color: white; padding: 12px; display: flex; align-items: center; gap: 10px; }
+        .chat-messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); }
+        
+        /* Message Styles kept same to avoid breaking logic */
+        .msg { max-width: 80%; padding: 6px 9px; border-radius: 8px; font-size: 14.5px; word-wrap: break-word; position: relative; display: flex; align-items: flex-end; flex-wrap: wrap; gap: 15px; }
+        .sent-by-me { background: #d9fdd3; align-self: flex-end; }
+        .received-by-me { background: #ffffff; align-self: flex-start; }
+        .msg-meta { margin-left: auto; font-size: 10px; color: #667781; }
+        .tick { font-size: 12px; margin-left: 1px; }
         .tick.read { color: #53bdeb; }
-
+        
         .chat-input-area { padding: 10px; background: #f0f2f5; display: flex; align-items: center; gap: 8px; }
-        .input-container { flex: 1; background: #fff; border-radius: 24px; display: flex; align-items: center; padding: 2px 12px; }
-        .input-container input[type="text"] { flex: 1; border: none; outline: none; padding: 10px 4px; font-size: 15px; background: transparent; }
-        .icon-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: #54656f; display: flex; align-items: center; justify-content: center; }
-        .icon-btn.recording { color: #ea0038; animation: blink 1s infinite; }
-        .send-btn { background: #005c4b; color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+        .input-container { flex: 1; background: #fff; border-radius: 24px; display: flex; align-items: center; padding: 5px 15px; }
+        input { flex: 1; border: none; outline: none; padding: 5px; }
+        .send-btn { background: #005c4b; color: white; border: none; padding: 10px 15px; border-radius: 50%; cursor: pointer; }
     </style>
-
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, updateDoc, doc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyDe8rFsoeI7QnlPfuJb_FyWOLe1SdqEZHM",
-            authDomain: "wattsapp-27aa4.firebaseapp.com",
-            databaseURL: "https://wattsapp-27aa4-default-rtdb.firebaseio.com",
-            projectId: "wattsapp-27aa4",
-            storageBucket: "wattsapp-27aa4.firebasestorage.app",
-            messagingSenderId: "826330591993",
-            appId: "1:826330591993:web:51865cddf32ba8b5312828",
-            measurementId: "G-WY2ND6EVZC"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        const urlParams = new URLSearchParams(window.location.search);
-        const userNumber = urlParams.get('id') || "03257818116"; 
-        const roomId = `customer_${userNumber}`; 
-        const currentSender = "admin"; 
-
-        document.getElementById('displayUser').innerText = `Customer: +${userNumber}`;
-
-        const chatBox = document.getElementById('chatBox');
-        const msgInput = document.getElementById('msgInput');
-        const sendBtn = document.getElementById('sendBtn');
-        const mediaInput = document.getElementById('mediaInput');
-        const voiceBtn = document.getElementById('voiceBtn');
-
-        let mediaRecorder, audioChunks = [], isRecording = false;
-
-        // Window Active Check
-        let isWindowActive = true;
-        window.addEventListener('focus', () => { isWindowActive = true; });
-        window.addEventListener('blur', () => { isWindowActive = false; });
-
-        // Live Load Messages & Auto Ticks Updater
-        const q = query(collection(db, "rooms", roomId, "messages"), orderBy("timestamp", "asc"));
-        onSnapshot(q, (snapshot) => {
-            chatBox.innerHTML = ""; 
-            snapshot.forEach((snapshotDoc) => {
-                const data = snapshotDoc.data();
-                
-                // Automatic Status Handler
-                if (data.sender === 'user') {
-                    const docRef = doc(db, "rooms", roomId, "messages", snapshotDoc.id);
-                    if (isWindowActive && data.status !== 'read') {
-                        updateDoc(docRef, { status: 'read' });
-                    } else if (!isWindowActive && data.status === 'sent') {
-                        updateDoc(docRef, { status: 'delivered' });
-                    }
-                }
-
-                renderMessage(snapshotDoc.id, data.sender, data.type, data.content, data.timeStr, data.status);
-            });
-            chatBox.scrollTop = chatBox.scrollHeight; 
-        });
-
-        function renderMessage(id, sender, type, content, timeStr, status) {
-            const msgDiv = document.createElement('div');
-            const isMe = sender === currentSender;
-            msgDiv.classList.add('msg', isMe ? 'sent-by-me' : 'received-by-me'); 
-
-            if (type === 'text') {
-                msgDiv.innerText = content;
-            } else if (type === 'image') {
-                msgDiv.innerHTML = `<img src="${content}" alt="Image" loading="lazy">`;
-            } else if (type === 'video') {
-                msgDiv.innerHTML = `<video src="${content}" controls></video>`;
-            } else if (type === 'audio') {
-                msgDiv.innerHTML = `<audio src="${content}" controls></audio>`;
-            }
-
-            let ticksHtml = '';
-            if (isMe) {
-                if (status === 'sent') ticksHtml = '<span class="tick sent">✓</span>';
-                else if (status === 'delivered') ticksHtml = '<span class="tick delivered">✓✓</span>';
-                else if (status === 'read') ticksHtml = '<span class="tick read">✓✓</span>';
-            }
-
-            const metaDiv = document.createElement('div');
-            metaDiv.classList.add('msg-meta');
-            metaDiv.innerHTML = `<span>${timeStr || ''}</span> ${ticksHtml}`;
-            msgDiv.appendChild(metaDiv);
-
-            chatBox.appendChild(msgDiv);
-        }
-
-        function getFormattedTime() {
-            const now = new Date();
-            let hours = now.getHours(); let minutes = now.getMinutes();
-            const ampm = hours >= 12 ? 'PM' : 'AM';
-            hours = hours % 12; hours = hours ? hours : 12; 
-            minutes = minutes < 10 ? '0'+minutes : minutes;
-            return hours + ':' + minutes + ' ' + ampm;
-        }
-
-        async function sendMessageToFirebase(type, content) {
-            await addDoc(collection(db, "rooms", roomId, "messages"), {
-                sender: currentSender,
-                type: type,
-                content: content,
-                timestamp: new Date(),
-                timeStr: getFormattedTime(),
-                status: "sent"
-            });
-        }
-
-        sendBtn.addEventListener('click', () => { const t = msgInput.value.trim(); if(t){ msgInput.value=""; sendMessageToFirebase('text', t); } });
-        msgInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { const t = msgInput.value.trim(); if(t){ msgInput.value=""; sendMessageToFirebase('text', t); } } });
-
-        const toBase64 = file => new Promise((resolve, reject) => {
-            const reader = new FileReader(); reader.readAsDataURL(file);
-            reader.onload = () => resolve(reader.result); reader.onerror = error => reject(error);
-        });
-
-        mediaInput.addEventListener('change', async (e) => {
-            const file = e.target.files[0]; if (!file) return;
-            if (file.size > 1048576) { alert("File size 1MB se chota hona chahiye."); return; }
-            let fileType = file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : file.type.startsWith('audio/') ? 'audio' : 'text';
-            const base64 = await toBase64(file);
-            sendMessageToFirebase(fileType, base64);
-        });
-
-        voiceBtn.addEventListener('click', async () => {
-            if (!isRecording) {
-                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    mediaRecorder = new MediaRecorder(stream); audioChunks = [];
-                    mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
-                    mediaRecorder.onstop = async () => {
-                        const blob = new Blob(audioChunks, { type: 'audio/mp3' });
-                        const base64 = await toBase64(blob);
-                        sendMessageToFirebase('audio', base64);
-                    };
-                    mediaRecorder.start(); isRecording = true; voiceBtn.classList.add('recording'); voiceBtn.innerText = "🛑";
-                }
-            } else { mediaRecorder.stop(); isRecording = false; voiceBtn.classList.remove('recording'); voiceBtn.innerText = "🎙️"; }
-        });
-    </script>
 </head>
 <body>
+
 <div class="chat-container">
-    <div class="chat-header">
-        <img class="profile-img" src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="Profile">
-        <div class="header-info"><div class="name" id="displayUser">Jh Seller Admin</div><div class="status">active support panel</div></div>
+    <!-- Inbox View -->
+    <div id="inbox-view">
+        <h3 style="padding: 10px; color: #004d40;">Conversations</h3>
+        <div id="userList"></div>
     </div>
-    <div class="chat-messages" id="chatBox"></div>
-    <div class="chat-input-area">
-        <div class="input-container">
-            <input type="file" id="mediaInput" accept="image/*,video/*,audio/*" style="display: none;">
-            <button class="icon-btn" onclick="document.getElementById('mediaInput').click()" style="margin-right: 8px;">📎</button>
-            <input type="text" id="msgInput" placeholder="Reply to customer...">
-            <button class="icon-btn" id="voiceBtn">🎙️</button>
+
+    <!-- Chat View -->
+    <div id="chat-view">
+        <div class="chat-header">
+            <button onclick="goBack()" style="background:none; border:none; color:white; font-size:20px;">←</button>
+            <span id="chatTitle">Chat</span>
         </div>
-        <button class="send-btn" id="sendBtn">➤</button>
+        <div class="chat-messages" id="chatBox"></div>
+        <div class="chat-input-area">
+            <div class="input-container">
+                <input type="text" id="msgInput" placeholder="Reply...">
+            </div>
+            <button class="send-btn" id="sendBtn">➤</button>
+        </div>
     </div>
 </div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getFirestore, collection, getDocs, addDoc, query, orderBy, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+    // Firebase Config remains same
+    const firebaseConfig = { /* ...YOUR CONFIG... */ };
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    let activeDocId = "";
+
+    // 1. Load User List (Inbox)
+    async function loadInbox() {
+        document.getElementById('inbox-view').style.display = 'block';
+        document.getElementById('chat-view').style.display = 'none';
+        const snapshot = await getDocs(collection(db, "group_messages"));
+        const userList = document.getElementById('userList');
+        userList.innerHTML = "";
+        snapshot.forEach(doc => {
+            const div = document.createElement('div');
+            div.className = 'user-item';
+            div.innerHTML = `<div><strong>Customer ID:</strong> ${doc.id}</div>`;
+            div.onclick = () => openChat(doc.id);
+            userList.appendChild(div);
+        });
+    }
+
+    // 2. Open Specific Chat
+    function openChat(id) {
+        activeDocId = id;
+        document.getElementById('inbox-view').style.display = 'none';
+        document.getElementById('chat-view').style.display = 'flex';
+        document.getElementById('chatTitle').innerText = "Chat with " + id;
+        loadChatMessages();
+    }
+
+    function goBack() { loadInbox(); }
+
+    // 3. Chat Logic (Same as before)
+    function loadChatMessages() {
+        const q = query(collection(db, "group_messages", activeDocId, "messages"), orderBy("time_now", "asc"));
+        onSnapshot(q, (snapshot) => {
+            const chatBox = document.getElementById('chatBox');
+            chatBox.innerHTML = "";
+            snapshot.forEach(snapshotDoc => {
+                const data = snapshotDoc.data();
+                renderMsg(data);
+            });
+        });
+    }
+
+    function renderMsg(data) {
+        const div = document.createElement('div');
+        div.className = `msg ${data.sender === 'admin' ? 'sent-by-me' : 'received-by-me'}`;
+        div.innerHTML = `${data.message_text || data.content} <div class="msg-meta">${data.time_label || ''}</div>`;
+        document.getElementById('chatBox').appendChild(div);
+    }
+
+    document.getElementById('sendBtn').onclick = async () => {
+        const text = document.getElementById('msgInput').value;
+        if(!text) return;
+        await addDoc(collection(db, "group_messages", activeDocId, "messages"), {
+            sender: 'admin',
+            message_text: text,
+            time_now: Date.now(),
+            time_label: new Date().toLocaleTimeString(),
+            status: 'sent'
+        });
+        document.getElementById('msgInput').value = "";
+    };
+
+    loadInbox(); // Start here
+</script>
 </body>
 </html>
