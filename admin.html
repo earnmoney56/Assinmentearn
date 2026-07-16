@@ -15,18 +15,73 @@
         
         /* 📱 INBOX VIEW STYLING */
         #inbox-view { display: flex; flex-direction: column; height: 100%; background: #ffffff; }
-        .inbox-header { background: #008069; color: white; padding: 16px; font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+        .inbox-header { background: #008069; color: white; padding: 16px; font-size: 18px; font-weight: 600; display: flex; align-items: center; justify-content: space-between; }
         .user-list { flex: 1; overflow-y: auto; padding: 8px 0; background: #ffffff; }
+        
+        /* Modern User Item style with status manager */
         .user-item { 
-            display: flex; align-items: center; gap: 15px; padding: 12px 16px; 
+            display: flex; flex-direction: column; padding: 12px 16px; 
             border-bottom: 1px solid #f0f0f0; cursor: pointer; transition: background 0.2s; 
         }
         .user-item:hover { background: #f5f6f6; }
+        .user-main-row { display: flex; align-items: center; gap: 15px; width: 100%; }
         .user-avatar { width: 45px; height: 45px; border-radius: 50%; background: #00a884; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px; }
         .user-details { flex: 1; }
         .user-phone { font-size: 15px; font-weight: 600; color: #111b21; }
         .user-subtitle { font-size: 12px; color: #667781; margin-top: 2px; }
         
+        /* 🏷️ STATUS MANAGER & TAGS STYLING */
+        .status-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px dashed #e1e1e1;
+            flex-wrap: wrap;
+        }
+        .status-tag {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 12px;
+            color: white;
+            background-color: #8696a0;
+        }
+        .status-tag.pending { background-color: #e53935; } /* Red */
+        .status-tag.plan1 { background-color: #1e88e5; }   /* Blue */
+        .status-tag.plan2 { background-color: #8e24aa; }   /* Purple */
+        .status-tag.completed { background-color: #43a047; } /* Green */
+        .status-tag.custom { background-color: #f4511e; }   /* Orange */
+
+        .status-selector {
+            font-size: 12px;
+            padding: 2px 5px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            outline: none;
+            background: #fff;
+            cursor: pointer;
+        }
+        .custom-status-btn {
+            font-size: 11px;
+            padding: 2px 6px;
+            background: #008069;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .remove-status-btn {
+            font-size: 11px;
+            padding: 2px 6px;
+            background: #d32f2f;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
         /* 🟢 UNREAD COUNTER BADGE */
         .unread-badge {
             background-color: #25d366;
@@ -152,6 +207,36 @@
             return newName;
         }
 
+        // Live status updating directly to Firestore
+        async function updateCustomerStatus(docId, newStatus) {
+            try {
+                const docRef = doc(db, "group_messages", docId);
+                await updateDoc(docRef, { statusTag: newStatus });
+            } catch (error) {
+                console.error("Error updating status: ", error);
+            }
+        }
+
+        window.handleStatusChange = function(selectElement, docId) {
+            const val = selectElement.value;
+            if (val === 'custom') {
+                const customVal = prompt("Enter Custom Status (e.g., Plan 3, Free Trial, Paid):");
+                if (customVal && customVal.trim() !== "") {
+                    updateCustomerStatus(docId, customVal.trim());
+                } else {
+                    selectElement.value = "";
+                }
+            } else {
+                updateCustomerStatus(docId, val);
+            }
+        };
+
+        window.removeStatus = function(docId) {
+            if (confirm("Are you sure you want to remove the status?")) {
+                updateCustomerStatus(docId, "");
+            }
+        };
+
         async function loadInbox() {
             inboxView.style.display = 'flex';
             chatView.style.display = 'none';
@@ -163,51 +248,77 @@
             userListDiv.innerHTML = "<div style='padding: 20px; text-align: center; color: #667781;'>Loading conversations...</div>";
 
             try {
-                const querySnapshot = await getDocs(collection(db, "group_messages"));
-                userListDiv.innerHTML = "";
+                // Real-time update on Inbox users list
+                onSnapshot(collection(db, "group_messages"), (querySnapshot) => {
+                    userListDiv.innerHTML = "";
 
-                if (querySnapshot.empty) {
-                    userListDiv.innerHTML = "<div style='padding: 20px; text-align: center; color: #667781;'>No active chats found.</div>";
-                    return;
-                }
+                    if (querySnapshot.empty) {
+                        userListDiv.innerHTML = "<div style='padding: 20px; text-align: center; color: #667781;'>No active chats found.</div>";
+                        return;
+                    }
 
-                querySnapshot.forEach((documentSnapshot) => {
-                    const docId = documentSnapshot.id;
-                    const userName = getUserFriendlyName(docId);
+                    querySnapshot.forEach((documentSnapshot) => {
+                        const docId = documentSnapshot.id;
+                        const docData = documentSnapshot.data();
+                        const userName = getUserFriendlyName(docId);
+                        const activeStatus = docData.statusTag || "";
 
-                    const itemDiv = document.createElement('div');
-                    itemDiv.className = 'user-item';
-                    itemDiv.id = `inbox-item-${docId}`;
-                    itemDiv.innerHTML = `
-                        <div class="user-avatar">👤</div>
-                        <div class="user-details">
-                            <div class="user-phone">${userName}</div>
-                            <div class="user-subtitle">ID: ${docId.substring(0, 15)}...</div>
-                        </div>
-                        <div id="badge-${docId}" class="unread-badge" style="display: none;">0</div>
-                    `;
-                    itemDiv.onclick = () => openChat(docId, userName);
-                    userListDiv.appendChild(itemDiv);
+                        // Resolve visual styling class for dynamic status tag
+                        let tagClass = "status-tag";
+                        if (activeStatus.toLowerCase() === "payment pending") tagClass += " pending";
+                        else if (activeStatus.toLowerCase() === "plan 1") tagClass += " plan1";
+                        else if (activeStatus.toLowerCase() === "plan 2") tagClass += " plan2";
+                        else if (activeStatus.toLowerCase() === "completed") tagClass += " completed";
+                        else if (activeStatus !== "") tagClass += " custom";
 
-                    const messagesRef = collection(db, "group_messages", docId, "messages");
-                    onSnapshot(messagesRef, (msgSnapshot) => {
-                        let unreadCount = 0;
-                        msgSnapshot.forEach((msgDoc) => {
-                            const msgData = msgDoc.data();
-                            if (msgData.sender === 'user' && msgData.status !== 'read') {
-                                unreadCount++;
+                        const itemDiv = document.createElement('div');
+                        itemDiv.className = 'user-item';
+                        itemDiv.id = `inbox-item-${docId}`;
+                        
+                        itemDiv.innerHTML = `
+                            <div class="user-main-row" onclick="openChat('${docId}', '${userName}')">
+                                <div class="user-avatar">👤</div>
+                                <div class="user-details">
+                                    <div class="user-phone">${userName}</div>
+                                    <div class="user-subtitle">ID: ${docId.substring(0, 15)}...</div>
+                                </div>
+                                <div id="badge-${docId}" class="unread-badge" style="display: none;">0</div>
+                            </div>
+                            <div class="status-container">
+                                ${activeStatus ? `<span class="${tagClass}">${activeStatus}</span>` : '<span style="font-size:11px; color:#aaa;">No tag</span>'}
+                                <select class="status-selector" onchange="handleStatusChange(this, '${docId}')" onclick="event.stopPropagation()">
+                                    <option value="" disabled selected>Assign status...</option>
+                                    <option value="Payment Pending">Payment Pending</option>
+                                    <option value="Plan 1">Plan 1</option>
+                                    <option value="Plan 2">Plan 2</option>
+                                    <option value="Completed">Completed</option>
+                                    <option value="custom">✍️ Custom Status...</option>
+                                </select>
+                                ${activeStatus ? `<button class="remove-status-btn" onclick="event.stopPropagation(); removeStatus('${docId}')">✕ Remove</button>` : ''}
+                            </div>
+                        `;
+                        userListDiv.appendChild(itemDiv);
+
+                        const messagesRef = collection(db, "group_messages", docId, "messages");
+                        onSnapshot(messagesRef, (msgSnapshot) => {
+                            let unreadCount = 0;
+                            msgSnapshot.forEach((msgDoc) => {
+                                const msgData = msgDoc.data();
+                                if (msgData.sender === 'user' && msgData.status !== 'read') {
+                                    unreadCount++;
+                                }
+                            });
+
+                            const badge = document.getElementById(`badge-${docId}`);
+                            if (badge) {
+                                if (unreadCount > 0) {
+                                    badge.innerText = unreadCount;
+                                    badge.style.display = 'flex';
+                                } else {
+                                    badge.style.display = 'none';
+                                }
                             }
                         });
-
-                        const badge = document.getElementById(`badge-${docId}`);
-                        if (badge) {
-                            if (unreadCount > 0) {
-                                badge.innerText = unreadCount;
-                                badge.style.display = 'flex';
-                            } else {
-                                badge.style.display = 'none';
-                            }
-                        }
                     });
                 });
             } catch (error) {
@@ -238,7 +349,6 @@
                     }
 
                     const timeLabel = data.time_label || getFormattedTime();
-                    // Checking priority: file_url, content, message_text
                     const messageContent = data.file_url || data.content || data.message_text;
                     renderMessage(snapshotDoc.id, data.sender, data.type || 'text', messageContent, timeLabel, data.status);
                 });
@@ -250,13 +360,12 @@
             loadInbox();
         };
 
-        // 🛠️ RENDER FUNCTION WITH ROBUST BASE64 & AUDIO MIME CORRECTION
         function renderMessage(id, sender, type, content, timeStr, status) {
             const msgDiv = document.createElement('div');
             const isMe = sender === currentSender;
             msgDiv.classList.add('msg', isMe ? 'sent-by-me' : 'received-by-me'); 
 
-            if (!content) return; // Prevent empty bubbles
+            if (!content) return; 
 
             if (type === 'text') {
                 const textNode = document.createElement('span');
