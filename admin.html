@@ -19,16 +19,45 @@
         .header-info .status { font-size: 12px; color: #b2dfdb; }
         .chat-messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); background-color: #efeae2; }
         
-        .msg { max-width: 80%; padding: 6px 10px 20px 10px; border-radius: 8px; font-size: 14.5px; line-height: 1.4; word-wrap: break-word; position: relative; box-shadow: 0 1px 1px rgba(0,0,0,0.1); }
+        /* 🟢 UPDATED WHATSAPP STYLE BUBBLES FOR ADMIN */
+        .msg { 
+            max-width: 80%; 
+            padding: 6px 7px 6px 9px; 
+            border-radius: 8px; 
+            font-size: 14.5px; 
+            line-height: 1.4; 
+            word-wrap: break-word; 
+            position: relative; 
+            box-shadow: 0 1px 1px rgba(0,0,0,0.13); 
+            display: flex;
+            flex-direction: row;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
         .msg.sent-by-me { background: #d9fdd3; align-self: flex-end; border-top-right-radius: 0; color: #111b21; }
         .msg.received-by-me { background: #ffffff; align-self: flex-start; border-top-left-radius: 0; color: #111b21; }
-        .msg img, .msg video { max-width: 100%; border-radius: 6px; margin-bottom: 2px; display: block; }
-        .msg audio { max-width: 100%; margin-bottom: 2px; display: block; }
+        .msg img, .msg video { max-width: 100%; border-radius: 6px; display: block; }
+        .msg audio { max-width: 100%; display: block; }
 
-        .msg-meta { position: absolute; bottom: 2px; right: 7px; display: flex; align-items: center; gap: 3px; font-size: 10.5px; color: #667781; }
-        .msg.received-by-me .msg-meta { right: auto; left: 7px; }
+        /* ⏱️ REAL TIME & TICKS POSITIONING */
+        .msg-meta { 
+            margin-left: auto;
+            display: inline-flex; 
+            align-items: center; 
+            gap: 3px; 
+            font-size: 10px; 
+            color: #667781; 
+            padding-top: 4px;
+            vertical-align: bottom;
+            user-select: none;
+        }
+        .msg.received-by-me .msg-meta { 
+            margin-left: auto;
+        }
         
-        .tick { display: inline-block; font-weight: bold; font-size: 11px; }
+        /* Ticks Styling */
+        .tick { display: inline-block; font-weight: bold; font-size: 12px; margin-left: 1px; }
         .tick.sent { color: #8696a0; }
         .tick.delivered { color: #8696a0; }
         .tick.read { color: #53bdeb; }
@@ -75,27 +104,24 @@
 
         let mediaRecorder, audioChunks = [], isRecording = false;
 
-        // Window Focus State to check if Admin is viewing live
+        // Window Active Check
         let isWindowActive = true;
-        window.addEventListener('focus', () => { isWindowActive = true; triggerStatusUpdate(); });
+        window.addEventListener('focus', () => { isWindowActive = true; });
         window.addEventListener('blur', () => { isWindowActive = false; });
 
-        // Live Load Messages & Auto-Tick Upgrader
+        // Live Load Messages & Auto Ticks Updater
         const q = query(collection(db, "rooms", roomId, "messages"), orderBy("timestamp", "asc"));
         onSnapshot(q, (snapshot) => {
             chatBox.innerHTML = ""; 
             snapshot.forEach((snapshotDoc) => {
                 const data = snapshotDoc.data();
                 
-                // ⚡ AUTOMATIC TICK LOGIC
-                // Agar user ne message bheja hai (`sender === 'user'`)
+                // Automatic Status Handler
                 if (data.sender === 'user') {
                     const docRef = doc(db, "rooms", roomId, "messages", snapshotDoc.id);
                     if (isWindowActive && data.status !== 'read') {
-                        // Admin page open hai aur active hai -> Blue Tick (read)
                         updateDoc(docRef, { status: 'read' });
                     } else if (!isWindowActive && data.status === 'sent') {
-                        // Admin online hai lekin window background me hai -> Double Tick (delivered)
                         updateDoc(docRef, { status: 'delivered' });
                     }
                 }
@@ -104,11 +130,6 @@
             });
             chatBox.scrollTop = chatBox.scrollHeight; 
         });
-
-        // Helper to update status when tab comes back to focus
-        function triggerStatusUpdate() {
-            // Firestore updates will run dynamically on the active listener above
-        }
 
         function renderMessage(id, sender, type, content, timeStr, status) {
             const msgDiv = document.createElement('div');
