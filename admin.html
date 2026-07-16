@@ -25,7 +25,7 @@
         }
         .user-item:hover { background: #f5f6f6; }
         
-        /* Direct wrapper of top area to handle click reliably */
+        /* Clickable main row to enter chat cleanly without overlap */
         .user-clickable-area {
             display: flex; align-items: center; gap: 15px; width: 100%; cursor: pointer;
         }
@@ -137,6 +137,7 @@
         .tick.delivered { color: #8696a0; }
         .tick.read { color: #53bdeb; }
 
+        /* ⌨️ INPUT AREA */
         .chat-input-area { padding: 10px; background: #f0f2f5; display: flex; align-items: center; gap: 8px; }
         .input-container { flex: 1; background: #fff; border-radius: 24px; display: flex; align-items: center; padding: 2px 12px; }
         .input-container input[type="text"] { flex: 1; border: none; outline: none; padding: 10px 4px; font-size: 15px; background: transparent; }
@@ -163,6 +164,9 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+
+        // 🎵 WhatsApp Premium Incoming Alert Sound
+        const msgSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-84.wav');
 
         const inboxView = document.getElementById('inbox-view');
         const chatView = document.getElementById('chat-view');
@@ -203,7 +207,7 @@
             return newName;
         }
 
-        // Live status updating directly to Firestore
+        // Live status updating to Firebase Firestore
         async function updateCustomerStatus(docId, newStatus) {
             try {
                 const docRef = doc(db, "group_messages", docId);
@@ -233,7 +237,6 @@
             }
         };
 
-        // EXPLICIT CHAT OPEN TRIGGER
         window.openChat = function(docId, userName) {
             activeDocId = docId;
             inboxView.style.display = 'none';
@@ -243,10 +246,17 @@
             const q = query(collection(db, "group_messages", activeDocId, "messages"), orderBy("time_now", "asc"));
             activeChatListener = onSnapshot(q, (snapshot) => {
                 chatBox.innerHTML = ""; 
+                let hasNewIncomingMsg = false;
+
                 snapshot.forEach((snapshotDoc) => {
                     const data = snapshotDoc.data();
                     
                     if (data.sender === 'user') {
+                        // 🔔 Ringtone play check for unread message
+                        if (data.status !== 'read') {
+                            hasNewIncomingMsg = true;
+                        }
+
                         const docRef = doc(db, "group_messages", activeDocId, "messages", snapshotDoc.id);
                         if (isWindowActive && data.status !== 'read') {
                             updateDoc(docRef, { status: 'read' });
@@ -259,6 +269,14 @@
                     const messageContent = data.file_url || data.content || data.message_text;
                     renderMessage(snapshotDoc.id, data.sender, data.type || 'text', messageContent, timeLabel, data.status);
                 });
+
+                // Play notification alert
+                if (hasNewIncomingMsg) {
+                    msgSound.play().catch(e => {
+                        console.log("Audio autoplay blocked by browser. Click anywhere on page first.");
+                    });
+                }
+
                 chatBox.scrollTop = chatBox.scrollHeight; 
             });
         };
@@ -289,7 +307,7 @@
                         const userName = getUserFriendlyName(docId);
                         const activeStatus = docData.statusTag || "";
 
-                        // Resolve visual styling class for dynamic status tag
+                        // Dynamic CSS styling classes for tags
                         let tagClass = "status-tag";
                         if (activeStatus.toLowerCase() === "payment pending") tagClass += " pending";
                         else if (activeStatus.toLowerCase() === "plan 1") tagClass += " plan1";
@@ -301,7 +319,7 @@
                         itemDiv.className = 'user-item';
                         itemDiv.id = `inbox-item-${docId}`;
                         
-                        // Separated Top Clickable Area with absolute function trigger
+                        // User info and tag controls structured separately to avoid click collision
                         itemDiv.innerHTML = `
                             <div class="user-clickable-area" onclick="window.openChat('${docId}', '${userName}')">
                                 <div class="user-avatar">👤</div>
