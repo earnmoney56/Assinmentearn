@@ -3,45 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WhatsApp Customer Support</title>
+    <title>Tech Hub - Customer Support</title>
+    <!-- 🏷️ Connecting PWA Manifest -->
     <link rel="manifest" href="manifest.json">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
         body { 
-            background: #dadbd3; 
-            background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); 
+            background: #f3f4f6; 
+            background-image: radial-gradient(#dfe3eb 10%, transparent 11%), radial-gradient(#dfe3eb 10%, transparent 11%);
+            background-size: 20px 20px;
+            background-position: 0 0, 10px 10px;
             display: flex; justify-content: center; align-items: center; height: 100vh; 
             overflow: hidden;
         }
-        .chat-container { width: 100%; max-width: 450px; height: 100vh; background: #efeae2; display: flex; flex-direction: column; box-shadow: 0 4px 15px rgba(0,0,0,0.15); overflow: hidden; }
+        .chat-container { width: 100%; max-width: 450px; height: 100vh; background: #f7f9fc; display: flex; flex-direction: column; box-shadow: 0 8px 30px rgba(0,0,0,0.1); overflow: hidden; }
         
-        /* 💬 CHAT HEADER STYLING */
-        .chat-header { background: #008069; color: white; padding: 12px 16px; display: flex; align-items: center; gap: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .profile-img { width: 40px; height: 40px; border-radius: 50%; background: #ccc; object-fit: cover; }
+        /* 📣 ATTRACTIVE INSTALL BANNER (Top-bar, Non-blocking) */
+        #install-banner {
+            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+            color: white;
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            z-index: 100;
+        }
+        .banner-text { font-weight: 500; }
+        .banner-btn {
+            background: #ffffff;
+            color: #1e3a8a;
+            border: none;
+            padding: 6px 12px;
+            font-size: 11px;
+            font-weight: bold;
+            border-radius: 20px;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            white-space: nowrap;
+        }
+
+        /* 💬 CHAT HEADER STYLING (Modern Indigo Brand) */
+        .chat-header { background: linear-gradient(135deg, #0f172a, #1e293b); color: white; padding: 14px 16px; display: flex; align-items: center; gap: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .profile-img { width: 42px; height: 42px; border-radius: 50%; border: 2px solid #3b82f6; object-fit: cover; }
         .header-info { flex: 1; }
-        .header-info .name { font-size: 16px; font-weight: 600; }
-        .header-info .status { font-size: 12px; color: #b2dfdb; }
+        .header-info .name { font-size: 16px; font-weight: 600; color: #f8fafc; }
+        .header-info .status { font-size: 12px; color: #3b82f6; font-weight: 500; display: flex; align-items: center; gap: 4px; }
+        .header-info .status::before { content: ""; display: inline-block; width: 8px; height: 8px; background: #10b981; border-radius: 50%; }
         
         /* 📜 CHAT MESSAGES AREA */
-        .chat-messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); background-color: #efeae2; }
+        .chat-messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background-color: #f1f5f9; }
         
-        /* Message Bubbles */
+        /* Message Bubbles (Elegant & Modern Rounded Corners) */
         .msg { 
             max-width: 80%; 
-            padding: 6px 7px 6px 9px; 
-            border-radius: 8px; 
-            font-size: 14.5px; 
-            line-height: 1.4; 
+            padding: 10px 14px; 
+            border-radius: 16px; 
+            font-size: 14px; 
+            line-height: 1.45; 
             word-wrap: break-word; 
             position: relative; 
-            box-shadow: 0 1px 1px rgba(0,0,0,0.13); 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05); 
             display: flex;
             flex-direction: column;
             gap: 5px;
         }
-        .msg.sent-by-me { background: #d9fdd3; align-self: flex-end; border-top-right-radius: 0; color: #111b21; }
-        .msg.received-by-me { background: #ffffff; align-self: flex-start; border-top-left-radius: 0; color: #111b21; }
-        .msg img, .msg video { max-width: 100%; max-height: 200px; border-radius: 6px; display: block; object-fit: contain; }
+        .msg.sent-by-me { background: #3b82f6; align-self: flex-end; border-bottom-right-radius: 2px; color: #ffffff; }
+        .msg.received-by-me { background: #ffffff; align-self: flex-start; border-bottom-left-radius: 2px; color: #1e293b; border: 1px solid #e2e8f0; }
+        .msg img, .msg video { max-width: 100%; max-height: 200px; border-radius: 8px; display: block; object-fit: contain; }
         .msg audio { max-width: 100%; display: block; outline: none; }
 
         .msg-meta { 
@@ -50,88 +80,26 @@
             align-items: center; 
             gap: 3px; 
             font-size: 10px; 
-            color: #667781; 
+            color: #94a3b8; 
             user-select: none;
         }
+        .msg.sent-by-me .msg-meta { color: #bfdbfe; }
         
         .tick { display: inline-block; font-weight: bold; font-size: 12px; margin-left: 1px; }
-        .tick.sent { color: #8696a0; }
-        .tick.delivered { color: #8696a0; }
-        .tick.read { color: #53bdeb; }
+        .tick.sent { color: #94a3b8; }
+        .tick.delivered { color: #94a3b8; }
+        .tick.read { color: #38bdf8; }
 
         /* ⌨️ INPUT AREA */
-        .chat-input-area { padding: 10px; background: #f0f2f5; display: flex; align-items: center; gap: 8px; }
-        .input-container { flex: 1; background: #fff; border-radius: 24px; display: flex; align-items: center; padding: 2px 12px; }
-        .input-container input[type="text"] { flex: 1; border: none; outline: none; padding: 10px 4px; font-size: 15px; background: transparent; }
-        .icon-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: #54656f; display: flex; align-items: center; justify-content: center; }
-        .icon-btn.recording { color: #ea0038; animation: blink 1s infinite; }
-        .send-btn { background: #005c4b; color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+        .chat-input-area { padding: 12px; background: #ffffff; display: flex; align-items: center; gap: 10px; border-top: 1px solid #e2e8f0; }
+        .input-container { flex: 1; background: #f1f5f9; border-radius: 24px; display: flex; align-items: center; padding: 2px 14px; border: 1px solid #e2e8f0; }
+        .input-container input[type="text"] { flex: 1; border: none; outline: none; padding: 10px 4px; font-size: 14px; background: transparent; color: #1e293b; }
+        .icon-btn { background: none; border: none; font-size: 18px; cursor: pointer; color: #64748b; display: flex; align-items: center; justify-content: center; transition: color 0.2s; }
+        .icon-btn:hover { color: #3b82f6; }
+        .icon-btn.recording { color: #ef4444; animation: blink 1s infinite; }
+        .send-btn { background: #3b82f6; color: white; border: none; width: 42px; height: 42px; border-radius: 50%; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3); transition: background 0.2s; }
+        .send-btn:hover { background: #2563eb; }
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
-
-        /* 🔒 FORCED INSTALL OVERLAY SCREEN */
-        #install-blocker {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #004d40;
-            color: white;
-            z-index: 99999;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 24px;
-            text-align: center;
-            box-shadow: inset 0 0 100px rgba(0,0,0,0.5);
-        }
-        .install-card {
-            background: #ffffff;
-            color: #111b21;
-            padding: 30px 20px;
-            border-radius: 16px;
-            max-width: 380px;
-            width: 100%;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .install-logo {
-            width: 70px;
-            height: 70px;
-            margin-bottom: 15px;
-        }
-        .install-title {
-            font-size: 20px;
-            font-weight: 700;
-            margin-bottom: 10px;
-            color: #008069;
-        }
-        .install-text {
-            font-size: 14px;
-            line-height: 1.5;
-            color: #54656f;
-            margin-bottom: 25px;
-        }
-        .install-btn {
-            background: #25d366;
-            color: white;
-            border: none;
-            padding: 12px 35px;
-            font-size: 16px;
-            font-weight: bold;
-            border-radius: 25px;
-            cursor: pointer;
-            width: 100%;
-            box-shadow: 0 4px 12px rgba(37, 211, 102, 0.4);
-            transition: transform 0.2s, background 0.2s;
-        }
-        .install-btn:active {
-            transform: scale(0.98);
-            background: #20ba5a;
-        }
     </style>
 
     <script type="module">
@@ -307,13 +275,13 @@
         loadChatSession();
     </script>
 
+    <!-- 📲 INSTALLATION & BROWSER REDIRECT SCRIPT -->
     <script>
       // 1. TikTok In-App Browser bypass logic
       const isTikTok = navigator.userAgent.includes("TikTok") || navigator.userAgent.includes("FBAN") || navigator.userAgent.includes("Instagram");
       
       if (isTikTok) {
-          alert("Please open this link in your standard Mobile Browser (Chrome / Safari) to launch the chat safely!");
-          // Android fallback to open link directly in Google Chrome app
+          alert("For the best chat experience, please open this page in Chrome or Safari!");
           window.location.href = "intent://" + window.location.host + window.location.pathname + "#Intent;scheme=http;package=com.android.chrome;end";
       }
 
@@ -324,70 +292,69 @@
           .catch(err => console.log('Service Worker Failure', err));
       }
 
-      // 3. Forced App installation interceptor
+      // 3. PWA Installation Banner Interaction
       let deferredPrompt;
-      const blocker = document.getElementById('install-blocker');
-      const installBtn = document.getElementById('force-install-btn');
+      const installBanner = document.getElementById('install-banner');
+      const installBtn = document.getElementById('install-action-btn');
 
-      // Check if user has already installed the app and opened via standalone home screen icon
+      // Hide banner if already running in standalone (installed) app mode
       if (window.matchMedia('(display-mode: standalone)').matches) {
-          blocker.style.display = 'none';
+          installBanner.style.display = 'none';
       }
 
       window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         deferredPrompt = e;
+        installBanner.style.display = 'flex'; // Show banner only when PWA is installable
       });
 
-      // Handle custom install button interaction
       installBtn.addEventListener('click', async () => {
         if (deferredPrompt) {
           deferredPrompt.prompt();
           const { outcome } = await deferredPrompt.userChoice;
           if (outcome === 'accepted') {
-            blocker.style.display = 'none';
+            installBanner.style.display = 'none';
           }
           deferredPrompt = null;
         } else {
-          // Fallback guidance if PWA prompt criteria isn't met or not supported by browser
-          alert("To start chatting, click your browser's menu (three dots at top-right) and tap 'Add to Home Screen' or 'Install App' manually!");
+          alert("Tap the menu button (3 dots) in your browser and select 'Add to Home Screen' to install!");
         }
       });
 
-      // Clean hide when installation triggers successfully
       window.addEventListener('appinstalled', () => {
-        blocker.style.display = 'none';
-        alert("App successfully added! You can now access support instantly.");
+        installBanner.style.display = 'none';
+        alert("Tech Hub App successfully installed on your Home Screen!");
       });
     </script>
 </head>
 <body>
 
-<div id="install-blocker">
-    <div class="install-card">
-        <img class="install-logo" src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="App Logo">
-        <div class="install-title">Install App to Chat</div>
-        <div class="install-text">Humare official customer service panel se rabta karne ke liye niche button par click karke app ko mobile screen par save karein.</div>
-        <button class="install-btn" id="force-install-btn">📲 INSTALL & START CHAT</button>
-    </div>
-</div>
-
 <div class="chat-container">
+    <!-- 📣 Smart Non-blocking Install Banner -->
+    <div id="install-banner" style="display: none;">
+        <span class="banner-text">Install our app for faster access and offline chat!</span>
+        <button class="banner-btn" id="install-action-btn">INSTALL NOW</button>
+    </div>
+
+    <!-- 💬 Header Structure (Modern Tech Hub) -->
     <div class="chat-header">
-        <img class="profile-img" src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="Support Avatar">
+        <!-- 🏢 Attractive Corporate Tech Support Icon (Free-to-use vector art) -->
+        <img class="profile-img" src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=100&q=80" alt="Tech Hub Support Logo">
         <div class="header-info">
-            <div class="name">Customer Support</div>
-            <div class="status">Online</div>
+            <div class="name">Tech Hub Support</div>
+            <div class="status">Online Helpdesk</div>
         </div>
     </div>
     
+    <!-- 📜 Messages Stream Area -->
     <div class="chat-messages" id="chatBox"></div>
     
+    <!-- ⌨️ Footer Chat Entry Bar -->
     <div class="chat-input-area">
         <div class="input-container">
             <input type="file" id="mediaInput" accept="image/*,video/*,audio/*" style="display: none;">
             <button class="icon-btn" onclick="document.getElementById('mediaInput').click()" style="margin-right: 8px;">📎</button>
-            <input type="text" id="msgInput" placeholder="Type a message...">
+            <input type="text" id="msgInput" placeholder="How can we help you today?">
             <button class="icon-btn" id="voiceBtn">🎙️</button>
         </div>
         <button class="send-btn" id="sendBtn">➤</button>
