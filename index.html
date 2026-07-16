@@ -19,7 +19,6 @@
         .header-info .status { font-size: 12px; color: #d1f4ec; }
         .chat-messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); background-color: #efeae2; }
         
-        /* 🟢 UPDATED WHATSAPP STYLE BUBBLES */
         .msg { 
             max-width: 80%; 
             padding: 6px 7px 6px 9px; 
@@ -33,14 +32,13 @@
             flex-direction: row;
             align-items: flex-end;
             flex-wrap: wrap;
-            gap: 15px; /* Text aur time ke darmiyan gap */
+            gap: 15px;
         }
         .msg.sent-by-me { background: #d9fdd3; align-self: flex-end; border-top-right-radius: 0; color: #111b21; }
         .msg.received-by-me { background: #ffffff; align-self: flex-start; border-top-left-radius: 0; color: #111b21; }
         .msg img, .msg video { max-width: 100%; border-radius: 6px; display: block; }
         .msg audio { max-width: 100%; display: block; }
 
-        /* ⏱️ REAL TIME & TICKS POSITIONING */
         .msg-meta { 
             margin-left: auto;
             display: inline-flex; 
@@ -52,11 +50,8 @@
             vertical-align: bottom;
             user-select: none;
         }
-        .msg.received-by-me .msg-meta { 
-            margin-left: auto; 
-        }
+        .msg.received-by-me .msg-meta { margin-left: auto; }
         
-        /* Ticks Styling */
         .tick { display: inline-block; font-weight: bold; font-size: 12px; margin-left: 1px; }
         .tick.sent { color: #8696a0; }
         .tick.delivered { color: #8696a0; }
@@ -90,11 +85,8 @@
         const db = getFirestore(app);
 
         const urlParams = new URLSearchParams(window.location.search);
-        const userNumber = urlParams.get('id') || "03257818116"; 
-        const roomId = `customer_${userNumber}`; 
+        const docId = urlParams.get('docId') || "O1n23lfBkMpZDGlkw5UR"; // Active document from screenshot 5
         const currentSender = "user"; 
-
-        document.getElementById('displayUser').innerText = `+${userNumber}`;
 
         const chatBox = document.getElementById('chatBox');
         const msgInput = document.getElementById('msgInput');
@@ -104,13 +96,14 @@
 
         let mediaRecorder, audioChunks = [], isRecording = false;
 
-        // Live Load Messages
-        const q = query(collection(db, "rooms", roomId, "messages"), orderBy("timestamp", "asc"));
+        // Fetching messages from active path: group_messages/{docId}/messages
+        const q = query(collection(db, "group_messages", docId, "messages"), orderBy("time_now", "asc"));
         onSnapshot(q, (snapshot) => {
             chatBox.innerHTML = ""; 
             snapshot.forEach((snapshotDoc) => {
                 const data = snapshotDoc.data();
-                renderMessage(snapshotDoc.id, data.sender, data.type, data.content, data.timeStr, data.status);
+                const timeLabel = data.time_label || getFormattedTime(); // dynamic time helper fallback
+                renderMessage(snapshotDoc.id, data.sender, data.type || 'text', data.message_text || data.file_url || data.content, timeLabel, data.status);
             });
             chatBox.scrollTop = chatBox.scrollHeight; 
         });
@@ -135,6 +128,7 @@
                 if (status === 'sent') ticksHtml = '<span class="tick sent">✓</span>';
                 else if (status === 'delivered') ticksHtml = '<span class="tick delivered">✓✓</span>';
                 else if (status === 'read') ticksHtml = '<span class="tick read">✓✓</span>';
+                else ticksHtml = '<span class="tick sent">✓</span>'; // fallback
             }
 
             const metaDiv = document.createElement('div');
@@ -157,14 +151,23 @@
         }
 
         async function sendMessageToFirebase(type, content) {
-            await addDoc(collection(db, "rooms", roomId, "messages"), {
+            const timestamp = Date.now();
+            const messageData = {
                 sender: currentSender,
                 type: type,
-                content: content,
-                timestamp: new Date(),
-                timeStr: getFormattedTime(),
+                time_now: timestamp,
+                time_label: getFormattedTime(),
                 status: "sent"
-            });
+            };
+
+            if (type === 'text') {
+                messageData.message_text = content;
+            } else {
+                messageData.file_url = content;
+                messageData.message_text = `Sent a ${type}`;
+            }
+
+            await addDoc(collection(db, "group_messages", docId, "messages"), messageData);
         }
 
         sendBtn.addEventListener('click', () => { const t = msgInput.value.trim(); if(t){ msgInput.value=""; sendMessageToFirebase('text', t); } });
@@ -204,7 +207,7 @@
 <div class="chat-container">
     <div class="chat-header">
         <img class="profile-img" src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="Profile">
-        <div class="header-info"><div class="name" id="displayUser">Jh Seller</div><div class="status">online</div></div>
+        <div class="header-info"><div class="name">Customer Support</div><div class="status">online</div></div>
     </div>
     <div class="chat-messages" id="chatBox"></div>
     <div class="chat-input-area">
