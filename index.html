@@ -19,19 +19,45 @@
         .header-info .status { font-size: 12px; color: #d1f4ec; }
         .chat-messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); background-color: #efeae2; }
         
-        /* WhatsApp Message Bubbles */
-        .msg { max-width: 80%; padding: 6px 10px 20px 10px; border-radius: 8px; font-size: 14.5px; line-height: 1.4; word-wrap: break-word; position: relative; box-shadow: 0 1px 1px rgba(0,0,0,0.1); }
+        /* 🟢 UPDATED WHATSAPP STYLE BUBBLES */
+        .msg { 
+            max-width: 80%; 
+            padding: 6px 7px 6px 9px; 
+            border-radius: 8px; 
+            font-size: 14.5px; 
+            line-height: 1.4; 
+            word-wrap: break-word; 
+            position: relative; 
+            box-shadow: 0 1px 1px rgba(0,0,0,0.13); 
+            display: flex;
+            flex-direction: row;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            gap: 15px; /* Text aur time ke darmiyan gap */
+        }
         .msg.sent-by-me { background: #d9fdd3; align-self: flex-end; border-top-right-radius: 0; color: #111b21; }
         .msg.received-by-me { background: #ffffff; align-self: flex-start; border-top-left-radius: 0; color: #111b21; }
-        .msg img, .msg video { max-width: 100%; border-radius: 6px; margin-bottom: 2px; display: block; }
-        .msg audio { max-width: 100%; margin-bottom: 2px; display: block; }
+        .msg img, .msg video { max-width: 100%; border-radius: 6px; display: block; }
+        .msg audio { max-width: 100%; display: block; }
 
-        /* Meta details (Time & Ticks) */
-        .msg-meta { position: absolute; bottom: 2px; right: 7px; display: flex; align-items: center; gap: 3px; font-size: 10.5px; color: #667781; }
-        .msg.received-by-me .msg-meta { right: auto; left: 7px; } /* Received msgs don't need ticks */
+        /* ⏱️ REAL TIME & TICKS POSITIONING */
+        .msg-meta { 
+            margin-left: auto;
+            display: inline-flex; 
+            align-items: center; 
+            gap: 3px; 
+            font-size: 10px; 
+            color: #667781; 
+            padding-top: 4px;
+            vertical-align: bottom;
+            user-select: none;
+        }
+        .msg.received-by-me .msg-meta { 
+            margin-left: auto; 
+        }
         
         /* Ticks Styling */
-        .tick { display: inline-block; font-weight: bold; font-size: 11px; }
+        .tick { display: inline-block; font-weight: bold; font-size: 12px; margin-left: 1px; }
         .tick.sent { color: #8696a0; }
         .tick.delivered { color: #8696a0; }
         .tick.read { color: #53bdeb; }
@@ -47,7 +73,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, updateDoc, doc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDe8rFsoeI7QnlPfuJb_FyWOLe1SdqEZHM",
@@ -84,9 +110,6 @@
             chatBox.innerHTML = ""; 
             snapshot.forEach((snapshotDoc) => {
                 const data = snapshotDoc.data();
-                
-                // Live Presence / Read Logic for User Side
-                // Agar message admin ne bheja hai aur uska status "read" nahi hai, to usey target nahi karna (woh admin karega)
                 renderMessage(snapshotDoc.id, data.sender, data.type, data.content, data.timeStr, data.status);
             });
             chatBox.scrollTop = chatBox.scrollHeight; 
@@ -107,7 +130,6 @@
                 msgDiv.innerHTML = `<audio src="${content}" controls></audio>`;
             }
 
-            // Ticks Element Logic
             let ticksHtml = '';
             if (isMe) {
                 if (status === 'sent') ticksHtml = '<span class="tick sent">✓</span>';
@@ -141,7 +163,7 @@
                 content: content,
                 timestamp: new Date(),
                 timeStr: getFormattedTime(),
-                status: "sent" // Default status is single tick
+                status: "sent"
             });
         }
 
