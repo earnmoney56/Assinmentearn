@@ -21,10 +21,15 @@
         /* Modern User Item style with status manager */
         .user-item { 
             display: flex; flex-direction: column; padding: 12px 16px; 
-            border-bottom: 1px solid #f0f0f0; cursor: pointer; transition: background 0.2s; 
+            border-bottom: 1px solid #f0f0f0; transition: background 0.2s; 
         }
         .user-item:hover { background: #f5f6f6; }
-        .user-main-row { display: flex; align-items: center; gap: 15px; width: 100%; }
+        
+        /* Direct wrapper of top area to handle click reliably */
+        .user-clickable-area {
+            display: flex; align-items: center; gap: 15px; width: 100%; cursor: pointer;
+        }
+        
         .user-avatar { width: 45px; height: 45px; border-radius: 50%; background: #00a884; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px; }
         .user-details { flex: 1; }
         .user-phone { font-size: 15px; font-weight: 600; color: #111b21; }
@@ -56,25 +61,16 @@
 
         .status-selector {
             font-size: 12px;
-            padding: 2px 5px;
+            padding: 3px 6px;
             border-radius: 4px;
             border: 1px solid #ccc;
             outline: none;
             background: #fff;
             cursor: pointer;
         }
-        .custom-status-btn {
-            font-size: 11px;
-            padding: 2px 6px;
-            background: #008069;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
         .remove-status-btn {
             font-size: 11px;
-            padding: 2px 6px;
+            padding: 3px 6px;
             background: #d32f2f;
             color: white;
             border: none;
@@ -237,6 +233,36 @@
             }
         };
 
+        // EXPLICIT CHAT OPEN TRIGGER
+        window.openChat = function(docId, userName) {
+            activeDocId = docId;
+            inboxView.style.display = 'none';
+            chatView.style.display = 'flex';
+            chatTitle.innerText = userName;
+            
+            const q = query(collection(db, "group_messages", activeDocId, "messages"), orderBy("time_now", "asc"));
+            activeChatListener = onSnapshot(q, (snapshot) => {
+                chatBox.innerHTML = ""; 
+                snapshot.forEach((snapshotDoc) => {
+                    const data = snapshotDoc.data();
+                    
+                    if (data.sender === 'user') {
+                        const docRef = doc(db, "group_messages", activeDocId, "messages", snapshotDoc.id);
+                        if (isWindowActive && data.status !== 'read') {
+                            updateDoc(docRef, { status: 'read' });
+                        } else if (!isWindowActive && (!data.status || data.status === 'sent')) {
+                            updateDoc(docRef, { status: 'delivered' });
+                        }
+                    }
+
+                    const timeLabel = data.time_label || getFormattedTime();
+                    const messageContent = data.file_url || data.content || data.message_text;
+                    renderMessage(snapshotDoc.id, data.sender, data.type || 'text', messageContent, timeLabel, data.status);
+                });
+                chatBox.scrollTop = chatBox.scrollHeight; 
+            });
+        };
+
         async function loadInbox() {
             inboxView.style.display = 'flex';
             chatView.style.display = 'none';
@@ -275,8 +301,9 @@
                         itemDiv.className = 'user-item';
                         itemDiv.id = `inbox-item-${docId}`;
                         
+                        // Separated Top Clickable Area with absolute function trigger
                         itemDiv.innerHTML = `
-                            <div class="user-main-row" onclick="openChat('${docId}', '${userName}')">
+                            <div class="user-clickable-area" onclick="window.openChat('${docId}', '${userName}')">
                                 <div class="user-avatar">👤</div>
                                 <div class="user-details">
                                     <div class="user-phone">${userName}</div>
@@ -325,35 +352,6 @@
                 console.error("Error loading inbox: ", error);
                 userListDiv.innerHTML = "<div style='padding: 20px; text-align: center; color: red;'>Failed to load chats.</div>";
             }
-        }
-
-        function openChat(docId, userName) {
-            activeDocId = docId;
-            inboxView.style.display = 'none';
-            chatView.style.display = 'flex';
-            chatTitle.innerText = userName;
-            
-            const q = query(collection(db, "group_messages", activeDocId, "messages"), orderBy("time_now", "asc"));
-            activeChatListener = onSnapshot(q, (snapshot) => {
-                chatBox.innerHTML = ""; 
-                snapshot.forEach((snapshotDoc) => {
-                    const data = snapshotDoc.data();
-                    
-                    if (data.sender === 'user') {
-                        const docRef = doc(db, "group_messages", activeDocId, "messages", snapshotDoc.id);
-                        if (isWindowActive && data.status !== 'read') {
-                            updateDoc(docRef, { status: 'read' });
-                        } else if (!isWindowActive && (!data.status || data.status === 'sent')) {
-                            updateDoc(docRef, { status: 'delivered' });
-                        }
-                    }
-
-                    const timeLabel = data.time_label || getFormattedTime();
-                    const messageContent = data.file_url || data.content || data.message_text;
-                    renderMessage(snapshotDoc.id, data.sender, data.type || 'text', messageContent, timeLabel, data.status);
-                });
-                chatBox.scrollTop = chatBox.scrollHeight; 
-            });
         }
 
         window.goBackToInbox = function() {
