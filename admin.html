@@ -25,7 +25,22 @@
         .user-avatar { width: 45px; height: 45px; border-radius: 50%; background: #00a884; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px; }
         .user-details { flex: 1; }
         .user-phone { font-size: 15px; font-weight: 600; color: #111b21; }
-        .user-subtitle { font-size: 13px; color: #667781; margin-top: 2px; }
+        .user-subtitle { font-size: 12px; color: #667781; margin-top: 2px; }
+        
+        /* 🟢 UNREAD COUNTER BADGE */
+        .unread-badge {
+            background-color: #25d366;
+            color: white;
+            font-size: 11px;
+            font-weight: bold;
+            min-width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 5px;
+        }
 
         /* 💬 CHAT VIEW STYLING */
         #chat-view { display: none; flex-direction: column; height: 100%; }
@@ -58,7 +73,6 @@
         .msg img, .msg video { max-width: 100%; border-radius: 6px; display: block; }
         .msg audio { max-width: 100%; display: block; }
 
-        /* Meta details */
         .msg-meta { 
             margin-left: auto;
             display: inline-flex; 
@@ -70,7 +84,6 @@
             vertical-align: bottom;
             user-select: none;
         }
-        .msg.received-by-me .msg-meta { margin-left: auto; }
         
         .tick { display: inline-block; font-weight: bold; font-size: 12px; margin-left: 1px; }
         .tick.sent { color: #8696a0; }
@@ -90,7 +103,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
         import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, getDocs, updateDoc, doc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-        // Firebase Configuration (Matching with your project screenshots)
         const firebaseConfig = {
             apiKey: "AIzaSyDe8rFsoeI7QnlPfuJb_FyWOLe1SdqEZHM",
             authDomain: "wattsapp-27aa4.firebaseapp.com",
@@ -124,19 +136,40 @@
         window.addEventListener('focus', () => { isWindowActive = true; });
         window.addEventListener('blur', () => { isWindowActive = false; });
 
-        // 1. Load Active Chats in Inbox
+        // 🏷️ USER NAME MANAGER (Saves sequential numbering in LocalStorage so names stay persistent)
+        function getUserFriendlyName(docId) {
+            let savedNames = localStorage.getItem('chatUserNames');
+            savedNames = savedNames ? JSON.parse(savedNames) : {};
+
+            if (savedNames[docId]) {
+                return savedNames[docId];
+            }
+
+            // Assign a new sequential number
+            const assignedNumbers = Object.values(savedNames).map(name => {
+                const num = parseInt(name.replace("User ", ""));
+                return isNaN(num) ? 0 : num;
+            });
+            const nextNumber = assignedNumbers.length > 0 ? Math.max(...assignedNumbers) + 1 : 1;
+            const newName = "User " + nextNumber;
+
+            savedNames[docId] = newName;
+            localStorage.setItem('chatUserNames', JSON.stringify(savedNames));
+            return newName;
+        }
+
+        // 1. Load Live Active Chats with Counter Badges
         async function loadInbox() {
             inboxView.style.display = 'flex';
             chatView.style.display = 'none';
             if (activeChatListener) {
-                activeChatListener(); // Unsubscribe previous real-time chat updates
+                activeChatListener(); 
                 activeChatListener = null;
             }
 
             userListDiv.innerHTML = "<div style='padding: 20px; text-align: center; color: #667781;'>Loading conversations...</div>";
 
             try {
-                // Fetching documents inside the 'group_messages' collection
                 const querySnapshot = await getDocs(collection(db, "group_messages"));
                 userListDiv.innerHTML = "";
 
@@ -145,21 +178,48 @@
                     return;
                 }
 
+                // Render list and listen to unread message updates inside subcollections
                 querySnapshot.forEach((documentSnapshot) => {
                     const docId = documentSnapshot.id;
-                    
-                    // Designing beautiful list item
+                    const userName = getUserFriendlyName(docId);
+
+                    // Setup list element wrapper
                     const itemDiv = document.createElement('div');
                     itemDiv.className = 'user-item';
+                    itemDiv.id = `inbox-item-${docId}`;
                     itemDiv.innerHTML = `
                         <div class="user-avatar">👤</div>
                         <div class="user-details">
-                            <div class="user-phone">Customer Support</div>
-                            <div class="user-subtitle">ID: ${docId}</div>
+                            <div class="user-phone">${userName}</div>
+                            <div class="user-subtitle">ID: ${docId.substring(0, 15)}...</div>
                         </div>
+                        <div id="badge-${docId}" class="unread-badge" style="display: none;">0</div>
                     `;
-                    itemDiv.onclick = () => openChat(docId);
+                    itemDiv.onclick = () => openChat(docId, userName);
                     userListDiv.appendChild(itemDiv);
+
+                    // Realtime dynamic counter detection
+                    const messagesRef = collection(db, "group_messages", docId, "messages");
+                    onSnapshot(messagesRef, (msgSnapshot) => {
+                        let unreadCount = 0;
+                        msgSnapshot.forEach((msgDoc) => {
+                            const msgData = msgDoc.data();
+                            // If user sent a message and it's not marked read yet
+                            if (msgData.sender === 'user' && msgData.status !== 'read') {
+                                unreadCount++;
+                            }
+                        });
+
+                        const badge = document.getElementById(`badge-${docId}`);
+                        if (badge) {
+                            if (unreadCount > 0) {
+                                badge.innerText = unreadCount;
+                                badge.style.display = 'flex';
+                            } else {
+                                badge.style.display = 'none';
+                            }
+                        }
+                    });
                 });
             } catch (error) {
                 console.error("Error loading inbox: ", error);
@@ -168,11 +228,11 @@
         }
 
         // 2. Open Chat View with selected Customer ID
-        function openChat(docId) {
+        function openChat(docId, userName) {
             activeDocId = docId;
             inboxView.style.display = 'none';
             chatView.style.display = 'flex';
-            chatTitle.innerText = "Support (" + docId.substring(0, 8) + "...)";
+            chatTitle.innerText = userName;
             
             // Subscribing to dynamic updates
             const q = query(collection(db, "group_messages", activeDocId, "messages"), orderBy("time_now", "asc"));
