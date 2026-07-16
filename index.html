@@ -11,6 +11,7 @@
             background: #dadbd3; 
             background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); 
             display: flex; justify-content: center; align-items: center; height: 100vh; 
+            overflow: hidden;
         }
         .chat-container { width: 100%; max-width: 450px; height: 100vh; background: #efeae2; display: flex; flex-direction: column; box-shadow: 0 4px 15px rgba(0,0,0,0.15); overflow: hidden; }
         
@@ -66,6 +67,71 @@
         .icon-btn.recording { color: #ea0038; animation: blink 1s infinite; }
         .send-btn { background: #005c4b; color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+
+        /* 🔒 FORCED INSTALL OVERLAY SCREEN */
+        #install-blocker {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #004d40;
+            color: white;
+            z-index: 99999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            text-align: center;
+            box-shadow: inset 0 0 100px rgba(0,0,0,0.5);
+        }
+        .install-card {
+            background: #ffffff;
+            color: #111b21;
+            padding: 30px 20px;
+            border-radius: 16px;
+            max-width: 380px;
+            width: 100%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .install-logo {
+            width: 70px;
+            height: 70px;
+            margin-bottom: 15px;
+        }
+        .install-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: #008069;
+        }
+        .install-text {
+            font-size: 14px;
+            line-height: 1.5;
+            color: #54656f;
+            margin-bottom: 25px;
+        }
+        .install-btn {
+            background: #25d366;
+            color: white;
+            border: none;
+            padding: 12px 35px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 25px;
+            cursor: pointer;
+            width: 100%;
+            box-shadow: 0 4px 12px rgba(37, 211, 102, 0.4);
+            transition: transform 0.2s, background 0.2s;
+        }
+        .install-btn:active {
+            transform: scale(0.98);
+            background: #20ba5a;
+        }
     </style>
 
     <script type="module">
@@ -95,7 +161,6 @@
         let currentSender = "user";
         let mediaRecorder, audioChunks = [], isRecording = false;
 
-        // Unique User Identifier inside LocalStorage for individual chat sessions
         let myChatDocId = localStorage.getItem('my_chat_session_id');
         if (!myChatDocId) {
             myChatDocId = "user_" + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
@@ -187,14 +252,11 @@
 
         async function sendMessageToFirebase(type, content) {
             const timestamp = Date.now();
-            
-            // Auto initialize user root doc with metadata structure if not present
             const userRootRef = doc(db, "group_messages", myChatDocId);
+            
             await updateDoc(userRootRef, { lastUpdated: timestamp }).catch(async () => {
-                // If doc doesn't exist yet, try creating it with fallback baseline schema
-                import("https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js").then(async ({ setDoc }) => {
-                    await setDoc(userRootRef, { sessionCreatedAt: timestamp, statusTag: "" }, { merge: true });
-                });
+                const { setDoc } = await import("https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js");
+                await setDoc(userRootRef, { sessionCreatedAt: timestamp, statusTag: "" }, { merge: true });
             });
 
             const messageData = {
@@ -246,36 +308,70 @@
     </script>
 
     <script>
-      // 1. Service Worker registration
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js')
-          .then(() => console.log('PWA Service Worker Active'))
-          .catch(err => console.log('Service Worker Registration Error', err));
+      // 1. TikTok In-App Browser bypass logic
+      const isTikTok = navigator.userAgent.includes("TikTok") || navigator.userAgent.includes("FBAN") || navigator.userAgent.includes("Instagram");
+      
+      if (isTikTok) {
+          alert("Please open this link in your standard Mobile Browser (Chrome / Safari) to launch the chat safely!");
+          // Android fallback to open link directly in Google Chrome app
+          window.location.href = "intent://" + window.location.host + window.location.pathname + "#Intent;scheme=http;package=com.android.chrome;end";
       }
 
-      // 2. Capture beforeinstallprompt event
+      // 2. Service Worker registration
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js')
+          .then(() => console.log('PWA Service Worker Live'))
+          .catch(err => console.log('Service Worker Failure', err));
+      }
+
+      // 3. Forced App installation interceptor
       let deferredPrompt;
+      const blocker = document.getElementById('install-blocker');
+      const installBtn = document.getElementById('force-install-btn');
+
+      // Check if user has already installed the app and opened via standalone home screen icon
+      if (window.matchMedia('(display-mode: standalone)').matches) {
+          blocker.style.display = 'none';
+      }
+
       window.addEventListener('beforeinstallprompt', (e) => {
-        // Default prompt ko stop karein
         e.preventDefault();
         deferredPrompt = e;
-        
-        // TikTok user ke aane ke 3 seconds baad automatic alert show hoga
-        setTimeout(() => {
-          if (confirm("Easily stay connected! Do you want to add this Support Chat to your mobile Home Screen for quick access?")) {
-            deferredPrompt.prompt();
-            deferredPrompt.userChoice.then((choiceResult) => {
-              if (choiceResult.outcome === 'accepted') {
-                console.log('User installed the PWA Chat app.');
-              }
-              deferredPrompt = null;
-            });
+      });
+
+      // Handle custom install button interaction
+      installBtn.addEventListener('click', async () => {
+        if (deferredPrompt) {
+          deferredPrompt.prompt();
+          const { outcome } = await deferredPrompt.userChoice;
+          if (outcome === 'accepted') {
+            blocker.style.display = 'none';
           }
-        }, 3000); 
+          deferredPrompt = null;
+        } else {
+          // Fallback guidance if PWA prompt criteria isn't met or not supported by browser
+          alert("To start chatting, click your browser's menu (three dots at top-right) and tap 'Add to Home Screen' or 'Install App' manually!");
+        }
+      });
+
+      // Clean hide when installation triggers successfully
+      window.addEventListener('appinstalled', () => {
+        blocker.style.display = 'none';
+        alert("App successfully added! You can now access support instantly.");
       });
     </script>
 </head>
 <body>
+
+<div id="install-blocker">
+    <div class="install-card">
+        <img class="install-logo" src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="App Logo">
+        <div class="install-title">Install App to Chat</div>
+        <div class="install-text">Humare official customer service panel se rabta karne ke liye niche button par click karke app ko mobile screen par save karein.</div>
+        <button class="install-btn" id="force-install-btn">📲 INSTALL & START CHAT</button>
+    </div>
+</div>
+
 <div class="chat-container">
     <div class="chat-header">
         <img class="profile-img" src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="Support Avatar">
