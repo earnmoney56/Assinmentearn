@@ -8,7 +8,7 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
         body { 
             background: #dadbd3; 
-            background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); /* Real WhatsApp Chat Wallpaper */
+            background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); 
             display: flex; 
             justify-content: center; 
             align-items: center; 
@@ -26,7 +26,6 @@
             overflow: hidden; 
         }
 
-        /* Real WhatsApp Green Header */
         .chat-header { 
             background: #008069; 
             color: white; 
@@ -36,26 +35,11 @@
             gap: 12px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
         }
-        .profile-img {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: #ccc;
-            object-fit: cover;
-        }
-        .header-info {
-            flex: 1;
-        }
-        .header-info .name {
-            font-size: 16px;
-            font-weight: 600;
-        }
-        .header-info .status {
-            font-size: 12px;
-            color: #d1f4ec;
-        }
+        .profile-img { width: 40px; height: 40px; border-radius: 50%; background: #ccc; object-fit: cover; }
+        .header-info { flex: 1; }
+        .header-info .name { font-size: 16px; font-weight: 600; }
+        .header-info .status { font-size: 12px; color: #d1f4ec; }
         
-        /* Message Window with WhatsApp Background */
         .chat-messages { 
             flex: 1; 
             padding: 15px; 
@@ -67,7 +51,6 @@
             background-color: #efeae2;
         }
         
-        /* Real WhatsApp Message Bubbles */
         .msg { 
             max-width: 80%; 
             padding: 8px 12px; 
@@ -78,65 +61,32 @@
             position: relative; 
             box-shadow: 0 1px 1px rgba(0,0,0,0.1); 
         }
-        /* Admin (Owner) right side green bubble */
-        .msg.admin { 
+        
+        /* ✅ FIX: User ke liye uska apna bheja hua message RIGHT (Green) par hoga */
+        .msg.sent-by-me { 
             background: #d9fdd3; 
             align-self: flex-end; 
             border-top-right-radius: 0; 
             color: #111b21; 
         }
-        /* User (Customer) left side white bubble */
-        .msg.user { 
+        /* ✅ FIX: User ke liye Admin ka reply LEFT (White) par hoga */
+        .msg.received-by-me { 
             background: #ffffff; 
             align-self: flex-start; 
             border-top-left-radius: 0; 
             color: #111b21; 
         }
         
-        /* Media Elements inside Chat */
         .msg img, .msg video { max-width: 100%; border-radius: 6px; margin-top: 5px; display: block; }
         .msg audio { max-width: 100%; margin-top: 5px; display: block; }
         
-        /* WhatsApp Style Input Area */
-        .chat-input-area { 
-            padding: 10px; 
-            background: #f0f2f5; 
-            display: flex; 
-            align-items: center; 
-            gap: 8px; 
-        }
-        .input-container {
-            flex: 1;
-            background: #fff;
-            border-radius: 24px;
-            display: flex;
-            align-items: center;
-            padding: 2px 12px;
-        }
-        .input-container input[type="text"] { 
-            flex: 1; 
-            border: none;
-            outline: none; 
-            padding: 10px 4px;
-            font-size: 15px; 
-            background: transparent; 
-        }
+        .chat-input-area { padding: 10px; background: #f0f2f5; display: flex; align-items: center; gap: 8px; }
+        .input-container { flex: 1; background: #fff; border-radius: 24px; display: flex; align-items: center; padding: 2px 12px; }
+        .input-container input[type="text"] { flex: 1; border: none; outline: none; padding: 10px 4px; font-size: 15px; background: transparent; }
         
-        .icon-btn { 
-            background: none; 
-            border: none; 
-            font-size: 20px; 
-            cursor: pointer; 
-            color: #54656f; 
-            transition: transform 0.1s; 
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .icon-btn:active { transform: scale(0.9); }
+        .icon-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: #54656f; display: flex; align-items: center; justify-content: center; }
         .icon-btn.recording { color: #ea0038; animation: blink 1s infinite; }
         
-        /* WhatsApp Green Round Send Button */
         .send-btn { 
             background: #00a884; 
             color: white; 
@@ -151,7 +101,6 @@
             justify-content: center;
             box-shadow: 0 1px 2px rgba(0,0,0,0.2); 
         }
-        .send-btn:hover { background: #008f72; }
 
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
     </style>
@@ -160,7 +109,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
         import { getFirestore, collection, addDoc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-        // ✅ Active Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyDe8rFsoeI7QnlPfuJb_FyWOLe1SdqEZHM",
             authDomain: "wattsapp-27aa4.firebaseapp.com",
@@ -175,13 +123,11 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // 🔗 Dynamic Room ID: Agar link ke aakhir me ?id=NUMBER hoga to wahi room banega, nahi to static default rahega
         const urlParams = new URLSearchParams(window.location.search);
         const userNumber = urlParams.get('id') || "03257818116"; 
         const roomId = `customer_${userNumber}`; 
-        const currentSender = "user"; // Yeh user panel hai
+        const currentSender = "user"; 
 
-        // Header par user ka number live show karne ke liye
         document.getElementById('displayUser').innerText = `+${userNumber}`;
 
         const chatBox = document.getElementById('chatBox');
@@ -194,7 +140,6 @@
         let audioChunks = [];
         let isRecording = false;
 
-        // 1. Live Messages Loader
         const q = query(collection(db, "rooms", roomId, "messages"), orderBy("timestamp", "asc"));
         onSnapshot(q, (snapshot) => {
             chatBox.innerHTML = ""; 
@@ -205,11 +150,10 @@
             chatBox.scrollTop = chatBox.scrollHeight; 
         });
 
-        // 2. UI rendering (Real WhatsApp bubble positions)
         function renderMessage(sender, type, content) {
             const msgDiv = document.createElement('div');
-            // User bhejega toh use left (user bubble) show hoga, Admin (Aap) bhejoge toh right (green admin bubble) show hoga
-            msgDiv.classList.add('msg', sender === 'admin' ? 'admin' : 'user'); 
+            // ✅ Position Check
+            msgDiv.classList.add('msg', sender === currentSender ? 'sent-by-me' : 'received-by-me'); 
 
             if (type === 'text') {
                 msgDiv.innerText = content;
@@ -223,7 +167,6 @@
             chatBox.appendChild(msgDiv);
         }
 
-        // 3. Text Send
         async function sendTextMessage() {
             const text = msgInput.value.trim();
             if (!text) return;
@@ -239,7 +182,6 @@
         sendBtn.addEventListener('click', sendTextMessage);
         msgInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendTextMessage(); });
 
-        // Helper Base64 conversion
         const toBase64 = file => new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.readAsDataURL(file);
@@ -247,7 +189,6 @@
             reader.onerror = error => reject(error);
         });
 
-        // 4. Media upload (Direct Base64)
         mediaInput.addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file) return;
@@ -263,7 +204,6 @@
             }
 
             const base64String = await toBase64(file);
-
             await addDoc(collection(db, "rooms", roomId, "messages"), {
                 sender: currentSender,
                 type: fileType,
@@ -272,7 +212,6 @@
             });
         });
 
-        // 5. Voice Recorder System
         voiceBtn.addEventListener('click', async () => {
             if (!isRecording) {
                 if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -297,8 +236,6 @@
                     isRecording = true;
                     voiceBtn.classList.add('recording');
                     voiceBtn.innerText = "🛑"; 
-                } else {
-                    alert("Aapka browser audio recording support nahi karta.");
                 }
             } else {
                 mediaRecorder.stop();
@@ -319,9 +256,7 @@
             <div class="status">online</div>
         </div>
     </div>
-    
     <div class="chat-messages" id="chatBox"></div>
-
     <div class="chat-input-area">
         <div class="input-container">
             <input type="file" id="mediaInput" accept="image/*,video/*,audio/*" style="display: none;">
